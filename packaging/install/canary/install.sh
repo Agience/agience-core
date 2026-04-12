@@ -12,6 +12,7 @@
 #   agience up      start
 #   agience down    stop
 #   agience update  pull latest canary and restart
+#   agience reset   wipe all data and start fresh
 # ──────────────────────────────────────────────────────────────────────
 set -e
 
@@ -175,8 +176,38 @@ case "\${1:-}" in
     status)
         docker compose ps
         ;;
+    reset)
+        echo ""
+        echo "============================================================"
+        echo "  FACTORY RESET - THIS WILL PERMANENTLY DELETE ALL DATA"
+        echo "============================================================"
+        echo ""
+        echo "  This will stop all containers and delete all persistent"
+        echo "  data (database, object store, search index, keys)."
+        echo "  The setup wizard will run on next start."
+        echo ""
+        printf "  Are you sure? [y/N] "
+        read -r CONFIRM
+        if [ "\${CONFIRM}" != "y" ] && [ "\${CONFIRM}" != "Y" ]; then
+            echo "Aborted."
+            exit 0
+        fi
+        echo ""
+        echo "Stopping containers..."
+        docker compose down
+        DATA_DIR="\${AGIENCE_DIR}/.data"
+        if [ -d "\${DATA_DIR}" ]; then
+            echo "Deleting data..."
+            rm -rf "\${DATA_DIR}"
+            echo "Data deleted."
+        else
+            echo "No data directory found - already clean."
+        fi
+        echo ""
+        echo "Reset complete. Run 'agience up' to start fresh."
+        ;;
     *)
-        echo "Usage: agience [up|down|logs|update|status]"
+        echo "Usage: agience [up|down|logs|update|status|reset]"
         exit 1
         ;;
 esac
@@ -258,8 +289,7 @@ printf "    agience down      stop\n"
 printf "    agience logs      watch logs\n"
 printf "    agience update    pull latest canary images and restart\n"
 printf "    agience status    show running containers\n"
-printf "\n"
-
+    printf "    agience reset     wipe all data and start fresh\n"
 if $PATH_UPDATED; then
     printf "  ${YELLOW}Note:${NC} Open a new terminal (or run ${BOLD}source ~/.bashrc${NC}) for 'agience' to be on your PATH.\n"
     printf "\n"

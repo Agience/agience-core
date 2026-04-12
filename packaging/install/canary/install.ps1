@@ -154,7 +154,8 @@ if "%1"=="down"   goto do_down
 if "%1"=="logs"   goto do_logs
 if "%1"=="update" goto do_update
 if "%1"=="status" goto do_status
-echo Usage: agience [up^|down^|logs^|update^|status]
+if "%1"=="reset"  goto do_reset
+echo Usage: agience [up^|down^|logs^|update^|status^|reset]
 exit /b 1
 
 :do_up
@@ -178,6 +179,35 @@ goto done
 
 :do_status
 docker compose ps
+goto done
+
+:do_reset
+echo.
+echo ============================================================
+echo   FACTORY RESET - THIS WILL PERMANENTLY DELETE ALL DATA
+echo ============================================================
+echo.
+echo   This will stop all containers and delete all persistent
+echo   data (database, object store, search index, keys).
+echo   The setup wizard will run on next start.
+echo.
+set /p "CONFIRM=   Are you sure? [y/N] "
+if /i not "%CONFIRM%"=="y" (
+    echo Aborted.
+    goto done
+)
+echo.
+echo Stopping containers...
+docker compose down
+echo Deleting data...
+if exist "%AGIENCE_DIR%\.data" (
+    rmdir /s /q "%AGIENCE_DIR%\.data"
+    echo Data deleted.
+) else (
+    echo No data directory found - already clean.
+)
+echo.
+echo Reset complete. Run 'agience up' to start fresh.
 goto done
 
 :done
@@ -251,6 +281,7 @@ Write-Host "    agience down      stop"
 Write-Host "    agience logs      watch logs"
 Write-Host "    agience update    pull latest canary images and restart"
 Write-Host "    agience status    show running containers"
+Write-Host "    agience reset     wipe all data and start fresh"
 Write-Host ""
 
 if ($pathUpdated) {

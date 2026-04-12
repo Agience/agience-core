@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schemas.agience.io/mcp-server/v1/mcp.json",
+  "schema_version": "1",
+  "name": "agience-server-astra",
+  "display_name": "Astra — Ingestion, Validation & Indexing",
+  "description": "Captures and prepares incoming information through ingestion, validation, normalization, indexing, hygiene, and telemetry collection.",
+  "version": "0.1.0",
+  "image": "ghcr.io/agience/agience-server-astra:latest",
+  "endpoints": {
+    "streamable_http": "/mcp"
+  },
+  "tools": [
+    { "name": "ingest_file", "description": "Create a workspace artifact from a file URL or raw text" },
+    { "name": "document_text_extract", "description": "Extract text from a PDF artifact into a derived text artifact" },
+    { "name": "validate_input", "description": "Validate incoming data against schema or rules" },
+    { "name": "normalize_artifact", "description": "Normalize artifact content (standardize fields, clean formatting)" },
+    { "name": "deduplicate", "description": "Check for duplicate/near-duplicate content" },
+    { "name": "classify_content", "description": "Classify content type and topic" },
+    { "name": "connect_source", "description": "Register an external connector (Drive, Gmail, Slack)" },
+    { "name": "sync_source", "description": "Pull latest from a registered connector" },
+    { "name": "index_artifact", "description": "Force re-index of an artifact into the search layer" },
+    { "name": "list_streams", "description": "List active and recent live stream sessions" },
+    { "name": "collect_telemetry", "description": "Collect and record system activity telemetry" },
+    { "name": "rotate_stream_key", "description": "Generate or rotate the RTMP stream key for a stream source artifact" },
+    { "name": "get_stream_sessions", "description": "Get active live sessions for a stream source artifact" }
+  ],
+  "resources": [],
+  "prompts": [],
+  "artifact_types": [
+    "application/vnd.agience.stream+json"
+  ],
+  "config": {
+    "env": {
+      "AGIENCE_API_URI": { "description": "Base URI of the agience-core backend", "required": true },
+      "AGIENCE_API_KEY": { "description": "Platform API key (Bearer token)", "required": true },
+      "MCP_PORT": { "description": "HTTP port for the MCP server", "default": "8087" },
+      "SRS_HTTP_API": { "description": "SRS HTTP API base URL (e.g. http://srs:1985)", "required": false },
+      "STREAM_INGEST_URL": { "description": "Public RTMP ingest URL for OBS clients (e.g. rtmp://rtmp.example.com/live)", "required": false }
+    }
+  }
+}

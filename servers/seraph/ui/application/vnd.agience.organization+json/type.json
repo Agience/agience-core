@@ -1,0 +1,112 @@
+{
+  "content_type": "application/vnd.agience.organization+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Agience Organization \u2014 a legal entity or operator record used for identity, governance, and licensing decisions.",
+  "context_schema": {
+    "identity": {
+      "type": "object",
+      "description": "Stable organization identity and public profile.",
+      "properties": {
+        "agience_root_id": {
+          "type": "string",
+          "description": "Stable root artifact identifier for the organization artifact."
+        },
+        "legal_name": {
+          "type": "string",
+          "description": "Registered legal name of the entity or operator."
+        },
+        "display_name": {
+          "type": "string",
+          "description": "Optional human-friendly name shown in the UI."
+        },
+        "entity_kind": {
+          "type": "string",
+          "description": "Licensing-relevant entity class. Examples: individual, nonprofit, educational, company, government."
+        },
+        "jurisdiction": {
+          "type": "string",
+          "description": "Optional jurisdiction or place of incorporation."
+        },
+        "website_uri": {
+          "type": "string",
+          "description": "Optional public website or primary domain."
+        }
+      }
+    },
+    "licensing": {
+      "type": "object",
+      "description": "Canonical fields used by Ophan to make deterministic licensing-boundary decisions.",
+      "properties": {
+        "employee_count": {
+          "type": "integer",
+          "description": "Current employee count for the legal entity."
+        },
+        "annual_gross_revenue_usd": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Annual gross revenue for the legal entity in USD."
+        },
+        "packaging": {
+          "type": "object",
+          "description": "Business-model flags relevant to the public license boundary.",
+          "properties": {
+            "offers_managed_service": {
+              "type": "boolean"
+            },
+            "offers_hosted_service": {
+              "type": "boolean"
+            },
+            "offers_oem": {
+              "type": "boolean"
+            },
+            "offers_embedded": {
+              "type": "boolean"
+            },
+            "offers_white_label": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "relationships": {
+      "type": "object",
+      "description": "Optional direct references to related organizations used for deterministic policy evaluation.",
+      "properties": {
+        "affiliate_organization_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Referenced organization artifact IDs whose revenue should be included in affiliate aggregation."
+        }
+      }
+    }
+  },
+  "ui": {
+    "label": "Organization",
+    "icon": "building-2",
+    "color": "#0891b2",
+    "badge_class": "bg-cyan-100 text-cyan-800",
+    "tile_class": "ring-1 ring-cyan-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "record",
+    "description": "Canonical operator or legal-entity record used for governance and licensing decisions."
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "content_type": "application/vnd.agience.server-credential+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Client credential record for a third-party MCP server. Kernel servers use PLATFORM_INTERNAL_SECRET and do not require a credential artifact.",
+  "operations": {
+    "create": {
+      "enabled": true,
+      "requires_grant": "create",
+      "dispatch": { "kind": "native", "target": "server_credential_service.create_credential" },
+      "audit": true,
+      "emits": [
+        { "event": "server_credential.created", "phase": "after" }
+      ]
+    },
+    "read": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "artifact_crud" }
+    },
+    "update": {
+      "enabled": true,
+      "requires_grant": "update",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [
+        { "event": "server_credential.updated", "phase": "after" }
+      ]
+    },
+    "delete": {
+      "enabled": true,
+      "requires_grant": "delete",
+      "dispatch": { "kind": "native", "target": "server_credential_service.delete_credential" },
+      "emits": [
+        { "event": "server_credential.deleted", "phase": "after" }
+      ]
+    },
+    "rotate": {
+      "enabled": true,
+      "requires_grant": "own",
+      "dispatch": { "kind": "native", "target": "server_credential_service.rotate_credential" },
+      "audit": true,
+      "emits": [
+        { "event": "server_credential.rotated", "phase": "after" }
+      ]
+    },
+    "publish_jwk": {
+      "enabled": true,
+      "requires_grant": "own",
+      "dispatch": { "kind": "native", "target": "server_credential_service.publish_jwk" },
+      "emits": [
+        { "event": "server_credential.jwk_published", "phase": "after" }
+      ]
+    }
+  },
+  "ui": {
+    "label": "Server Credential",
+    "icon": "shield-check",
+    "color": "#7c3aed",
+    "badge_class": "bg-violet-100 text-violet-800",
+    "modes": [ "floating" ],
+    "states": [ "view" ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": null
+  }
+}

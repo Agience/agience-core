@@ -1,0 +1,122 @@
+{
+  "content_type": "application/vnd.agience.mcp-server+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "MCP Server \u2014 transport configuration stored as an artifact.  Creating an artifact of this type in a workspace registers an external MCP server for that workspace.",
+  "context_schema": {
+    "title": "string \u2014 display name",
+    "transport": {
+      "type": "\"http\" | \"stdio\" | \"builtin\"",
+      "well_known": "string (http) \u2014 /.well-known/mcp.json URL or direct /mcp endpoint",
+      "command": "string (stdio) \u2014 executable path",
+      "args": "string[] (stdio)",
+      "cwd": "string (stdio, optional)",
+      "env": "object (stdio/http) \u2014 environment variables / auth headers"
+    },
+    "notes": "string (optional)"
+  },
+  "operations": {
+    "read": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "artifact_crud" }
+    },
+    "update": {
+      "enabled": true,
+      "requires_grant": "update",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [
+        { "event": "artifact.updated", "phase": "after" }
+      ]
+    },
+    "invoke": {
+      "enabled": true,
+      "requires_grant": "invoke",
+      "dispatch": {
+        "kind": "mcp_tool",
+        "server_ref": "$.root_id",
+        "tool_ref":   "$.body.name"
+      },
+      "input_schema": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name":         { "type": "string", "description": "Tool name to invoke on the server" },
+          "arguments":    { "type": "object", "description": "Tool arguments object passed to the MCP server" },
+          "workspace_id": { "type": "string", "description": "Workspace scope for this invocation (optional)" }
+        }
+      },
+      "emits": [
+        { "event": "artifact.invoke.started",   "phase": "before" },
+        { "event": "artifact.invoke.completed", "phase": "after"  },
+        { "event": "artifact.invoke.failed",    "phase": "error"  }
+      ],
+      "observe": {
+        "enabled": true,
+        "transports": ["sse", "websocket"],
+        "requires_grant": "read"
+      }
+    },
+    "resources_read": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": {
+        "kind": "native",
+        "target": "mcp_service.dispatch_resources_read"
+      },
+      "input_schema": {
+        "type": "object",
+        "required": ["uri"],
+        "properties": {
+          "uri":          { "type": "string" },
+          "workspace_id": { "type": "string" }
+        }
+      },
+      "emits": [
+        { "event": "mcp.resource.read", "phase": "after" }
+      ]
+    },
+    "resources_import": {
+      "enabled": true,
+      "requires_grant": "add",
+      "dispatch": {
+        "kind": "native",
+        "target": "mcp_service.dispatch_resources_import"
+      },
+      "input_schema": {
+        "type": "object",
+        "required": ["workspace_id", "resources"],
+        "properties": {
+          "workspace_id": { "type": "string" },
+          "resources":    { "type": "array" }
+        }
+      },
+      "emits": [
+        { "event": "mcp.resources.imported", "phase": "after" }
+      ]
+    }
+  },
+  "ui": {
+    "label": "MCP Server",
+    "icon": "server",
+    "color": "#64748b",
+    "badge_class": "bg-slate-100 text-slate-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "mcp-server",
+    "description": "External MCP server \u2014 add one to a workspace to expose its tools, resources, and prompts as artifacts."
+  }
+}

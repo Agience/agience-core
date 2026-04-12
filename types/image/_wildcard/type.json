@@ -1,0 +1,35 @@
+{
+  "content_type": "image/*",
+  "version": 1,
+  "extensions": [
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".svg",
+    ".webp",
+    ".avif"
+  ],
+  "inherits": [],
+  "description": "Defaults for all image/* types",
+  "ui": {
+    "label": "Image",
+    "icon": "image",
+    "color": "#ec4899",
+    "badge_class": "bg-pink-100 text-pink-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview",
+      "inline"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "viewer": "image"
+  }
+}

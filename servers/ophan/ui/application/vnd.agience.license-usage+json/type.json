@@ -1,0 +1,37 @@
+{
+  "content_type": "application/vnd.agience.license-usage+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "A periodic usage snapshot for metered licensing \u2014 captures consumption metrics for a reporting period.",
+  "context_schema": {
+    "usage_id": "string \u2014 usage snapshot identifier",
+    "account_id": "string \u2014 account identifier",
+    "license_id": "string \u2014 parent license identifier",
+    "captured_at": "string \u2014 ISO 8601 capture timestamp",
+    "reporting_period": "string? \u2014 period label (e.g. '2025-Q1')",
+    "source_card_id": "string? \u2014 card that triggered this usage snapshot",
+    "usage": "object? \u2014 metric name \u2192 quantity consumed",
+    "details": "object? \u2014 additional snapshot metadata"
+  },
+  "ui": {
+    "label": "Usage Snapshot",
+    "icon": "activity",
+    "color": "#f97316",
+    "badge_class": "bg-orange-100 text-orange-800",
+    "tile_class": "ring-1 ring-orange-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "description": "License usage snapshot \u2014 metered consumption metrics for a reporting period."
+  }
+}

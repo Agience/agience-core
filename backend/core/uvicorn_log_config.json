@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "filters": {
+    "redact_access_query": {
+      "()": "core.logging_utils.RedactAccessQueryFilter"
+    }
+  },
+  "formatters": {
+    "default": {
+      "()": "core.logging_utils.UTCFormatter",
+      "fmt": "%(asctime)s.%(msecs)03dZ %(levelname)s - %(name)s - %(message)s",
+      "datefmt": "%Y-%m-%dT%H:%M:%S"
+    },
+    "access": {
+      "()": "core.logging_utils.UTCFormatter",
+      "fmt": "%(asctime)s.%(msecs)03dZ %(levelname)s - %(name)s - %(message)s",
+      "datefmt": "%Y-%m-%dT%H:%M:%S"
+    }
+  },
+  "handlers": {
+    "default": {
+      "class": "logging.StreamHandler",
+      "formatter": "default",
+      "filters": ["redact_access_query"],
+      "stream": "ext://sys.stdout"
+    },
+    "access": {
+      "class": "logging.StreamHandler",
+      "formatter": "access",
+      "filters": ["redact_access_query"],
+      "stream": "ext://sys.stdout"
+    }
+  },
+  "loggers": {
+    "uvicorn": {
+      "handlers": ["default"],
+      "level": "INFO",
+      "propagate": false
+    },
+    "uvicorn.error": {
+      "level": "INFO"
+    },
+    "uvicorn.access": {
+      "handlers": ["access"],
+      "level": "INFO",
+      "propagate": false
+    }
+  },
+  "root": {
+    "handlers": ["default"],
+    "level": "INFO"
+  }
+}

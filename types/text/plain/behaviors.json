@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "events": {
+    "on_open": { "handler": "handlers/open.json" },
+    "on_preview": { "handler": "handlers/preview.json" },
+    "on_thumbnail": { "handler": "handlers/thumbnail.json" },
+    "on_properties": { "handler": "handlers/properties.json" }
+  }
+}

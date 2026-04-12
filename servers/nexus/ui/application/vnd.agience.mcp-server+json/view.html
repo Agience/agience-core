@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MCP Server Viewer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5;
+  }
+  .container { padding: 20px; max-width: 640px; margin: 0 auto; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #0f172a; }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 9999px;
+  }
+  .status-badge .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .status-green { background: #ecfdf5; color: #065f46; }
+  .status-green .dot { background: #10b981; }
+  .status-yellow { background: #fffbeb; color: #92400e; }
+  .status-yellow .dot { background: #f59e0b; }
+  .status-gray { background: #f1f5f9; color: #64748b; }
+  .status-gray .dot { background: #94a3b8; }
+  .section { margin-bottom: 16px; }
+  .field-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #94a3b8; margin-bottom: 4px;
+  }
+  .field-value {
+    font-size: 14px; color: #1e293b; padding: 8px 12px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    word-break: break-all;
+  }
+  .field-value.mono {
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; color: #475569;
+  }
+  .field-value.empty { color: #cbd5e1; font-style: italic; }
+  .transport-tabs {
+    display: flex; gap: 0; margin-bottom: 16px; border-radius: 8px; overflow: hidden;
+    border: 1px solid #e2e8f0;
+  }
+  .transport-tab {
+    flex: 1; padding: 8px 16px; text-align: center;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    background: #f8fafc; color: #64748b; border: none;
+    transition: all 0.15s;
+  }
+  .transport-tab:first-child { border-right: 1px solid #e2e8f0; }
+  .transport-tab.active { background: #6366f1; color: #fff; }
+  .transport-tab:hover:not(.active) { background: #f1f5f9; }
+  .stats-row {
+    display: flex; gap: 12px; margin-bottom: 16px;
+  }
+  .stat-box {
+    flex: 1; text-align: center; padding: 12px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+  }
+  .stat-number { font-size: 24px; font-weight: 700; color: #6366f1; }
+  .stat-label { font-size: 11px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+  .env-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+  }
+  .env-table th {
+    text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; color: #94a3b8; padding: 6px 8px; border-bottom: 1px solid #e2e8f0;
+  }
+  .env-table td {
+    padding: 6px 8px; border-bottom: 1px solid #f1f5f9;
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #475569;
+    word-break: break-all;
+  }
+  .env-table td:first-child { color: #6366f1; font-weight: 500; }
+  input.edit-input, textarea.edit-input, select.edit-input {
+    width: 100%; font-size: 14px; padding: 8px 12px;
+    border: 1px solid #c7d2fe; border-radius: 8px; outline: none;
+    font-family: inherit; transition: border-color 0.15s;
+  }
+  input.edit-input:focus, textarea.edit-input:focus, select.edit-input:focus {
+    border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.15);
+  }
+  textarea.edit-input { resize: vertical; min-height: 60px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; }
+  .field-group { margin-bottom: 12px; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .btn {
+    font-size: 13px; font-weight: 500; padding: 8px 20px; border-radius: 8px;
+    border: none; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: #6366f1; color: #fff; }
+  .btn-primary:hover { background: #4f46e5; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+  .btn-secondary:hover { background: #e2e8f0; }
+  .btn-outline { background: transparent; color: #6366f1; border: 1px solid #c7d2fe; }
+  .btn-outline:hover { background: #eef2ff; }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    background: #10b981; color: #fff; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div style="color:#94a3b8;text-align:center;padding:40px 0;">Loading...</div>
+</div>
+<div class="toast" id="toast">Saved</div>
+
+<script>
+/* --- MCP Apps JSON-RPC boilerplate --- */
+let _rpcId = 0;
+const _pending = {};
+function sendRpc(method, params) {
+  const id = ++_rpcId;
+  return new Promise((resolve, reject) => {
+    _pending[id] = { resolve, reject };
+    parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+  });
+}
+function sendNotification(method, params) {
+  parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+}
+let _artifactData = null;
+let _hostCtx = {};
+function handleHostContext(ctx) { _hostCtx = { ..._hostCtx, ...ctx }; }
+function handleToolResult(params) {
+  const text = (params.content || []).find(c => c.type === 'text');
+  if (text) { _artifactData = JSON.parse(text.text); render(); }
+}
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || d.jsonrpc !== '2.0') return;
+  if (d.id && _pending[d.id]) {
+    if (d.error) _pending[d.id].reject(d.error);
+    else _pending[d.id].resolve(d.result);
+    delete _pending[d.id]; return;
+  }
+  if (d.method === 'ui/notifications/tool-result') handleToolResult(d.params);
+  if (d.method === 'ui/notifications/host-context-changed') handleHostContext(d.params);
+});
+sendRpc('ui/initialize', {
+  protocolVersion: '2026-01-26',
+  clientInfo: { name: 'agience-viewer', version: '0.1.0' }
+}).then(result => {
+  if (result.hostContext) handleHostContext(result.hostContext);
+  sendNotification('ui/notifications/initialized');
+});
+async function updateArtifact(patch) {
+  return sendRpc('tools/call', { name: 'update_artifact', arguments: { id: _artifactData.artifact_id, patch } });
+}
+
+/* --- MCP Server viewer state --- */
+let _editing = false;
+let _saving = false;
+let _draft = {};
+
+function ctx() {
+  if (!_artifactData) return {};
+  try {
+    return typeof _artifactData.context === 'string'
+      ? JSON.parse(_artifactData.context)
+      : (_artifactData.context || {});
+  } catch { return {}; }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function getTransport(c) {
+  // Support both schema shapes: flat (schema.json) and nested (type.json)
+  if (c.transport) return c.transport;
+  return { type: c.type === 'mcp-server' ? 'http' : (c.type || 'http'), well_known: c.url };
+}
+
+function serverStatus(c) {
+  const t = getTransport(c);
+  if (t.type === 'http' && (t.well_known || c.url)) return 'green';
+  if (t.type === 'stdio' && t.command) return 'yellow';
+  return 'gray';
+}
+
+function statusText(s) {
+  if (s === 'green') return 'Registered';
+  if (s === 'yellow') return 'Local';
+  return 'Not configured';
+}
+
+function toggleEdit() {
+  if (!_editing) {
+    const c = ctx();
+    const t = getTransport(c);
+    _draft = {
+      name: c.name || c.title || '',
+      notes: c.notes || '',
+      transport_type: t.type || 'http',
+      well_known: t.well_known || c.url || '',
+      command: t.command || '',
+      cwd: t.cwd || '',
+      args: (t.args || []).join('\n'),
+      env: t.env ? JSON.stringify(t.env, null, 2) : '',
+    };
+  }
+  _editing = !_editing;
+  render();
+}
+
+function setTransportType(type) {
+  _draft.transport_type = type;
+  render();
+}
+
+async function save() {
+  _saving = true;
+  render();
+  try {
+    const c = ctx();
+    const transport = { type: _draft.transport_type };
+    if (_draft.transport_type === 'http') {
+      transport.well_known = _draft.well_known;
+    } else {
+      transport.command = _draft.command;
+      if (_draft.cwd) transport.cwd = _draft.cwd;
+      if (_draft.args.trim()) transport.args = _draft.args.split('\n').map(s => s.trim()).filter(Boolean);
+    }
+    if (_draft.env.trim()) {
+      try { transport.env = JSON.parse(_draft.env); } catch {}
+    }
+    const newCtx = {
+      ...c,
+      name: _draft.name || undefined,
+      title: _draft.name || undefined,
+      notes: _draft.notes || undefined,
+      transport,
+      url: _draft.transport_type === 'http' ? _draft.well_known : c.url,
+    };
+    await updateArtifact({
+      context: JSON.stringify(newCtx),
+      description: _draft.name || _artifactData.description || '',
+    });
+    _editing = false;
+    showToast('Saved');
+  } catch (err) {
+    showToast('Save failed');
+    console.error(err);
+  } finally {
+    _saving = false;
+    render();
+  }
+}
+
+function render() {
+  if (!_artifactData) return;
+  const c = ctx();
+  const app = document.getElementById('app');
+  const t = getTransport(c);
+  const status = serverStatus(c);
+  const manifest = c.manifest || {};
+  const toolCount = manifest.tools ? (Array.isArray(manifest.tools) ? manifest.tools.length : Object.keys(manifest.tools).length) : 0;
+  const resourceCount = manifest.resources ? (Array.isArray(manifest.resources) ? manifest.resources.length : Object.keys(manifest.resources).length) : 0;
+
+  if (_editing) {
+    const isHttp = _draft.transport_type === 'http';
+    app.innerHTML = `
+      <div class="header">
+        <h1>MCP Server</h1>
+        <span class="status-badge status-gray"><span class="dot"></span>Editing</span>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Server Name</div>
+        <input class="edit-input" id="f-name" value="${esc(_draft.name)}" placeholder="Display name" />
+      </div>
+      <div class="field-group">
+        <div class="field-label">Notes</div>
+        <input class="edit-input" id="f-notes" value="${esc(_draft.notes)}" placeholder="Optional notes" />
+      </div>
+      <div class="field-group">
+        <div class="field-label">Transport</div>
+        <div class="transport-tabs">
+          <button class="transport-tab ${isHttp ? 'active' : ''}" onclick="setTransportType('http')">HTTP</button>
+          <button class="transport-tab ${!isHttp ? 'active' : ''}" onclick="setTransportType('stdio')">stdio</button>
+        </div>
+      </div>
+      ${isHttp ? `
+        <div class="field-group">
+          <div class="field-label">Well-Known URL</div>
+          <input class="edit-input" id="f-url" value="${esc(_draft.well_known)}" placeholder="https://example.com/.well-known/mcp.json or /mcp endpoint" />
+        </div>
+      ` : `
+        <div class="field-group">
+          <div class="field-label">Command</div>
+          <input class="edit-input" id="f-command" value="${esc(_draft.command)}" placeholder="e.g. npx, python" />
+        </div>
+        <div class="field-group">
+          <div class="field-label">Working Directory</div>
+          <input class="edit-input" id="f-cwd" value="${esc(_draft.cwd)}" placeholder="Optional working directory" />
+        </div>
+        <div class="field-group">
+          <div class="field-label">Arguments (one per line)</div>
+          <textarea class="edit-input" id="f-args" placeholder="One argument per line">${esc(_draft.args)}</textarea>
+        </div>
+      `}
+      <div class="field-group">
+        <div class="field-label">Environment Variables (JSON)</div>
+        <textarea class="edit-input" id="f-env" placeholder='{"KEY": "value"}'>${esc(_draft.env)}</textarea>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="toggleEdit()">Cancel</button>
+        <button class="btn btn-primary" onclick="save()" ${_saving ? 'disabled' : ''}>${_saving ? 'Saving...' : 'Save'}</button>
+      </div>
+    `;
+    // bind inputs
+    bindInput('f-name', 'name');
+    bindInput('f-notes', 'notes');
+    bindInput('f-url', 'well_known');
+    bindInput('f-command', 'command');
+    bindInput('f-cwd', 'cwd');
+    bindInput('f-args', 'args');
+    bindInput('f-env', 'env');
+  } else {
+    const envObj = t.env || {};
+    const envKeys = Object.keys(envObj);
+    app.innerHTML = `
+      <div class="header">
+        <h1>${esc(c.name || c.title || _artifactData.description || 'MCP Server')}</h1>
+        <span class="status-badge status-${status}"><span class="dot"></span>${statusText(status)}</span>
+      </div>
+      <div class="actions" style="margin-top:0;margin-bottom:16px;">
+        <button class="btn btn-outline" onclick="toggleEdit()">Edit</button>
+      </div>
+      ${(toolCount > 0 || resourceCount > 0) ? `
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-number">${toolCount}</div>
+          <div class="stat-label">Tools</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number">${resourceCount}</div>
+          <div class="stat-label">Resources</div>
+        </div>
+      </div>` : ''}
+      ${c.notes ? `
+      <div class="section">
+        <div class="field-label">Notes</div>
+        <div class="field-value">${esc(c.notes)}</div>
+      </div>` : ''}
+      <div class="section">
+        <div class="field-label">Transport</div>
+        <div class="field-value">${esc((t.type || 'http').toUpperCase())}</div>
+      </div>
+      ${t.type === 'http' || !t.type ? `
+      <div class="section">
+        <div class="field-label">URL</div>
+        <div class="field-value mono">${esc(t.well_known || c.url || 'Not set')}</div>
+      </div>` : `
+      <div class="section">
+        <div class="field-label">Command</div>
+        <div class="field-value mono">${esc(t.command || 'Not set')}</div>
+      </div>
+      ${t.cwd ? `
+      <div class="section">
+        <div class="field-label">Working Directory</div>
+        <div class="field-value mono">${esc(t.cwd)}</div>
+      </div>` : ''}
+      ${t.args && t.args.length > 0 ? `
+      <div class="section">
+        <div class="field-label">Arguments</div>
+        <div class="field-value mono">${esc(t.args.join(' '))}</div>
+      </div>` : ''}
+      `}
+      ${envKeys.length > 0 ? `
+      <div class="section">
+        <div class="field-label">Environment</div>
+        <table class="env-table">
+          <thead><tr><th>Key</th><th>Value</th></tr></thead>
+          <tbody>${envKeys.map(k => `<tr><td>${esc(k)}</td><td>${esc(String(envObj[k]))}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>` : ''}
+    `;
+  }
+}
+
+function bindInput(elId, draftKey) {
+  const el = document.getElementById(elId);
+  if (el) el.addEventListener('input', e => { _draft[draftKey] = e.target.value; });
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

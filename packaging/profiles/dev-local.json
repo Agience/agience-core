@@ -1,0 +1,33 @@
+{
+  "$schema": "./profile.schema.json",
+  "schema_version": "1",
+  "profile": "dev-local",
+  "display_name": "Local Developer Distribution",
+  "runtime_role": "standard",
+  "product_surface": "core-app",
+  "license_class": "dev-local",
+  "branding_scope": [],
+  "services": [
+    "frontend",
+    "backend",
+    "postgres",
+    "arango",
+    "opensearch"
+  ],
+  "first_party_servers": [],
+  "required_operator_inputs": [],
+  "generated_secrets": [],
+  "proxy_mode": "local-dev",
+  "packaging_targets": ["source-dev", "docker-dev"],
+  "meter_dimensions": [],
+  "offline_supported": true,
+  "required_entitlements": [],
+  "policy_refs": ["dev-local-core"],
+  "attributes": {
+    "supports_custom_domain": false,
+    "supports_white_label": false,
+    "development_only": true,
+    "requires_live_license_authority": false
+  },
+  "extensions": {}
+}

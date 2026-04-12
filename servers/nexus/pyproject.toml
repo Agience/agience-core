@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "agience-server-nexus"
+version = "0.1.0"
+license = "AGPL-3.0-only"
+description = "Agience Nexus — MCP server for messaging delivery, webhooks, routing, remote execution, and secure tunnels"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.6.0",
+    "github-copilot-sdk>=0.1.30",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+agience-server-nexus = "server:mcp"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+per-file-ignores = {"server.py" = ["E402"], "tests/test_startup.py" = ["E402"]}
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

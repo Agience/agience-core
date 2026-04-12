@@ -1,0 +1,49 @@
+{
+  "content_type": "text/markdown",
+  "version": 1,
+  "extensions": [
+    ".md",
+    ".markdown"
+  ],
+  "inherits": [
+    "text/*"
+  ],
+  "description": "Markdown text",
+  "ui": {
+    "version": 1,
+    "label": "Markdown",
+    "icon": "file-text",
+    "color": "#6b7280",
+    "badge_class": "bg-gray-100 text-gray-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview",
+      "inline"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "edit",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "text-markdown",
+    "layout": [
+      {
+        "group": "Basics",
+        "fields": [
+          "title",
+          "language"
+        ]
+      },
+      {
+        "group": "Render",
+        "fields": [
+          "render.style"
+        ]
+      }
+    ]
+  }
+}

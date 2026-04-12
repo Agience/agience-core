@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schemas.agience.io/mcp-server/v1/mcp.json",
+  "schema_version": "1",
+  "name": "agience-server-atlas",
+  "display_name": "Atlas — Provenance, Attribution & Lineage",
+  "description": "Traces artifact lineage, detects conflicting claims, enforces contracts, attributes sources, and reasons about knowledge graph structure.",
+  "version": "0.1.0",
+  "image": "ghcr.io/agience/agience-server-atlas:latest",
+  "endpoints": {
+    "streamable_http": "/mcp"
+  },
+  "tools": [
+    {
+      "name": "check_provenance",
+      "description": "Trace an artifact's version lineage and source attribution"
+    },
+    {
+      "name": "detect_conflicts",
+      "description": "Find artifacts in a workspace or collection that contain conflicting claims"
+    },
+    {
+      "name": "apply_contract",
+      "description": "Validate workspace artifacts against a contract artifact"
+    },
+    {
+      "name": "suggest_merge",
+      "description": "Propose a merge of two divergent versions of an artifact"
+    },
+    {
+      "name": "traverse_graph",
+      "description": "Follow relationship edges from an artifact in the knowledge graph"
+    },
+    {
+      "name": "attribute_source",
+      "description": "Link an artifact to its origin (person, event, tool, document)"
+    },
+    {
+      "name": "check_coherence",
+      "description": "Assess logical coherence across a set of artifacts"
+    }
+  ],
+  "resources": [
+    {
+      "uri_template": "agience://artifacts/{artifact_id}/provenance",
+      "description": "Full provenance chain for an artifact"
+    }
+  ],
+  "prompts": [],
+  "artifact_types": [],
+  "config": {
+    "env": {
+      "AGIENCE_API_URI": { "description": "Base URI of the agience-core backend", "required": true },
+      "AGIENCE_API_KEY": { "description": "Platform API key (Bearer token)", "required": true },
+      "MCP_PORT": { "description": "HTTP port for the MCP server", "default": "8085" }
+    }
+  }
+}

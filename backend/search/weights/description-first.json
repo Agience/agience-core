@@ -1,0 +1,16 @@
+{
+  "name": "description-first",
+  "description": "Strongly prioritizes human-curated descriptions - default for Agience",
+  "field_boosts": {
+    "description": 10.0,
+    "title": 5.0,
+    "tags_canonical": 3.0,
+    "content": 1.0
+  },
+  "notes": [
+    "Emphasizes human curation over extracted content",
+    "Description matches rank 10x higher than content",
+    "Best for high-quality curated collections",
+    "Aligns with Agience's description-centric philosophy"
+  ]
+}

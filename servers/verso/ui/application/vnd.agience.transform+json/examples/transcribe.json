@@ -1,0 +1,23 @@
+{
+  "content_type": "application/vnd.agience.transform+json",
+  "title": "Transcribe Media",
+  "description": "Transcribe any video or audio artifact into a text/markdown transcript using AWS Transcribe.",
+  "run": {
+    "type": "mcp-tool",
+    "server": "verso",
+    "tool": "transcribe_artifact",
+    "input_mapping": {
+      "workspace_id": "$.workspace_id",
+      "artifact_id": "$.source_artifact_id",
+      "credential_artifact_id": "$.params.credential_artifact_id",
+      "language_code": "$.params.language_code"
+    }
+  },
+  "input": {
+    "description": "A single video or audio artifact to transcribe.",
+    "artifacts": { "min": 1, "max": 1 }
+  },
+  "output": {
+    "description": "A text/markdown transcript artifact linked back to the source artifact via context.source_artifact_id."
+  }
+}

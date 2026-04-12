@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Transform Viewer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5;
+  }
+  .container { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  .card {
+    border-radius: 12px; border: 1px solid #e2e8f0;
+    background: linear-gradient(135deg, #f8fafc 0%, #fff 50%, #eff6ff 100%);
+    padding: 16px;
+  }
+
+  .badge-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .badge {
+    border-radius: 9999px; padding: 3px 10px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .badge-dark { background: #0f172a; color: #fff; }
+  .badge-light { background: #f1f5f9; color: #475569; }
+  .badge-blue { border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+  .badge-purple { border: 1px solid #ddd6fe; background: #f5f3ff; color: #6d28d9; }
+
+  .description { font-size: 13px; color: #64748b; margin-top: 10px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
+  @media (max-width: 400px) { .grid-5 { grid-template-columns: 1fr 1fr; } }
+
+  .stat-box {
+    border-radius: 8px; border: 1px solid #e2e8f0; background: #fff;
+    padding: 8px 10px;
+  }
+  .stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; }
+  .stat-value { font-size: 13px; color: #0f172a; margin-top: 2px; word-break: break-all; }
+
+  .section-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 6px;
+  }
+  .field-value {
+    font-size: 13px; color: #1e293b; padding: 8px 12px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    word-break: break-all;
+  }
+  .field-value.mono { font-family: 'SF Mono','Fira Code',monospace; font-size: 12px; color: #475569; }
+
+  .run-type-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+
+  .empty { font-size: 13px; color: #94a3b8; font-style: italic; text-align: center; padding: 24px 0; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div style="color:#94a3b8;font-size:13px;">Loading...</div>
+</div>
+
+<script>
+/* MCP Apps postMessage protocol */
+let _nextId = 1;
+const _pending = {};
+
+function sendRpc(method, params) {
+  return new Promise((resolve, reject) => {
+    const id = _nextId++;
+    _pending[id] = { resolve, reject };
+    window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+  });
+}
+
+function sendNotification(method, params) {
+  window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+}
+
+window.addEventListener('message', (e) => {
+  if (!e.data || e.data.jsonrpc !== '2.0') return;
+  if (typeof e.data.id === 'number' && _pending[e.data.id]) {
+    const { resolve, reject } = _pending[e.data.id];
+    delete _pending[e.data.id];
+    if (e.data.error) reject(new Error(e.data.error.message));
+    else resolve(e.data.result);
+  }
+  if (e.data.method === 'ui/notifications/tool-result') {
+    handleToolResult(e.data.params);
+  }
+});
+
+let _artifactData = null;
+
+sendRpc('ui/initialize', {}).then(() => {
+  sendNotification('ui/notifications/initialized', {});
+});
+
+function handleToolResult(params) {
+  if (!params || !params.content) return;
+  try {
+    const text = params.content[0]?.text;
+    const data = JSON.parse(text);
+    if (data.artifact_id) {
+      _artifactData = data;
+      render();
+    }
+  } catch {}
+}
+
+function ctx() {
+  if (!_artifactData) return {};
+  try {
+    return typeof _artifactData.context === 'string'
+      ? JSON.parse(_artifactData.context)
+      : (_artifactData.context || {});
+  } catch { return {}; }
+}
+
+function labelForRunType(runType) {
+  const labels = {
+    'palette-run': 'Palette Run',
+    'llm': 'LLM Prompt',
+    'mcp-tool': 'MCP Tool',
+    'flow-run': 'Flow Run',
+    'host-script': 'Host Script',
+    'transform-ref': 'Transform Ref',
+    'order-ref': 'Transform Ref',
+    'webhook': 'Webhook',
+  };
+  return labels[runType] || runType || 'Unspecified';
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s || '');
+  return d.innerHTML;
+}
+
+function parseTransform(c) {
+  /* Support both flat and nested transform context layouts */
+  const root = c.transform || c;
+  return {
+    kind: root.kind || c.kind || 'palette',
+    subtype: root.subtype || c.subtype || null,
+    run: root.run || c.run || null,
+    spec: root.spec || c.spec || null,
+    title: c.title || null,
+    description: c.description || null,
+  };
+}
+
+function render() {
+  const app = document.getElementById('app');
+  if (!_artifactData) return;
+
+  const c = ctx();
+  const t = parseTransform(c);
+  const run = t.run || {};
+  const spec = t.spec || {};
+  const panelData = spec.panelData || {};
+
+  const inputCount = (panelData.input && panelData.input.artifacts) ? panelData.input.artifacts.length : 0;
+  const resourceCount = (panelData.resources && panelData.resources.resources) ? panelData.resources.resources.length : 0;
+  const toolCount = (panelData.tools && panelData.tools.tools) ? panelData.tools.tools.length : 0;
+  const knowledgeCount = (panelData.knowledge && panelData.knowledge.artifacts) ? panelData.knowledge.artifacts.length : 0;
+  const targetCount = (panelData.targets && panelData.targets.collections) ? panelData.targets.collections.length : 0;
+
+  /* Run-type specific details */
+  let detailRows = [];
+  if (run.type) {
+    detailRows.push({ label: 'Runner', value: labelForRunType(run.type) });
+  }
+  if (run.type === 'mcp-tool' && run.tool) {
+    detailRows.push({ label: 'Tool', value: `${esc(run.server || 'agience-core')}:${esc(run.tool)}` });
+  }
+  if ((run.type === 'transform-ref' || run.type === 'order-ref') && (run.transform_id || run.transform_id)) {
+    detailRows.push({ label: 'Transform Ref', value: esc(run.transform_id || run.transform_id) });
+  }
+  if (run.type === 'webhook' && run.url) {
+    detailRows.push({ label: 'Webhook', value: esc(run.url) });
+  }
+  if (run.type === 'host-script' && run.host_policy) {
+    detailRows.push({ label: 'Host Policy', value: esc(run.host_policy) });
+  }
+
+  const hasStats = inputCount + resourceCount + toolCount + knowledgeCount + targetCount > 0;
+
+  app.innerHTML = `
+    <div class="card">
+      <div class="badge-row">
+        <span class="badge badge-dark">${esc(t.kind)}</span>
+        ${t.subtype ? `<span class="badge badge-light">${esc(t.subtype)}</span>` : ''}
+        <span class="badge badge-purple">${esc(labelForRunType(run.type))}</span>
+      </div>
+
+      <div class="description">
+        Saved transform. Open it in the transform dock to edit execution flow and run behavior.
+      </div>
+
+      ${detailRows.length > 0 ? `
+        <div class="grid-2">
+          ${detailRows.map(row => `
+            <div class="stat-box">
+              <div class="stat-label">${row.label}</div>
+              <div class="stat-value">${row.value}</div>
+            </div>`).join('')}
+        </div>` : ''}
+
+      ${hasStats ? `
+        <div class="grid-5">
+          <div class="stat-box"><div class="stat-label">Input</div><div class="stat-value">${inputCount} artifacts</div></div>
+          <div class="stat-box"><div class="stat-label">Resources</div><div class="stat-value">${resourceCount} refs</div></div>
+          <div class="stat-box"><div class="stat-label">Tools</div><div class="stat-value">${toolCount}</div></div>
+          <div class="stat-box"><div class="stat-label">Knowledge</div><div class="stat-value">${knowledgeCount} artifacts</div></div>
+          <div class="stat-box"><div class="stat-label">Targets</div><div class="stat-value">${targetCount} collections</div></div>
+        </div>` : ''}
+    </div>
+
+    ${t.title || _artifactData.description ? `
+      <div>
+        <div class="section-label">Title</div>
+        <div class="field-value">${esc(t.title || _artifactData.description)}</div>
+      </div>` : ''}
+
+    ${t.description && t.description !== t.title ? `
+      <div>
+        <div class="section-label">Description</div>
+        <div class="field-value">${esc(t.description)}</div>
+      </div>` : ''}
+  `;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+# Agience MCP server agents — all server personas in a single host container.
+# Include alongside the base compose file for local dev or production.
+#
+# Usage (from repo root, with --project-directory .):
+#   dev/local:  -f docker/docker-compose.yml -f docker/docker-compose.override.yml -f docker/docker-compose.servers.yml
+#   deploy:     -f docker/docker-compose.yml -f path/to/your-overlay.yml          -f docker/docker-compose.servers.yml
+#
+# Endpoints (all on port 8082):
+#   /aria/mcp    Aria   — Presentation & Interface
+#   /sage/mcp    Sage   — Research & Retrieval
+#   /atlas/mcp   Atlas  — Provenance & Lineage
+#   /nexus/mcp   Nexus  — Connectivity & Execution
+#   /astra/mcp   Astra  — Ingestion & Indexing  (+ stream webhook routes)
+#   /verso/mcp   Verso  — Reasoning & Workflow
+#   /seraph/mcp  Seraph — Security & Governance
+#   /ophan/mcp   Ophan  — Economic Operations
+#
+# Default AGIENCE_API_URI: http://host.docker.internal:8081 (dev mode, backend runs locally).
+# Set AGIENCE_API_URI=http://backend:8081 in .env for full/prod stack deployments.
+
+services:
+
+  servers:
+    image: ${SERVERS_IMAGE:-agience-core-servers}
+    build:
+      context: .
+      dockerfile: servers/_host/Dockerfile
+      args:
+        GH_TOKEN: ${GH_TOKEN:-}
+    container_name: servers
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONUNBUFFERED=1
+      - AGIENCE_API_URI=${AGIENCE_API_URI:-http://host.docker.internal:8081}
+      - MCP_PORT=8082
+      - SRS_HTTP_API=${SRS_HTTP_API:-http://stream:1985}
+      - STREAM_BASE_URL=${STREAM_BASE_URL:-http://stream:1985/live}
+      - STREAM_INGEST_URL=${STREAM_INGEST_URL:-rtmp://stream:1936/live}
+    volumes:
+      - ${NEXUS_WORKSPACE:-./.data/nexus}:/workspace
+      - ${DATA_PATH:-./.data}/stream:/var/stream  # shared with astra-stream for HLS→MP4 finalization
+      - ${DATA_PATH:-./.data}/keys:/run/secrets/keys:ro  # platform internal secret for kernel server auth
+    ports:
+      - "8082:8082"
+
+  astra-stream:
+    image: ${STREAM_IMAGE:-agience-core-stream}
+    build:
+      context: servers/astra
+      dockerfile: stream/Dockerfile
+    container_name: stream
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - BACKEND_URI=${STREAM_WEBHOOK_URI:-http://servers:8082/astra}
+    volumes:
+      - ${DATA_PATH:-./.data}/stream:/var/stream
+    ports:
+      - "${STREAM_RTMP_PORT:-1936}:1936"
+      - "${STREAM_HTTP_PORT:-1985}:1985"

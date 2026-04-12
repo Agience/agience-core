@@ -1,0 +1,15 @@
+{
+  "name": "balanced",
+  "description": "Balanced weighting across all fields - good starting point for diverse content",
+  "field_boosts": {
+    "description": 5.0,
+    "title": 3.0,
+    "tags_canonical": 2.0,
+    "content": 1.0
+  },
+  "notes": [
+    "Description still preferred but not dominant",
+    "Good for collections with mixed content types",
+    "Reduces over-reliance on human curation quality"
+  ]
+}

@@ -1,0 +1,10 @@
+# === AGIENCE ===
+.data/
+.env*
+!.env.example
+frontend/public/version.json
+
+# Ignore all key files
+*.pem
+*.key
+*.der

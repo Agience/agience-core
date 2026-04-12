@@ -1,0 +1,895 @@
+"""
+Agience MCP Server  -- tool definitions and Streamable HTTP transport.
+
+This module implements a proper MCP server using the official
+modelcontextprotocol/python-sdk.  It exposes Agience's capabilities as
+purpose-driven tools (not raw CRUD endpoints) that external MCP clients
+(VS Code, Claude Desktop, Cursor, etc.) can discover and invoke.
+
+Architecture
+~~~~~~~~~~~~
+- FastMCP instance with ``@mcp.tool()`` definitions.
+- Mounted on the host FastAPI app at ``/mcp`` via Starlette ``Mount``.
+- Auth is resolved per-request through ASGI middleware that validates
+    Bearer tokens (JWT or direct API key) and stores the
+  authenticated user in a ``contextvars.ContextVar``.
+- Tools use the context var to obtain user identity, then create
+  short-lived DB sessions to call into the existing service layer.
+
+Tool surface (purpose-driven, not CRUD)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Knowledge & Research:
+  search            -- Hybrid search across collections and workspaces.
+  get_artifact          -- Retrieve a specific artifact by ID.
+  browse_collections  -- List collections, optionally list artifacts within one.
+  browse_workspaces   -- List workspaces, optionally list artifacts within one.
+
+Workspace Curation:
+  create_artifact       -- Create a new artifact in a workspace.
+  update_artifact       -- Update an existing workspace artifact.
+  manage_artifact       -- Archive, revert, or delete a workspace artifact.
+
+Analysis & Intelligence:
+  extract_information  -- Extract structured information from source artifacts.
+
+Communication & Routing:
+  ask               -- Ask a question grounded in the knowledge base.
+"""
+
+
+from __future__ import annotations
+
+import contextvars
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional
+from urllib.parse import urlparse
+
+from fastapi import HTTPException
+from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
+from mcp.types import ToolAnnotations
+
+from entities.api_key import APIKey as APIKeyEntity
+from services.dependencies import AuthContext, resolve_auth
+from schemas.arango.initialize import get_arangodb_connection
+from core import config
+
+_repo_root = Path(__file__).resolve().parents[2]
+_build_info_path = (
+    (_repo_root / os.environ["BUILD_INFO_PATH"])
+    if "BUILD_INFO_PATH" in os.environ
+    else _repo_root / "build_info.json"
+)
+_build_info = json.loads(_build_info_path.read_text(encoding="utf-8-sig"))
+_app_version: str = _build_info.get("version", "0.0.0")
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Per-request context (set by auth middleware, read by tools)
+# ---------------------------------------------------------------------------
+_current_user_id: contextvars.ContextVar[str] = contextvars.ContextVar("mcp_user_id")
+_current_api_key: contextvars.ContextVar[Optional[APIKeyEntity]] = contextvars.ContextVar("mcp_api_key", default=None)
+_current_auth_context: contextvars.ContextVar[Optional[AuthContext]] = contextvars.ContextVar("mcp_auth_context", default=None)
+
+# ---------------------------------------------------------------------------
+# Transport security -- allow the public hostname alongside localhost
+# ---------------------------------------------------------------------------
+_parsed = urlparse(config.BACKEND_URI)
+_backend_host = _parsed.hostname or "localhost"
+
+_allowed_hosts = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+_allowed_origins = ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"]
+if _backend_host not in ("127.0.0.1", "localhost", "::1"):
+    _allowed_hosts.append(f"{_backend_host}:*")
+    _allowed_hosts.append(_backend_host)
+    _allowed_origins.append(f"https://{_backend_host}")
+    _allowed_origins.append(f"https://{_backend_host}:*")
+    _allowed_origins.append(f"http://{_backend_host}:*")
+
+# ---------------------------------------------------------------------------
+# Client instructions (delivered to MCP clients on initialization)
+# ---------------------------------------------------------------------------
+_instructions_path = Path(__file__).resolve().parents[2] / ".docs" / "mcp" / "client-instructions.md"
+_client_instructions: str | None = None
+if _instructions_path.is_file():
+    _client_instructions = _instructions_path.read_text(encoding="utf-8")
+
+# ---------------------------------------------------------------------------
+# FastMCP instance
+# ---------------------------------------------------------------------------
+mcp = FastMCP(
+    "Agience",
+    instructions=_client_instructions,
+    stateless_http=True,
+    json_response=True,
+    streamable_http_path="/",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=_allowed_hosts,
+        allowed_origins=_allowed_origins,
+    ),
+)
+
+# FastMCP 1.21.x no longer accepts a top-level ``version=`` constructor
+# argument, but the wrapped low-level MCP server still supports it and uses
+# that value for the initialization payload returned to clients.
+mcp._mcp_server.version = _app_version
+
+
+# ---------------------------------------------------------------------------
+# DB helpers (short-lived sessions per tool call)
+# ---------------------------------------------------------------------------
+def _get_arango():
+    return get_arangodb_connection(
+        host=config.ARANGO_HOST,
+        port=config.ARANGO_PORT,
+        username=config.ARANGO_USERNAME,
+        password=config.ARANGO_PASSWORD,
+        db_name=config.ARANGO_DATABASE,
+    )
+
+
+def _user_id() -> str:
+    return _current_user_id.get()
+
+
+def _api_key() -> Optional[APIKeyEntity]:
+    return _current_api_key.get()
+
+
+# ===================================================================
+# TOOLS  -- Knowledge & Research
+# ===================================================================
+
+@mcp.tool()
+def search(
+    query: str,
+    size: int = 20,
+    offset: int = 0,
+    collection_ids: Optional[List[str]] = None,
+) -> dict:
+    """Search Agience knowledge  -- hybrid semantic + keyword search across collections and workspaces.
+
+    Returns ranked results with highlights, scores, and source metadata.
+    Supports scoping to specific collections (workspaces are collections).
+    """
+    from search.accessor.search_accessor import SearchAccessor, SearchQuery
+
+    accessor = SearchAccessor()
+    result = accessor.search(
+        SearchQuery(
+            query_text=query,
+            user_id=_user_id(),
+            collection_ids=collection_ids,
+            from_=offset,
+            size=size,
+        )
+    )
+
+    hits = []
+    for h in getattr(result, "hits", []) or []:
+        hits.append({
+            "id": getattr(h, "doc_id", None),
+            "score": getattr(h, "score", None),
+            "root_id": getattr(h, "root_id", None),
+            "version_id": getattr(h, "version_id", None),
+            "title": getattr(h, "title", None),
+            "description": getattr(h, "description", None),
+            "content": getattr(h, "content", None),
+            "tags": getattr(h, "tags", None),
+            "collection_id": getattr(h, "collection_id", None),
+            "highlights": getattr(h, "highlights", None),
+        })
+
+    return {
+        "total": getattr(result, "total", 0),
+        "hits": hits,
+        "used_hybrid": getattr(result, "used_hybrid", False),
+    }
+
+
+@mcp.tool()
+def get_artifact(
+    artifact_id: str,
+    workspace_id: Optional[str] = None,
+    collection_id: Optional[str] = None,
+) -> dict:
+    """Retrieve a specific artifact by ID.
+
+    Provide workspace_id to fetch from a workspace, or collection_id
+    to fetch from a collection.  If neither is given the tool attempts
+    both, workspace first.
+    """
+    from services import workspace_service
+
+    user_id = _user_id()
+
+    # Try workspace first
+    if workspace_id or not collection_id:
+        db = _get_arango()
+        try:
+            if workspace_id:
+                wids = [workspace_id]
+            else:
+                wids = [w.id for w in workspace_service.list_workspaces(db, user_id)]
+            for wid in wids:
+                try:
+                    artifact = workspace_service.get_workspace_artifact(db, user_id, wid, artifact_id)
+                    return _serialize_workspace_artifact(artifact)
+                except Exception:
+                    continue
+        finally:
+            db.close()
+
+    # Try collection
+    if collection_id or not workspace_id:
+        arango = _get_arango()
+        try:
+            from db.arango import get_artifact
+            artifact = get_artifact(arango, artifact_id)
+            if artifact:
+                return _serialize_artifact_version(artifact)
+        except Exception:
+            pass
+
+    return {"error": "Artifact not found", "artifact_id": artifact_id}
+
+
+@mcp.tool()
+def browse_collections(
+    collection_id: Optional[str] = None,
+    query: Optional[str] = None,
+    limit: int = 20,
+) -> dict:
+    """Browse collections. Without collection_id lists all accessible collections.
+    With collection_id returns that collection's artifacts.
+    Optional query filters collections by name/description substring.
+    """
+    from services import collection_service
+
+    user_id = _user_id()
+    arango = _get_arango()
+
+    if collection_id:
+        artifacts = collection_service.get_collection_artifacts(
+            arango, user_id, collection_id=collection_id,
+        )
+        items = [_serialize_artifact_version(c) for c in (artifacts or [])]
+        return {"collection_id": collection_id, "count": len(items), "artifacts": items}
+
+    collections = collection_service.get_collections_for_user(arango, user_id, grant_key=None)
+    results = []
+    q = (query or "").strip().lower()
+    for c in collections or []:
+        if q:
+            haystack = f"{getattr(c, 'name', '')} {getattr(c, 'description', '')}".lower()
+            if q not in haystack:
+                continue
+        results.append({
+            "id": getattr(c, "id", None),
+            "name": getattr(c, "name", None),
+            "description": getattr(c, "description", None),
+            "artifact_count": len(getattr(c, "artifact_ids", None) or []),
+        })
+        if len(results) >= limit:
+            break
+    return {"count": len(results), "collections": results}
+
+
+@mcp.tool()
+def browse_workspaces(
+    workspace_id: Optional[str] = None,
+    limit: int = 20,
+) -> dict:
+    """Browse workspaces. Without workspace_id lists all accessible workspaces.
+    With workspace_id returns that workspace's artifacts.
+    """
+    from services import workspace_service
+
+    user_id = _user_id()
+    db = _get_arango()
+    try:
+        if workspace_id:
+            artifacts = workspace_service.list_workspace_artifacts(db, user_id, workspace_id)
+            items = [_serialize_workspace_artifact(c) for c in (artifacts or [])]
+            return {"workspace_id": workspace_id, "count": len(items), "artifacts": items}
+
+        workspaces = workspace_service.list_workspaces(db, user_id)
+        results = []
+        for w in workspaces or []:
+            results.append({
+                "id": getattr(w, "id", None),
+                "name": getattr(w, "name", None),
+                "description": getattr(w, "description", "") or "",
+            })
+            if len(results) >= limit:
+                break
+        return {"count": len(results), "workspaces": results}
+    finally:
+        db.close()
+
+
+# ===================================================================
+# TOOLS  -- Workspace Curation
+# ===================================================================
+
+@mcp.tool()
+def create_artifact(
+    content: str = "",
+    context: Optional[Dict[str, Any]] = None,
+    workspace_id: Optional[str] = None,
+    collection_id: Optional[str] = None,
+) -> dict:
+    """Create a new artifact.
+
+    Provide content (text body) and optional context (JSON metadata).
+
+    Destination (exactly one required):
+    - workspace_id: stages the artifact as a draft in a workspace (default flow).
+    - collection_id: commits the artifact directly to a collection, bypassing
+      workspace staging. Access is enforced at the service layer via resource_filters.
+
+    Returns the created artifact.
+    """
+    if workspace_id and collection_id:
+        raise ValueError("Provide either workspace_id or collection_id, not both.")
+    if not workspace_id and not collection_id:
+        raise ValueError("Either workspace_id or collection_id is required.")
+
+    if collection_id:
+        # --- Direct-to-collection path ---
+        api_key = _api_key()
+        from services import collection_service
+
+        arango = _get_arango()
+        actor_id = (api_key.name if api_key else None)
+        artifact = collection_service.create_and_add_artifact(
+            arango,
+            _user_id(),
+            collection_id,
+            context=json.dumps(context or {}),
+            content=content,
+            actor_id=actor_id,
+        )
+        return {"artifact": artifact.to_dict()}
+
+    else:
+        # --- Workspace staging path (original behaviour) ---
+        from services import workspace_service
+
+        db = _get_arango()
+        try:
+            artifact = workspace_service.create_workspace_artifact(
+                db,
+                _user_id(),
+                workspace_id,
+                context=json.dumps(context or {}),
+                content=content,
+            )
+            return {"artifact": _serialize_workspace_artifact(artifact)}
+        finally:
+            db.close()
+
+
+@mcp.tool()
+def update_artifact(
+    workspace_id: str,
+    artifact_id: str,
+    content: Optional[str] = None,
+    context: Optional[Dict[str, Any]] = None,
+) -> dict:
+    """Update an existing workspace artifact's content and/or context metadata.
+
+    Only fields provided will be modified; omitted fields are unchanged.
+    Returns the updated artifact.
+    """
+    from services import workspace_service
+
+    db = _get_arango()
+    try:
+        artifact = workspace_service.update_artifact(
+            db,
+            _user_id(),
+            workspace_id,
+            artifact_id,
+            context=json.dumps(context) if context is not None else None,
+            content=content,
+        )
+        return {"artifact": _serialize_workspace_artifact(artifact)}
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def manage_artifact(
+    workspace_id: str,
+    artifact_id: str,
+    action: Literal["archive", "revert", "delete"],
+) -> dict:
+    """Manage a workspace artifact  -- archive, revert, or delete it.
+
+    Actions:
+      archive  -- Mark the artifact as archived.
+      revert   -- Revert modifications back to the committed state.
+      delete   -- Permanently remove the artifact from the workspace.
+    """
+    from services import workspace_service
+
+    user_id = _user_id()
+    db = _get_arango()
+    arango = _get_arango()
+    try:
+        if action == "archive":
+            artifact = workspace_service.update_artifact(
+                db, user_id, workspace_id, artifact_id,
+                state="archived",
+            )
+            return {"action": "archived", "artifact": _serialize_workspace_artifact(artifact)}
+
+        if action == "revert":
+            artifact = workspace_service.revert_artifact(db, arango, user_id, workspace_id, artifact_id)
+            return {"action": "reverted", "artifact": _serialize_workspace_artifact(artifact)}
+
+        if action == "delete":
+            workspace_service.delete_artifact(db, user_id, workspace_id, artifact_id)
+            return {"action": "deleted", "artifact_id": artifact_id}
+
+        return {"error": f"Unknown action: {action}"}
+    finally:
+        db.close()
+
+
+# ===================================================================
+# TOOLS  -- Analysis & Intelligence
+# ===================================================================
+
+@mcp.tool()
+def extract_information(
+    workspace_id: str,
+    source_artifact_id: str,
+    artifact_artifact_ids: Optional[List[str]] = None,
+    max_units: int = 12,
+) -> dict:
+    """Extract structured information from a source artifact.
+
+    Analyzes the source artifact content and creates new workspace artifacts
+    containing extracted decisions, constraints, actions, and claims.
+    Optionally uses additional artifact artifacts for context.
+
+    Returns the IDs and count of created artifacts.
+    """
+    from services import mcp_service
+
+    arango_db = _get_arango()
+    try:
+        # Phase 7C — pass the seeded Aria artifact UUID, not the bare slug.
+        return mcp_service.invoke_tool(
+            db=arango_db,
+            user_id=_user_id(),
+            workspace_id=workspace_id,
+            server_artifact_id=mcp_service.resolve_builtin_server_id("aria"),
+            tool_name="extract_units",
+            arguments={
+                "workspace_id": workspace_id,
+                "source_artifact_id": source_artifact_id,
+                "artifact_artifact_ids": artifact_artifact_ids or [],
+                "max_units": max_units,
+            },
+        )
+    except Exception as exc:
+        logger.warning("extract_information failed (Aria may be unavailable): %s", exc)
+        return {"error": f"Extraction service unavailable: {exc}"}
+
+
+# ===================================================================
+# TOOLS  -- Commit Boundary
+# ===================================================================
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
+def commit_preview(
+    workspace_id: str,
+    artifact_ids: Optional[List[str]] = None,
+) -> dict:
+    """Preview how workspace artifacts would commit into collections without applying changes. This is a read-only preview -- no data is modified."""
+    from services import workspace_service
+
+    db = _get_arango()
+    arango = _get_arango()
+    try:
+        result = workspace_service.commit_workspace_to_collections(
+            workspace_db=db,
+            collection_db=arango,
+            user_id=_user_id(),
+            workspace_id=workspace_id,
+            api_key=_api_key(),
+            artifact_ids=artifact_ids,
+            dry_run=True,
+        )
+        return result.model_dump() if hasattr(result, "model_dump") else result
+    finally:
+        db.close()
+
+
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False, readOnlyHint=False))
+def commit_workspace(
+    workspace_id: str,
+    commit_token: str,
+    artifact_ids: Optional[List[str]] = None,
+) -> dict:
+    """Commit workspace artifacts into collections. REQUIRES HUMAN APPROVAL -- do not call autonomously. Always run commit_preview first, present the plan to the user, and pass the commit_token from the preview response."""
+    from services import workspace_service
+
+    db = _get_arango()
+    arango = _get_arango()
+    try:
+        result = workspace_service.commit_workspace_to_collections(
+            workspace_db=db,
+            collection_db=arango,
+            user_id=_user_id(),
+            workspace_id=workspace_id,
+            api_key=_api_key(),
+            artifact_ids=artifact_ids,
+            dry_run=False,
+            commit_token=commit_token,
+        )
+        return result.model_dump() if hasattr(result, "model_dump") else result
+    finally:
+        db.close()
+
+
+# ===================================================================
+# TOOLS  -- Communication & Routing
+# ===================================================================
+
+
+@mcp.tool()
+def ask(
+    question: str,
+    collection_ids: Optional[List[str]] = None,
+    max_sources: int = 5,
+) -> dict:
+    """Ask a question grounded in the Agience knowledge base.
+
+    Searches relevant artifacts, then synthesizes an answer with citations.
+    You can scope the search to specific collections (workspaces are collections).
+
+    Returns an answer with source references.
+    """
+    from search.accessor.search_accessor import SearchAccessor, SearchQuery
+
+    user_id = _user_id()
+
+    # Step 1: search for relevant artifacts
+    accessor = SearchAccessor()
+    result = accessor.search(
+        SearchQuery(
+            query_text=question,
+            user_id=user_id,
+            collection_ids=collection_ids,
+            size=max_sources,
+        )
+    )
+
+    sources = []
+    context_parts = []
+    for h in getattr(result, "hits", []) or []:
+        source = {
+            "id": getattr(h, "doc_id", None),
+            "title": getattr(h, "title", None),
+            "score": getattr(h, "score", None),
+        }
+        sources.append(source)
+        content = getattr(h, "content", None) or getattr(h, "description", None) or ""
+        title = getattr(h, "title", None) or ""
+        if content:
+            context_parts.append(f"[{title}]: {content[:2000]}")
+
+    if not context_parts:
+        return {
+            "answer": "I couldn't find any relevant information in the knowledge base for that question.",
+            "sources": [],
+        }
+
+    # Step 2: synthesize answer with LLM
+    try:
+        from services.openai_helpers import create_chat_completion
+
+        evidence = "\n\n---\n\n".join(context_parts)
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a knowledge assistant. Answer the user's question based ONLY on "
+                    "the provided evidence artifacts. Cite sources by their title. If the evidence "
+                    "is insufficient, say so. Be concise."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Evidence:\n{evidence}\n\nQuestion: {question}",
+            },
+        ]
+        answer, _ = create_chat_completion(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0.3,
+            max_output_tokens=1024,
+        )
+    except Exception as e:
+        logger.error(f"ask tool: LLM call failed: {e}")
+        answer = "Search returned results but I was unable to synthesize an answer. See sources below."
+
+    return {"answer": answer, "sources": sources}
+
+
+@mcp.tool()
+def relay_status() -> dict:
+    """Return the Desktop Host Relay connection status for the current user.
+
+    Reports whether a Desktop Host Relay session is active and, if so, when
+    it was last seen. Use this to check relay connectivity from a viewer or tool.
+
+    Returns a dict with ``connected`` (bool) and, when connected, ``session``
+    containing ``session_id``, ``device_id``, ``display_name``, and ``last_seen_at``.
+    """
+    from services.desktop_host_relay_service import relay_manager
+
+    sessions = relay_manager.list_sessions_for_user(_user_id())
+    if not sessions:
+        return {"connected": False}
+    # Return the most-recently-seen session
+    latest = max(sessions, key=lambda s: s.get("last_seen_at") or "")
+    return {
+        "connected": True,
+        "session": {
+            "session_id": latest.get("session_id"),
+            "device_id": latest.get("device_id"),
+            "display_name": latest.get("display_name"),
+            "last_seen_at": latest.get("last_seen_at"),
+        },
+    }
+
+
+# ===================================================================
+# MCP Resources
+# ===================================================================
+
+@mcp.resource("agience://collections/{collection_id}")
+def collection_resource(collection_id: str) -> str:
+    """Read a collection and its artifacts as a JSON resource."""
+    from services import collection_service
+    from db.arango import list_collection_artifacts
+
+    user_id = _user_id()
+    arango = _get_arango()
+
+    collection = collection_service.get_collection_for_user(
+        arango, user_id, collection_id=collection_id,
+    )
+    artifacts = list_collection_artifacts(arango, collection_id)
+
+    contents = {
+        "collection": {
+            "id": collection.id,
+            "name": collection.name,
+            "description": getattr(collection, "description", None),
+        },
+        "artifacts": [_serialize_artifact_version(c) for c in (artifacts or [])],
+        "artifact_count": len(artifacts or []),
+    }
+    return json.dumps(contents, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.resource("agience://workspaces/{workspace_id}")
+def workspace_resource(workspace_id: str) -> str:
+    """Read a workspace and its artifacts as a JSON resource."""
+    from services import workspace_service
+
+    user_id = _user_id()
+    db = _get_arango()
+    try:
+        ws = workspace_service.get_workspace(db, user_id, workspace_id)
+        artifacts = workspace_service.list_workspace_artifacts(db, user_id, workspace_id)
+
+        contents = {
+            "workspace": {
+                "id": ws.id,
+                "name": ws.name,
+                "description": getattr(ws, "description", "") or "",
+            },
+            "artifacts": [_serialize_workspace_artifact(c) for c in (artifacts or [])],
+            "artifact_count": len(artifacts or []),
+        }
+        return json.dumps(contents, ensure_ascii=False, indent=2, default=str)
+    finally:
+        db.close()
+
+
+# ===================================================================
+# Serialisation helpers
+# ===================================================================
+
+def _resolve_content(c: Any) -> Optional[str]:
+    """Return artifact content, fetching from S3 if the inline field is empty."""
+    inline = getattr(c, "content", None)
+    if inline:
+        return inline
+    try:
+        import json as _json
+        ctx = _json.loads(getattr(c, "context", None) or "{}")
+    except (ValueError, TypeError):
+        return None
+    ck = ctx.get("content_key")
+    if not ck:
+        return None
+    try:
+        from services.content_service import get_text_direct
+        return get_text_direct(ck)
+    except Exception:
+        return None
+
+
+def _serialize_workspace_artifact(c: Any) -> Dict[str, Any]:
+    return {
+        "id": getattr(c, "id", None),
+        "workspace_id": getattr(c, "workspace_id", None),
+        "state": getattr(c, "state", None),
+        "context": getattr(c, "context", None),
+        "content": _resolve_content(c),
+        "root_id": getattr(c, "root_id", None),
+        "created_time": str(getattr(c, "created_time", None) or ""),
+    }
+
+
+def _serialize_artifact_version(c: Any) -> Dict[str, Any]:
+    return {
+        "id": getattr(c, "id", None),
+        "root_id": getattr(c, "root_id", None),
+        "context": getattr(c, "context", None),
+        "content": _resolve_content(c),
+        "created_time": str(getattr(c, "created_time", None) or ""),
+        "created_by": getattr(c, "created_by", None),
+    }
+
+
+# ===================================================================
+# Direct tool dispatch (for Order-artifact execution without HTTP round-trip)
+# ===================================================================
+
+#: Map of tool name -> callable  -- populated once all @mcp.tool() functions are defined.
+TOOL_REGISTRY: Dict[str, Any] = {
+    "search": search,
+    "get_artifact": get_artifact,
+    "browse_collections": browse_collections,
+    "browse_workspaces": browse_workspaces,
+    "create_artifact": create_artifact,
+    "update_artifact": update_artifact,
+    "manage_artifact": manage_artifact,
+    "extract_information": extract_information,
+    "commit_preview": commit_preview,
+    "commit_workspace": commit_workspace,
+    "ask": ask,
+}
+
+
+def call_local_tool(tool_name: str, tool_args: Dict[str, Any], user_id: str) -> Any:
+    """Call an agience-core MCP tool directly from Python without an HTTP round-trip.
+
+    Sets the per-request ``_current_user_id`` context var so the tool can
+    determine the caller identity, then invokes the registered function.
+
+    Raises ``ValueError`` if *tool_name* is not registered.
+    """
+    fn = TOOL_REGISTRY.get(tool_name)
+    if fn is None:
+        raise ValueError(f"Unknown agience-core tool: {tool_name!r}")
+    tok = _current_user_id.set(user_id)
+    try:
+        return fn(**tool_args)
+    finally:
+        _current_user_id.reset(tok)
+
+
+# ===================================================================
+# Auth middleware (ASGI)
+# ===================================================================
+
+class MCPAuthMiddleware:
+    """ASGI middleware that validates Bearer tokens on incoming MCP requests.
+
+    Sets ``_current_user_id`` context var so tool functions can
+    identify the caller. Supports JWTs (user and server), direct API keys,
+    and server JWTs with ``X-On-Behalf-Of`` for delegated user identity.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+
+        # Extract Authorization header
+        headers = dict(scope.get("headers", []))
+        auth_header = headers.get(b"authorization", b"").decode()
+
+        if not auth_header.startswith("Bearer "):
+            await _send_401(send, "Missing Bearer token")
+            return
+
+        token = auth_header.replace("Bearer ", "", 1).strip()
+        if not token:
+            await _send_401(send, "Empty Bearer token")
+            return
+
+        arango = _get_arango()
+        try:
+            ctx = resolve_auth(token=token, arango_db=arango)
+
+            # Determine effective user_id
+            if ctx.principal_type == "server":
+                # Server JWT -- check X-On-Behalf-Of for delegated user identity
+                on_behalf_of = headers.get(b"x-on-behalf-of", b"").decode().strip()
+                user_id = on_behalf_of or ""
+            else:
+                user_id = str(ctx.user_id) if ctx.user_id else ""
+
+            if not user_id:
+                await _send_401(send, "Missing subject user")
+                return
+            api_key = ctx.api_key_entity
+            if api_key and not getattr(api_key, "client_id", None):
+                api_key.client_id = getattr(api_key, "name", None)
+        except HTTPException as exc:
+            detail = exc.detail if getattr(exc, "detail", None) else "Invalid token or API key"
+            await _send_401(send, str(detail))
+            return
+        except Exception as exc:
+            detail = getattr(exc, "detail", "Invalid token or API key")
+            await _send_401(send, str(detail))
+            return
+
+        # Set context vars and proceed
+        tok = _current_user_id.set(user_id)
+        api_tok = _current_api_key.set(api_key)
+        ctx_tok = _current_auth_context.set(ctx)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            _current_auth_context.reset(ctx_tok)
+            _current_api_key.reset(api_tok)
+            _current_user_id.reset(tok)
+
+
+async def _send_401(send, detail: str):
+    """Send an HTTP 401 response."""
+    body = json.dumps({"error": detail}).encode()
+    await send({
+        "type": "http.response.start",
+        "status": 401,
+        "headers": [
+            [b"content-type", b"application/json"],
+            [b"content-length", str(len(body)).encode()],
+        ],
+    })
+    await send({"type": "http.response.body", "body": body})
+
+
+# ===================================================================
+# App factory
+# ===================================================================
+
+def create_mcp_app():
+    """Return the MCP ASGI app wrapped with auth middleware.
+
+    Mount this on the host FastAPI app::
+
+        from starlette.routing import Mount
+        app.routes.append(Mount("/mcp", app=create_mcp_app()))
+    """
+    return MCPAuthMiddleware(mcp.streamable_http_app())

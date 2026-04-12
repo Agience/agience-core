@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Agience: Publish public main (first commit)",
+      "type": "shell",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .scripts\\publish_public.ps1 -Version '${input:publicVersion}' -CreateOrphan",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Agience: Publish public main (stacked)",
+      "type": "shell",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .scripts\\publish_public.ps1 -Version '${input:publicVersion}'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "publicVersion",
+      "type": "promptString",
+      "description": "Semantic version for the public publish",
+      "default": "0.0.0"
+    }
+  ]
+}

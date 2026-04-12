@@ -1,0 +1,32 @@
+{
+  "content_type": "video/*",
+  "version": 1,
+  "extensions": [
+    ".mp4",
+    ".webm",
+    ".mov",
+    ".mkv",
+    ".avi"
+  ],
+  "inherits": [],
+  "description": "Defaults for all video/* types",
+  "ui": {
+    "label": "Video",
+    "icon": "video",
+    "color": "#f59e0b",
+    "badge_class": "bg-sky-100 text-sky-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "viewer": "video"
+  }
+}

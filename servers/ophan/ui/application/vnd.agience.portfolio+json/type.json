@@ -1,0 +1,34 @@
+{
+  "content_type": "application/vnd.agience.portfolio+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "A portfolio snapshot \u2014 holdings from a connected brokerage or exchange at a point in time. Produced by Ophan's get_portfolio tool.",
+  "context_schema": {
+    "provider": "string \u2014 exchange or brokerage name",
+    "holdings": "object[] \u2014 [{symbol: string, quantity: string, average_cost: string, current_price: string, market_value: string}]",
+    "total_value": "string \u2014 total portfolio value as a decimal string",
+    "currency": "string \u2014 base currency for valuations",
+    "snapshot_at": "string \u2014 ISO 8601 timestamp of the snapshot"
+  },
+  "ui": {
+    "label": "Portfolio",
+    "icon": "pie-chart",
+    "color": "#ec4899",
+    "badge_class": "bg-pink-100 text-pink-800",
+    "tile_class": "ring-1 ring-pink-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "description": "Portfolio snapshot \u2014 holdings, values, and allocation from a connected exchange."
+  }
+}

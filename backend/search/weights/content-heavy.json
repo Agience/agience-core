@@ -1,0 +1,16 @@
+{
+  "name": "content-heavy",
+  "description": "Emphasizes full-text content over metadata - good for document archives",
+  "field_boosts": {
+    "description": 3.0,
+    "title": 2.0,
+    "tags_canonical": 1.5,
+    "content": 1.0
+  },
+  "notes": [
+    "Lower boost differential - content has more influence",
+    "Good for large document collections with sparse metadata",
+    "Better for full-text search use cases",
+    "May surface results where content matches but description doesn't"
+  ]
+}

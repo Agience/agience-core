@@ -1,0 +1,27 @@
+{
+  "content_type": "application/vnd.agience.key+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Agience Key",
+  "ui": {
+    "label": "Key",
+    "icon": "key",
+    "color": "#b45309",
+    "badge_class": "bg-yellow-100 text-yellow-800",
+    "tile_class": "",
+    "modes": [
+      "floating"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "key",
+    "description": "API key \u2014 create and manage scoped access keys for MCP clients, agents, and integrations."
+  }
+}

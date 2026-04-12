@@ -1,0 +1,32 @@
+{
+  "content_type": "audio/*",
+  "version": 1,
+  "extensions": [
+    ".mp3",
+    ".wav",
+    ".ogg",
+    ".flac",
+    ".aac"
+  ],
+  "inherits": [],
+  "description": "Defaults for all audio/* types",
+  "ui": {
+    "label": "Audio",
+    "icon": "music",
+    "color": "#14b8a6",
+    "badge_class": "bg-amber-100 text-amber-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "viewer": "audio"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schemas.agience.io/mcp-server/v1/mcp.json",
+  "schema_version": "1",
+  "name": "agience-server-nexus",
+  "display_name": "Nexus — Networking, Transport & Routing",
+  "description": "Connects agents, services, and external systems by managing messaging delivery channels, webhooks, request routing, and remote execution.",
+  "version": "0.1.0",
+  "image": "ghcr.io/agience/agience-server-nexus:latest",
+  "endpoints": {
+    "streamable_http": "/mcp"
+  },
+  "tools": [
+    { "name": "send_message", "description": "Send a message via a registered channel adapter" },
+    { "name": "get_messages", "description": "Poll a channel for new messages since a cursor" },
+    { "name": "list_channels", "description": "List registered channel adapters" },
+    { "name": "create_webhook", "description": "Register an inbound webhook and return its endpoint URL" },
+    { "name": "health_check", "description": "Check health/availability of a service endpoint" },
+    { "name": "list_connections", "description": "List registered service connections" },
+    { "name": "register_endpoint", "description": "Register a service endpoint for routing" },
+    { "name": "route_request", "description": "Route a request to a registered endpoint" },
+    { "name": "exec_shell", "description": "Execute a shell command in a sandboxed working directory" },
+    { "name": "proxy_tool", "description": "Proxy an MCP tool call through a registered endpoint" }
+  ],
+  "resources": [],
+  "prompts": [],
+  "artifact_types": [],
+  "config": {
+    "env": {
+      "AGIENCE_API_URI": { "description": "Base URI of the agience-core backend", "required": true },
+      "AGIENCE_API_KEY": { "description": "Platform API key (Bearer token)", "required": true },
+      "NEXUS_CWD": { "description": "Sandboxed working directory for exec_shell", "default": "/workspace" },
+      "MCP_PORT": { "description": "HTTP port for the MCP server", "default": "8086" }
+    }
+  }
+}

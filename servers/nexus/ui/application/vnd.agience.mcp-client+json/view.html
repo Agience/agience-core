@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MCP Client Viewer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5;
+  }
+  .container { padding: 20px; max-width: 600px; margin: 0 auto; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #0f172a; }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 9999px;
+  }
+  .status-badge .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .status-green { background: #ecfdf5; color: #065f46; }
+  .status-green .dot { background: #10b981; }
+  .status-yellow { background: #fffbeb; color: #92400e; }
+  .status-yellow .dot { background: #f59e0b; }
+  .status-gray { background: #f1f5f9; color: #64748b; }
+  .status-gray .dot { background: #94a3b8; }
+  .section { margin-bottom: 20px; }
+  .field-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #94a3b8; margin-bottom: 4px;
+  }
+  .field-value {
+    font-size: 14px; color: #1e293b; padding: 8px 12px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    word-break: break-all;
+  }
+  .field-value.empty { color: #cbd5e1; font-style: italic; }
+  .url-row {
+    display: flex; align-items: stretch; gap: 0;
+  }
+  .url-value {
+    flex: 1; font-size: 13px; font-family: 'SF Mono', 'Fira Code', monospace;
+    color: #6d28d9; padding: 8px 12px;
+    background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px 0 0 8px;
+    word-break: break-all; min-width: 0;
+  }
+  .copy-btn {
+    padding: 8px 14px; border: 1px solid #ddd6fe; border-left: none;
+    background: #ede9fe; color: #7c3aed; border-radius: 0 8px 8px 0;
+    cursor: pointer; font-size: 12px; font-weight: 500;
+    transition: background 0.15s; white-space: nowrap;
+  }
+  .copy-btn:hover { background: #ddd6fe; }
+  .copy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .copy-btn.copied { background: #10b981; color: #fff; border-color: #10b981; }
+  .api-key-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .api-key-preview {
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
+    color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 8px; padding: 8px 12px; flex: 1;
+  }
+  .key-status {
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px;
+  }
+  .key-active { background: #ecfdf5; color: #065f46; }
+  .key-inactive { background: #fef2f2; color: #991b1b; }
+  /* one-time key reveal banner */
+  .key-reveal {
+    background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+    padding: 12px 16px; margin-bottom: 20px;
+  }
+  .key-reveal-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #92400e; margin-bottom: 6px; }
+  .key-reveal-row { display: flex; align-items: stretch; gap: 0; }
+  .key-reveal-value {
+    flex: 1; font-size: 13px; font-family: 'SF Mono', 'Fira Code', monospace;
+    color: #78350f; padding: 8px 12px;
+    background: #fef9c3; border: 1px solid #fde68a; border-radius: 8px 0 0 8px;
+    word-break: break-all; min-width: 0;
+  }
+  .key-reveal-copy {
+    padding: 8px 14px; border: 1px solid #fde68a; border-left: none;
+    background: #fde68a; color: #78350f; border-radius: 0 8px 8px 0;
+    cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .key-reveal-copy:hover { background: #fcd34d; }
+  .key-reveal-hint { font-size: 12px; color: #92400e; margin-top: 6px; }
+  /* OAuth section */
+  .oauth-section {
+    border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px;
+    margin-bottom: 20px; background: #f8fafc;
+  }
+  .oauth-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+  }
+  .oauth-title { font-size: 13px; font-weight: 600; color: #475569; }
+  .oauth-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; background: #e0f2fe; color: #0369a1; }
+  .uri-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .uri-list li {
+    font-size: 12px; font-family: 'SF Mono', 'Fira Code', monospace;
+    padding: 4px 8px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px;
+    color: #475569; word-break: break-all;
+  }
+  .instructions-list {
+    list-style: none; counter-reset: step;
+  }
+  .instructions-list li {
+    counter-increment: step; position: relative; padding: 8px 0 8px 36px;
+    font-size: 13px; color: #475569; border-bottom: 1px solid #f1f5f9;
+  }
+  .instructions-list li:last-child { border-bottom: none; }
+  .instructions-list li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 8px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #ede9fe; color: #7c3aed;
+    font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .edit-row { display: flex; gap: 12px; margin-bottom: 12px; }
+  .edit-row .field-group { flex: 1; }
+  .field-group { margin-bottom: 12px; }
+  .field-hint { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+  input.edit-input, textarea.edit-input {
+    width: 100%; font-size: 14px; padding: 8px 12px;
+    border: 1px solid #c7d2fe; border-radius: 8px; outline: none;
+    font-family: inherit; transition: border-color 0.15s;
+  }
+  input.edit-input:focus, textarea.edit-input:focus {
+    border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15);
+  }
+  textarea.edit-input { resize: vertical; min-height: 60px; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .btn {
+    font-size: 13px; font-weight: 500; padding: 8px 20px; border-radius: 8px;
+    border: none; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: #7c3aed; color: #fff; }
+  .btn-primary:hover { background: #6d28d9; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+  .btn-secondary:hover { background: #e2e8f0; }
+  .btn-outline { background: transparent; color: #7c3aed; border: 1px solid #ddd6fe; }
+  .btn-outline:hover { background: #f5f3ff; }
+  .btn-gen { background: #059669; color: #fff; }
+  .btn-gen:hover { background: #047857; }
+  .btn-gen:disabled { opacity: 0.5; cursor: not-allowed; }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    background: #10b981; color: #fff; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div style="color:#94a3b8;text-align:center;padding:40px 0;">Loading...</div>
+</div>
+<div class="toast" id="toast">Copied</div>
+
+<script>
+/* --- MCP Apps JSON-RPC boilerplate --- */
+let _rpcId = 0;
+const _pending = {};
+function sendRpc(method, params) {
+  const id = ++_rpcId;
+  return new Promise((resolve, reject) => {
+    _pending[id] = { resolve, reject };
+    parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+  });
+}
+function sendNotification(method, params) {
+  parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+}
+let _artifactData = null;
+let _hostCtx = {};
+function handleHostContext(ctx) { _hostCtx = { ..._hostCtx, ...ctx }; }
+function handleToolResult(params) {
+  const text = (params.content || []).find(c => c.type === 'text');
+  if (text) { _artifactData = JSON.parse(text.text); render(); }
+}
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || d.jsonrpc !== '2.0') return;
+  if (d.id && _pending[d.id]) {
+    if (d.error) _pending[d.id].reject(d.error);
+    else _pending[d.id].resolve(d.result);
+    delete _pending[d.id]; return;
+  }
+  if (d.method === 'ui/notifications/tool-result') handleToolResult(d.params);
+  if (d.method === 'ui/notifications/host-context-changed') handleHostContext(d.params);
+});
+sendRpc('ui/initialize', {
+  protocolVersion: '2026-01-26',
+  clientInfo: { name: 'agience-viewer', version: '0.1.0' }
+}).then(result => {
+  if (result.hostContext) handleHostContext(result.hostContext);
+  sendNotification('ui/notifications/initialized');
+});
+async function updateArtifact(patch) {
+  return sendRpc('tools/call', { name: 'update_artifact', arguments: { id: _artifactData.artifact_id, patch } });
+}
+
+/* --- MCP Client viewer state --- */
+let _editing = false;
+let _saving = false;
+let _generating = false;
+let _newKey = null;   // shown once after generation
+let _draft = {};
+
+function ctx() {
+  if (!_artifactData) return {};
+  try {
+    return typeof _artifactData.context === 'string'
+      ? JSON.parse(_artifactData.context)
+      : (_artifactData.context || {});
+  } catch { return {}; }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function connectionStatus(c) {
+  const apiKey = c.api_key || {};
+  if (apiKey.is_active === true && apiKey.last_used_at) return 'green';
+  if (apiKey.is_active === true) return 'yellow';
+  return 'gray';
+}
+
+function statusLabel(status) {
+  if (status === 'green') return 'Connected';
+  if (status === 'yellow') return 'Ready';
+  return 'Not configured';
+}
+
+function copyText(text, btnId, label) {
+  navigator.clipboard.writeText(text).then(() => {
+    if (btnId) {
+      const btn = document.getElementById(btnId);
+      if (btn) { btn.textContent = 'Copied!'; btn.classList.add('copied'); }
+      showToast(label || 'Copied');
+      setTimeout(() => {
+        if (btn) { btn.textContent = 'Copy'; btn.classList.remove('copied'); }
+      }, 2000);
+    } else {
+      showToast(label || 'Copied');
+    }
+  });
+}
+
+function copyUrl() {
+  const c = ctx();
+  const url = (c.connection && c.connection.url) || '';
+  if (!url) return;
+  copyText(url, 'copy-btn', 'URL copied');
+}
+
+function copyNewKey() {
+  if (!_newKey) return;
+  copyText(_newKey, 'reveal-copy-btn', 'API key copied');
+}
+
+function copyClientId() {
+  const id = _artifactData && _artifactData.artifact_id;
+  if (!id) return;
+  copyText(id, 'copy-client-id-btn', 'Client ID copied');
+}
+
+function dismissKey() {
+  _newKey = null;
+  render();
+}
+
+async function generateKey() {
+  if (_generating) return;
+  _generating = true;
+  render();
+  try {
+    const c = ctx();
+    const filters = c.workspace_id
+      ? { workspaces: [c.workspace_id] }
+      : { workspaces: '*', collections: '*' };
+    const result = await sendRpc('tools/call', {
+      name: 'create_api_key',
+      arguments: {
+        name: c.title || _artifactData.description || 'MCP Client Key',
+        resource_filters: filters,
+      }
+    });
+    const data = JSON.parse(result.content[0].text);
+    _newKey = data.key;
+    const preview = data.preview || (data.key ? data.key.substring(0, 16) + '...' : '');
+    const newCtx = {
+      ...c,
+      api_key: {
+        id: data.id,
+        preview,
+        is_active: true,
+        scopes: data.scopes || [],
+        resource_filters: data.resource_filters || filters,
+        created_time: data.created_time || new Date().toISOString(),
+        last_used_at: null,
+      },
+    };
+    await updateArtifact({ context: JSON.stringify(newCtx) });
+    _artifactData.context = newCtx;
+    showToast('API key generated — copy it now!');
+  } catch (err) {
+    showToast('Failed to generate key');
+    console.error(err);
+  } finally {
+    _generating = false;
+    render();
+  }
+}
+
+function toggleEdit() {
+  if (!_editing) {
+    const c = ctx();
+    const uris = Array.isArray(c.redirect_uris) ? c.redirect_uris : [];
+    _draft = {
+      title: c.title || '',
+      notes: c.notes || '',
+      client_name: (c.client && c.client.name) || '',
+      redirect_uris: uris.join('\n'),
+    };
+  }
+  _editing = !_editing;
+  render();
+}
+
+async function save() {
+  _saving = true;
+  render();
+  try {
+    const c = ctx();
+    const uris = _draft.redirect_uris
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean);
+    const newCtx = {
+      ...c,
+      title: _draft.title,
+      notes: _draft.notes,
+      client: { ...(c.client || {}), name: _draft.client_name },
+      redirect_uris: uris.length ? uris : undefined,
+      // Auto-assign client_id = artifact_id when redirect_uris are present
+      client_id: uris.length ? (c.client_id || _artifactData.artifact_id) : c.client_id,
+    };
+    // Clean up undefined keys
+    if (!newCtx.redirect_uris) delete newCtx.redirect_uris;
+    if (!newCtx.client_id) delete newCtx.client_id;
+    await updateArtifact({
+      context: JSON.stringify(newCtx),
+      description: _draft.title || _artifactData.description || '',
+    });
+    _editing = false;
+    showToast('Saved');
+  } catch (err) {
+    showToast('Save failed');
+    console.error(err);
+  } finally {
+    _saving = false;
+    render();
+  }
+}
+
+function render() {
+  if (!_artifactData) return;
+  const c = ctx();
+  const app = document.getElementById('app');
+  const status = connectionStatus(c);
+  const statusCls = 'status-' + status;
+  const conn = c.connection || {};
+  const apiKey = c.api_key || {};
+  const client = c.client || {};
+  const redirectUris = Array.isArray(c.redirect_uris) ? c.redirect_uris : [];
+  const clientId = c.client_id || (_artifactData && _artifactData.artifact_id);
+
+  if (_editing) {
+    app.innerHTML = `
+      <div class="header">
+        <h1>MCP Client</h1>
+        <span class="status-badge ${statusCls}"><span class="dot"></span>${statusLabel(status)}</span>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Title</div>
+        <input class="edit-input" id="f-title" value="${esc(_draft.title)}" />
+      </div>
+      <div class="field-group">
+        <div class="field-label">Client Name</div>
+        <input class="edit-input" id="f-client" value="${esc(_draft.client_name)}" placeholder="e.g. VS Code Copilot, Claude Desktop" />
+      </div>
+      <div class="field-group">
+        <div class="field-label">Notes</div>
+        <textarea class="edit-input" id="f-notes" placeholder="Setup notes...">${esc(_draft.notes)}</textarea>
+      </div>
+      <div class="field-group">
+        <div class="field-label">OAuth Redirect URIs <span style="font-weight:400;text-transform:none;font-size:11px;color:#cbd5e1;">(optional — one per line)</span></div>
+        <textarea class="edit-input" id="f-uris" placeholder="http://127.0.0.1:33418&#10;https://vscode.dev/redirect" style="min-height:80px;font-family:'SF Mono','Fira Code',monospace;font-size:12px;">${esc(_draft.redirect_uris)}</textarea>
+        <div class="field-hint">Leave blank if using API key (Bearer token) access only. Required for VS Code OAuth login.</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="toggleEdit()">Cancel</button>
+        <button class="btn btn-primary" onclick="save()" ${_saving ? 'disabled' : ''}>${_saving ? 'Saving...' : 'Save'}</button>
+      </div>
+    `;
+    document.getElementById('f-title').addEventListener('input', e => { _draft.title = e.target.value; });
+    document.getElementById('f-client').addEventListener('input', e => { _draft.client_name = e.target.value; });
+    document.getElementById('f-notes').addEventListener('input', e => { _draft.notes = e.target.value; });
+    document.getElementById('f-uris').addEventListener('input', e => { _draft.redirect_uris = e.target.value; });
+
+  } else {
+    const hasKey = !!apiKey.id;
+
+    const keyRevealHtml = _newKey ? `
+      <div class="key-reveal">
+        <div class="key-reveal-label">&#9888; Copy your API key now — it won't be shown again</div>
+        <div class="key-reveal-row">
+          <div class="key-reveal-value">${esc(_newKey)}</div>
+          <button class="key-reveal-copy" id="reveal-copy-btn" onclick="copyNewKey()">Copy</button>
+        </div>
+        <div class="key-reveal-hint">Paste this as a Bearer token in your MCP client's Authorization header. <a href="#" onclick="dismissKey();return false;" style="color:#b45309;">Dismiss</a></div>
+      </div>` : '';
+
+    const oauthHtml = redirectUris.length ? `
+      <div class="oauth-section">
+        <div class="oauth-header">
+          <span class="oauth-title">OAuth Client</span>
+          <span class="oauth-badge">Optional</span>
+        </div>
+        <div class="section" style="margin-bottom:12px;">
+          <div class="field-label">Client ID</div>
+          <div class="url-row">
+            <div class="url-value" style="font-size:12px;">${esc(clientId)}</div>
+            <button class="copy-btn" id="copy-client-id-btn" onclick="copyClientId()">Copy</button>
+          </div>
+          <div class="field-hint" style="margin-top:4px;">Paste this into VS Code when prompted for an OAuth client ID.</div>
+        </div>
+        <div class="section" style="margin-bottom:0;">
+          <div class="field-label">Redirect URIs</div>
+          <ul class="uri-list">
+            ${redirectUris.map(u => `<li>${esc(u)}</li>`).join('')}
+          </ul>
+        </div>
+      </div>` : '';
+
+    const instructions = [
+      'Copy the MCP URL below.',
+      `Add a new MCP server entry in your client${client.name ? ' (' + esc(client.name) + ')' : ''}.`,
+      'Paste the URL as the server endpoint.',
+      'Set the API key as a Bearer token in the Authorization header.',
+      'Save and connect.'
+    ];
+
+    app.innerHTML = `
+      <div class="header">
+        <h1>${esc(c.title || _artifactData.description || 'MCP Client Connection')}</h1>
+        <span class="status-badge ${statusCls}"><span class="dot"></span>${statusLabel(status)}</span>
+      </div>
+      <div class="actions" style="margin-top:0;margin-bottom:16px;">
+        <button class="btn btn-outline" onclick="toggleEdit()">Edit</button>
+      </div>
+      ${keyRevealHtml}
+      ${client.name ? `
+      <div class="section">
+        <div class="field-label">Client</div>
+        <div class="field-value">${esc(client.name)}</div>
+      </div>` : ''}
+      ${c.notes ? `
+      <div class="section">
+        <div class="field-label">Notes</div>
+        <div class="field-value">${esc(c.notes)}</div>
+      </div>` : ''}
+      <div class="section">
+        <div class="field-label">MCP URL</div>
+        <div class="url-row">
+          <div class="url-value">${esc(conn.url || 'Not configured')}</div>
+          <button class="copy-btn" id="copy-btn" onclick="copyUrl()" ${conn.url ? '' : 'disabled'}>Copy</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="field-label">API Key</div>
+        ${hasKey ? `
+        <div class="api-key-row">
+          <div class="api-key-preview">${esc(apiKey.preview || '—')}</div>
+          <span class="key-status ${apiKey.is_active ? 'key-active' : 'key-inactive'}">${apiKey.is_active ? 'Active' : 'Inactive'}</span>
+        </div>` : `
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="api-key-preview" style="color:#cbd5e1;font-style:italic;">No key generated</div>
+          <button class="btn btn-gen" onclick="generateKey()" ${_generating ? 'disabled' : ''} style="padding:6px 14px;font-size:12px;">
+            ${_generating ? 'Generating…' : 'Generate Key'}
+          </button>
+        </div>`}
+      </div>
+      ${oauthHtml}
+      ${!hasKey && !_newKey ? '' : `
+      <div class="section">
+        <div class="field-label">Setup Instructions</div>
+        <ol class="instructions-list">
+          ${instructions.map(s => `<li>${s}</li>`).join('')}
+        </ol>
+      </div>`}
+    `;
+  }
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s || '');
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agience.dev/schemas/licensing/license-artifact.schema.json",
+  "title": "Agience License Artifact",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "license_id",
+    "entitlement_id",
+    "account_id",
+    "issued_at",
+    "not_before",
+    "expires_at",
+    "product",
+    "controls",
+    "signature"
+  ],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "license_id": { "type": "string" },
+    "entitlement_id": { "type": "string" },
+    "account_id": { "type": "string" },
+    "issued_at": { "type": "string" },
+    "not_before": { "type": "string" },
+    "expires_at": { "type": "string" },
+    "state": { "type": "string" },
+    "product": {
+      "type": "object",
+      "required": ["policy_id", "runtime_roles", "distribution_profiles"],
+      "properties": {
+        "policy_id": { "type": "string" },
+        "runtime_roles": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "distribution_profiles": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "product_surface": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "branding": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string" },
+        "scope": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "controls": {
+      "type": "object",
+      "required": ["offline_allowed", "require_activation", "require_reporting"],
+      "properties": {
+        "offline_allowed": { "type": "boolean" },
+        "offline_lease_days": { "type": "integer" },
+        "require_activation": { "type": "boolean" },
+        "require_reporting": { "type": "boolean" },
+        "enforcement_profile": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "reporting": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "entitlements": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "attributes": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    },
+    "extensions": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    },
+    "signature": {
+      "type": "object",
+      "required": ["alg", "kid", "value"],
+      "properties": {
+        "alg": { "type": "string" },
+        "kid": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

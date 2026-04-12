@@ -1,0 +1,34 @@
+{
+  "content_type": "application/vnd.agience.account+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "A financial account \u2014 wallet, bank account, or internal ledger account tracked by Ophan. Balances are stored as strings to preserve precision.",
+  "context_schema": {
+    "account_type": "string \u2014 wallet | bank | ledger",
+    "currency": "string \u2014 ISO 4217 currency code or ticker symbol",
+    "provider": "string? \u2014 exchange, bank, or institution name (e.g. Coinbase, Chase)",
+    "balance": "string? \u2014 current balance as a decimal string",
+    "last_synced_at": "string? \u2014 ISO 8601 timestamp of last balance sync"
+  },
+  "ui": {
+    "label": "Account",
+    "icon": "wallet",
+    "color": "#f59e0b",
+    "badge_class": "bg-amber-100 text-amber-800",
+    "tile_class": "ring-1 ring-amber-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "description": "Financial account \u2014 wallet, bank account, or ledger tracked by Ophan."
+  }
+}

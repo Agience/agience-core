@@ -1,0 +1,154 @@
+# Base service definitions — deployment/runtime defaults.
+# This file pulls images and sets shared runtime configuration.
+# Local source builds and host port exposure belong in overlay files.
+# Ports are NOT exposed here; they are added by overlay files:
+#   docker-compose.override.yml  → local/dev (exposes ports, builds backend/frontend from source)
+#   optional host overlay        → production proxy, custom ports, or host-specific settings
+#
+# Usage (run from repo root):
+#   dev   (infra only, apps run locally):
+#         docker compose --project-directory . -f docker/docker-compose.yml up -d content graph search
+#   local (full stack, built from source):
+#         docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.override.yml up --build -d
+#   deploy (full stack, pull from registry):
+#         docker compose --project-directory . -f docker/docker-compose.yml up -d
+#   deploy+overlay (registry images, plus any host-specific overlay):
+#         docker compose --project-directory . -f docker/docker-compose.yml -f path/to/your-overlay.yml up -d
+#
+# NOTE: --project-directory . keeps volume paths relative to the repo root.
+# Source build contexts live only in docker-compose.override.yml.
+#
+# ZERO-CONFIG BOOTSTRAP:
+# The init service generates all required secrets (
+# encryption key, platform secret, setup token) on first boot. No .env file
+# is needed — all configuration is entered via the setup wizard in the browser.
+# Keys are stored in DATA_PATH/.data/keys — back this directory up.
+
+services:
+
+  # One-shot init container: creates data directories and generates all key material.
+  # This is the ONLY place keys are ever written — backend never generates keys.
+  # Published image contains init.py with cryptography pre-installed.
+  init:
+    image: ${REGISTRY:-agience}/agience-init:${VERSION:-latest}
+    container_name: init
+    environment:
+      - ARANGO_ROOT_PASSWORD=${ARANGO_ROOT_PASSWORD:-}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-}
+    volumes:
+      - ${DATA_PATH:-./.data}:/data
+
+  content:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
+    container_name: content
+    restart: unless-stopped
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-agience}
+    entrypoint: ["/bin/sh", "-c", "export MINIO_ROOT_PASSWORD=$(cat /run/keys/minio.pass) && exec /usr/bin/docker-entrypoint.sh server /data --console-address :9001"]
+    volumes:
+      - ${DATA_PATH:-./.data}/minio:/data
+      - ${DATA_PATH:-./.data}/keys:/run/keys:ro
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  graph:
+    image: arangodb:3.11
+    container_name: graph
+    restart: unless-stopped
+    environment:
+      - ARANGO_NO_AUTH=${ARANGO_NO_AUTH:-0}
+    entrypoint: ["/bin/sh", "-c", "export ARANGO_ROOT_PASSWORD=$(cat /run/keys/arango.pass) && exec /entrypoint.sh arangod"]
+    volumes:
+      - ${DATA_PATH:-./.data}/arangodb:/var/lib/arangodb3
+      - ${DATA_PATH:-./.data}/arangodb-apps:/var/lib/arangodb3-apps
+      - ${DATA_PATH:-./.data}/keys:/run/keys:ro
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "(command -v wget >/dev/null && wget -qO- http://127.0.0.1:8529/_admin/server/availability >/dev/null) || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  search:
+    image: opensearchproject/opensearch:latest
+    container_name: search
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      - cluster.name=${OPENSEARCH_CLUSTER_NAME:-agience-search}
+      - discovery.type=single-node
+      - OPENSEARCH_INITIAL_HEAP_SIZE=${OPENSEARCH_INITIAL_HEAP_SIZE:-256m}
+      - OPENSEARCH_MAXIMUM_HEAP_SIZE=${OPENSEARCH_MAXIMUM_HEAP_SIZE:-256m}
+      - OPENSEARCH_JAVA_OPTS=-Xms256m -Xmx256m
+      - OPENSEARCH_PERFORMANCE_ANALYZER_ENABLED=false
+      - DISABLE_INSTALL_DEMO_CONFIG=false
+      - plugins.security.disabled=false
+      - bootstrap.memory_lock=false
+    entrypoint: ["/bin/sh", "-c", "export OPENSEARCH_INITIAL_ADMIN_PASSWORD=$(cat /run/keys/opensearch.pass) && exec /usr/share/opensearch/opensearch-docker-entrypoint.sh"]
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+    volumes:
+      - ${DATA_PATH:-./.data}/opensearch:/usr/share/opensearch/data
+      - ${DATA_PATH:-./.data}/keys:/run/keys:ro
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL",
+            "curl -sk -u \"admin:$(cat /run/keys/opensearch.pass)\" https://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 120s
+
+
+  backend:
+    image: ${REGISTRY:-agience}/agience-backend:${VERSION:-latest}
+    container_name: backend
+    restart: unless-stopped
+    environment:
+      - BUILD_INFO_PATH=/app/build_info.json
+      - ARANGO_HOST=${ARANGO_HOST:-graph}
+      - OPENSEARCH_HOST=${OPENSEARCH_HOST:-search}
+      - AGIENCE_SERVER_HOST_URI=${AGIENCE_SERVER_HOST_URI:-http://servers:8082}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-agience}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - KEYS_DIR=/app/.data/keys
+    volumes:
+      - ${DATA_PATH:-./.data}/keys:/app/.data/keys:ro
+    depends_on:
+      content:
+        condition: service_healthy
+      graph:
+        condition: service_healthy
+      search:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/version', timeout=2).read()\" >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  frontend:
+    image: ${REGISTRY:-agience}/agience-frontend:${VERSION:-latest}
+    container_name: frontend
+    restart: unless-stopped
+    environment:
+      VITE_BACKEND_URI: ${VITE_BACKEND_URI:-http://localhost:8081}
+      VITE_CLIENT_ID: ${VITE_CLIENT_ID:-}
+      VITE_TITLE: ${VITE_TITLE:-Agience}
+      VITE_FAVICON: ${VITE_FAVICON:-/favicon.ico}
+    depends_on:
+      backend:
+        condition: service_healthy

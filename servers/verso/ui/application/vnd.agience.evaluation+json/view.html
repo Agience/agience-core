@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Evaluation</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5; }
+  .container { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .header { display: flex; align-items: center; gap: 8px; }
+  .icon { flex-shrink: 0; color: #fbbf24; }
+  .title { font-size: 14px; font-weight: 500; color: #111827; }
+  .score-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; }
+  .score-main { font-size: 32px; font-weight: 700; color: #b45309; line-height: 1; }
+  .score-denom { font-size: 18px; color: #d97706; }
+  .score-pct { font-size: 12px; color: #d97706; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: #9ca3af; font-weight: 500; padding-bottom: 4px; border-bottom: 1px solid #f3f4f6; }
+  th.right, td.right { text-align: right; }
+  tr { border-bottom: 1px solid #f9fafb; }
+  tr:last-child { border-bottom: none; }
+  td { padding: 5px 0; color: #374151; }
+  td.notes { color: #9ca3af; font-size: 11px; }
+  td.mono { font-family: 'SF Mono','Fira Code',monospace; }
+  .meta { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: #9ca3af; margin-top: auto; }
+  .empty { font-size: 13px; color: #9ca3af; font-style: italic; padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="empty">Loading…</div>
+</div>
+<script>
+let _nextId = 1;
+const _pending = {};
+function sendRpc(method, params) {
+  return new Promise((resolve, reject) => {
+    const id = _nextId++;
+    _pending[id] = { resolve, reject };
+    window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+  });
+}
+function sendNotification(method, params) {
+  window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+}
+window.addEventListener('message', (e) => {
+  if (!e.data || e.data.jsonrpc !== '2.0') return;
+  if (typeof e.data.id === 'number' && _pending[e.data.id]) {
+    const { resolve, reject } = _pending[e.data.id];
+    delete _pending[e.data.id];
+    if (e.data.error) reject(new Error(e.data.error.message));
+    else resolve(e.data.result);
+  }
+  if (e.data.method === 'ui/notifications/tool-result') handleToolResult(e.data.params);
+});
+
+let _artifact = null;
+sendRpc('ui/initialize', {}).then(() => { sendNotification('ui/notifications/initialized', {}); });
+
+function handleToolResult(params) {
+  try {
+    const data = JSON.parse(params?.content?.[0]?.text);
+    if (data?.artifact_id) { _artifact = data; render(); }
+  } catch {}
+}
+
+function ctx() {
+  if (!_artifact) return {};
+  try { return typeof _artifact.context === 'string' ? JSON.parse(_artifact.context) : (_artifact.context || {}); }
+  catch { return {}; }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+
+function render() {
+  const app = document.getElementById('app');
+  if (!_artifact) return;
+  const c = ctx();
+  const criteria = Array.isArray(c.criteria) ? c.criteria : [];
+  const pct = c.overall_max ? Math.round(((c.overall_score || 0) / c.overall_max) * 100) : null;
+
+  app.innerHTML = `
+    <div class="header">
+      <svg class="icon" width="15" height="15" fill="currentColor" viewBox="0 0 24 24">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      <span class="title">${esc(c.title || 'Evaluation')}</span>
+    </div>
+    ${c.overall_max != null ? `
+      <div class="score-hero">
+        <div class="score-main">${esc(c.overall_score ?? '—')}<span class="score-denom">/${esc(c.overall_max)}</span></div>
+        ${pct != null ? `<div class="score-pct">${pct}%</div>` : ''}
+      </div>` : ''}
+    ${criteria.length > 0 ? `
+      <table>
+        <thead><tr><th>Criterion</th><th class="right">Score</th></tr></thead>
+        <tbody>
+          ${criteria.map(c => `
+            <tr>
+              <td>
+                <div>${esc(c.name)}</div>
+                ${c.notes ? `<div class="notes">${esc(c.notes)}</div>` : ''}
+              </td>
+              <td class="right mono">${esc(c.score)}/${esc(c.max_score)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>` : ''}
+    <div class="meta">
+      ${c.evaluator ? `<span>Evaluator: ${esc(c.evaluator)}</span>` : ''}
+      ${c.model ? `<span>Model: ${esc(c.model)}</span>` : ''}
+      ${c.evaluated_at ? `<span>${new Date(c.evaluated_at).toLocaleString()}</span>` : ''}
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

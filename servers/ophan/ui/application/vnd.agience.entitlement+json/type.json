@@ -1,0 +1,41 @@
+{
+  "content_type": "application/vnd.agience.entitlement+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "A commercial entitlement record describing what an operator is allowed to run and govern.",
+  "context_schema": {
+    "entitlement_id": "string \u2014 entitlement identifier",
+    "account_id": "string \u2014 operator or billing account",
+    "policy_id": "string \u2014 commercial policy identifier",
+    "profile": "string \u2014 target packaging profile",
+    "runtime_roles": "string[] \u2014 runtime roles allowed under this entitlement",
+    "required_entitlements": "string[] \u2014 entitlements required for this profile",
+    "operator": "object \u2014 verified operator identity and derived entitlements used to authorize the operation",
+    "branding_scope": "string[] \u2014 branding or white-label surfaces in scope",
+    "downstream_customer": "string? \u2014 downstream customer name or reference",
+    "state": "string \u2014 active | pending | suspended | revoked",
+    "issued_at": "string \u2014 ISO 8601 timestamp",
+    "expires_at": "string? \u2014 ISO 8601 timestamp"
+  },
+  "ui": {
+    "label": "Entitlement",
+    "icon": "key-round",
+    "color": "#2563eb",
+    "badge_class": "bg-blue-100 text-blue-800",
+    "tile_class": "ring-1 ring-blue-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "description": "Commercial entitlement record owned by Ophan."
+  }
+}

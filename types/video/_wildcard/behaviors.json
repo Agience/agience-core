@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "events": {
+    "upload_complete": {
+      "tool": "transcribe_artifact",
+      "server_artifact_id": "verso"
+    }
+  }
+}

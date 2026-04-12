@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Key Viewer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f9fafb; color: #1f2937; font-size: 14px; line-height: 1.5;
+    }
+    .container { max-width: 560px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Header */
+    .header { display: flex; align-items: center; gap: 8px; }
+    .header svg { color: #b45309; flex-shrink: 0; }
+    .header .title { font-size: 14px; font-weight: 600; color: #1f2937; }
+
+    /* Section label */
+    .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 6px; }
+
+    /* Copyable row */
+    .copy-row {
+      display: flex; align-items: center; gap: 8px;
+      background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px;
+    }
+    .copy-row code { flex: 1; font-size: 12px; font-family: 'SF Mono', Monaco, Consolas, monospace; color: #374151; word-break: break-all; }
+    .copy-btn {
+      flex-shrink: 0; background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; color: #9ca3af;
+    }
+    .copy-btn:hover { background: #e5e7eb; color: #374151; }
+    .copy-btn.copied { color: #16a34a; }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 10px;
+      border-radius: 6px; font-weight: 500;
+    }
+    .status-badge.none { background: #f3f4f6; color: #6b7280; }
+    .status-badge.stored { background: #dcfce7; color: #166534; }
+    .status-badge.revealed { background: #fef3c7; color: #92400e; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-dot.none { background: #d1d5db; }
+    .status-dot.stored { background: #22c55e; }
+    .status-dot.revealed { background: #f59e0b; }
+
+    /* Form */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 12px; font-weight: 500; color: #374151; }
+    input, select, textarea {
+      width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px;
+      font-size: 13px; outline: none; font-family: inherit; background: white;
+    }
+    textarea { resize: vertical; }
+    input:focus, select:focus, textarea:focus { border-color: #b45309; box-shadow: 0 0 0 2px rgba(180,83,9,0.15); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border-radius: 8px; padding: 10px 16px; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s; border: none; font-family: inherit;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-generate {
+      width: 100%; border: 2px dashed #d1d5db; background: transparent; color: #6b7280;
+    }
+    .btn-generate:hover:not(:disabled) { border-color: #9ca3af; color: #374151; background: #f9fafb; }
+    .btn-rotate {
+      background: none; border: none; padding: 4px 8px; font-size: 12px; color: #6b7280; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn-rotate:hover { color: #374151; }
+
+    /* Warning */
+    .warning {
+      display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #92400e;
+      background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px;
+    }
+    .warning strong { font-weight: 600; }
+
+    /* Error */
+    .error {
+      display: flex; align-items: center; gap: 8px; font-size: 12px; color: #dc2626;
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 12px;
+    }
+
+    /* Card */
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+
+    /* Info row */
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+    .info-row:not(:last-child) { border-bottom: 1px solid #f3f4f6; }
+    .info-label { font-size: 12px; font-weight: 500; color: #6b7280; }
+    .info-value { font-size: 13px; color: #1f2937; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container" id="app">
+    <!-- Header -->
+    <div class="header">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+      <span class="title" id="headerTitle">API Key</span>
+    </div>
+
+    <!-- Key Info -->
+    <div class="card" id="keyInfo">
+      <div class="info-row" style="align-items:flex-start">
+        <span class="info-label" style="padding-top:2px">Scopes</span>
+        <span class="info-value" id="keyScope" style="white-space:pre-line;font-size:11px;font-family:monospace;text-align:right">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Status</span>
+        <span id="keyStatusBadge">
+          <span class="status-badge none"><span class="status-dot none"></span>No key</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="error hidden" id="errorBox">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <span id="errorText"></span>
+    </div>
+
+    <!-- State 1: No key — creation form -->
+    <div id="createSection" class="hidden">
+      <div class="label">Generate Key</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="form-group">
+          <label>Scopes <span style="font-weight:400;color:#9ca3af">— one per line</span></label>
+          <textarea id="inputScopes" rows="4" placeholder="resource:*:read&#10;resource:*:write&#10;resource:*:search"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Collections <span style="font-weight:400;color:#9ca3af">— IDs, one per line (blank = all)</span></label>
+          <textarea id="inputCollections" rows="2" placeholder="collection-id"></textarea>
+        </div>
+        <button class="btn btn-generate" id="generateBtn" onclick="handleGenerate()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          <span id="generateBtnText">Generate Key</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- State 2: Key just revealed -->
+    <div id="revealSection" class="hidden">
+      <div class="label">Bearer Token</div>
+      <div class="copy-row">
+        <code id="revealedKey" style="user-select:all"></code>
+        <button class="copy-btn" onclick="copyText('revealedKey')" id="copyKeyBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        </button>
+      </div>
+      <div class="warning" style="margin-top:8px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span><strong>Save this key now.</strong> It will not be shown again.</span>
+      </div>
+      <button class="btn-rotate" onclick="handleRotate()" style="margin-top:8px" id="rotateBtn1">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+        <span>Rotate key</span>
+      </button>
+    </div>
+
+    <!-- State 3: Key stored, not revealed -->
+    <div id="storedSection" class="hidden">
+      <div class="label">Bearer Token</div>
+      <div class="copy-row">
+        <code style="color:#9ca3af;letter-spacing:0.15em">&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;</code>
+      </div>
+      <button class="btn-rotate" onclick="handleRotate()" style="margin-top:8px" id="rotateBtn2">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+        <span>Rotate key</span>
+      </button>
+    </div>
+  </div>
+
+  <script type="module">
+    // =========================================================================
+    // MCP Apps client
+    // =========================================================================
+    let _rpcId = 0;
+    const _pending = {};
+    function sendRpc(method, params) {
+      const id = ++_rpcId;
+      return new Promise((resolve, reject) => {
+        _pending[id] = { resolve, reject };
+        parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+      });
+    }
+    function sendNotification(method, params) {
+      parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+    }
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || d.jsonrpc !== '2.0') return;
+      if (d.id && _pending[d.id]) {
+        if (d.error) _pending[d.id].reject(d.error);
+        else _pending[d.id].resolve(d.result);
+        delete _pending[d.id];
+        return;
+      }
+      if (d.method === 'ui/notifications/tool-result') handleToolResult(d.params);
+      if (d.method === 'ui/notifications/host-context-changed') handleHostContext(d.params);
+    });
+
+    // Initialize
+    sendRpc('ui/initialize', {
+      protocolVersion: '2026-01-26',
+      clientInfo: { name: 'agience-viewer', version: '0.1.0' }
+    }).then(result => {
+      if (result.hostContext) handleHostContext(result.hostContext);
+      sendNotification('ui/notifications/initialized');
+      render(); // show initial state before first tool-result arrives
+    });
+
+    // =========================================================================
+    // State
+    // =========================================================================
+    let artifactId = null;
+    let artifactContext = {};
+    let revealedKeyValue = null;
+    let working = false;
+
+    // =========================================================================
+    // Host data handlers
+    // =========================================================================
+    function handleToolResult(params) {
+      if (!params || !params.content) return;
+      for (const block of params.content) {
+        if (block.type === 'text' && block.text) {
+          try {
+            const data = JSON.parse(block.text);
+            artifactId = data.artifact_id || artifactId;
+            const rawCtx = data.context;
+            artifactContext = typeof rawCtx === 'string' ? JSON.parse(rawCtx) : (rawCtx || {});
+            render();
+          } catch { /* ignore */ }
+        }
+      }
+    }
+
+    function handleHostContext(ctx) {
+      // Could apply theme, locale, etc. in the future.
+    }
+
+    // =========================================================================
+    // Rendering
+    // =========================================================================
+    function render() {
+      const ctx = artifactContext;
+      const keyMeta = ctx.key || {};
+      const hasKeyStored = Boolean(keyMeta.api_key_id);
+
+      // Header title
+      document.getElementById('headerTitle').textContent = ctx.title || 'API Key';
+
+      // Key info card
+      const scopes = keyMeta.scopes;
+      document.getElementById('keyScope').textContent = scopes?.length ? scopes.join('\n') : '—';
+
+      // Status badge
+      const badgeEl = document.getElementById('keyStatusBadge');
+      if (revealedKeyValue) {
+        badgeEl.innerHTML = '<span class="status-badge revealed"><span class="status-dot revealed"></span>Just generated</span>';
+      } else if (hasKeyStored) {
+        badgeEl.innerHTML = '<span class="status-badge stored"><span class="status-dot stored"></span>Stored</span>';
+      } else {
+        badgeEl.innerHTML = '<span class="status-badge none"><span class="status-dot none"></span>No key</span>';
+      }
+
+      // Section visibility
+      document.getElementById('createSection').classList.toggle('hidden', hasKeyStored || !!revealedKeyValue);
+      document.getElementById('revealSection').classList.toggle('hidden', !revealedKeyValue);
+      document.getElementById('storedSection').classList.toggle('hidden', !hasKeyStored || !!revealedKeyValue);
+
+      if (revealedKeyValue) {
+        document.getElementById('revealedKey').textContent = revealedKeyValue;
+      }
+    }
+
+    // =========================================================================
+    // Actions
+    // =========================================================================
+    window.handleGenerate = async function() {
+      const name = artifactContext.title || 'api-key';
+      const scopes = document.getElementById('inputScopes').value.split('\n').map(s => s.trim()).filter(Boolean);
+      const collectionIds = document.getElementById('inputCollections').value.split('\n').map(s => s.trim()).filter(Boolean);
+      const resource_filters = {};
+      if (collectionIds.length) resource_filters.collections = collectionIds;
+      clearError();
+      setWorking(true);
+      try {
+        const args = { name };
+        if (scopes.length) args.scopes = scopes;
+        if (Object.keys(resource_filters).length) args.resource_filters = resource_filters;
+        const result = await sendRpc('tools/call', {
+          name: 'create_api_key',
+          arguments: args
+        });
+        // Parse the result to get key value
+        const resultText = result?.content?.[0]?.text;
+        if (resultText) {
+          const created = JSON.parse(resultText);
+          revealedKeyValue = created.key;
+          // Persist key metadata in artifact context
+          const updatedContext = {
+            ...artifactContext,
+            key: { api_key_id: created.id, name, scopes, resource_filters }
+          };
+          artifactContext = updatedContext;
+          await sendRpc('tools/call', {
+            name: 'update_artifact',
+            arguments: { id: artifactId, patch: { context: JSON.stringify(updatedContext) } }
+          });
+          render();
+        }
+      } catch (err) {
+        showError(err.message || 'Failed to generate key.');
+      } finally {
+        setWorking(false);
+      }
+    };
+
+    window.handleRotate = async function() {
+      clearError();
+      setWorking(true);
+      try {
+        const keyMeta = artifactContext.key || {};
+        // Delete the old key if present
+        if (keyMeta.api_key_id) {
+          try {
+            await sendRpc('tools/call', { name: 'delete_api_key', arguments: { id: keyMeta.api_key_id } });
+          } catch { /* ignore deletion errors */ }
+        }
+        const keyName = artifactContext.title || keyMeta.name || 'api-key';
+        const scopes = keyMeta.scopes || [];
+        const resource_filters = keyMeta.resource_filters || {};
+        const args = { name: keyName };
+        if (scopes.length) args.scopes = scopes;
+        if (Object.keys(resource_filters).length) args.resource_filters = resource_filters;
+        const result = await sendRpc('tools/call', {
+          name: 'create_api_key',
+          arguments: args
+        });
+        const resultText = result?.content?.[0]?.text;
+        if (resultText) {
+          const created = JSON.parse(resultText);
+          revealedKeyValue = created.key;
+          const updatedContext = {
+            ...artifactContext,
+            key: { api_key_id: created.id, name: keyName, scopes, resource_filters }
+          };
+          artifactContext = updatedContext;
+          await sendRpc('tools/call', {
+            name: 'update_artifact',
+            arguments: { id: artifactId, patch: { context: JSON.stringify(updatedContext) } }
+          });
+          render();
+        }
+      } catch (err) {
+        showError(err.message || 'Failed to rotate key.');
+      } finally {
+        setWorking(false);
+      }
+    };
+
+    window.copyText = function(elementId) {
+      const text = document.getElementById(elementId).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copyKeyBtn');
+        if (btn) {
+          btn.classList.add('copied');
+          setTimeout(() => btn.classList.remove('copied'), 2000);
+        }
+      });
+    };
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+    function showError(msg) {
+      const box = document.getElementById('errorBox');
+      document.getElementById('errorText').textContent = msg;
+      box.classList.remove('hidden');
+    }
+    function clearError() {
+      document.getElementById('errorBox').classList.add('hidden');
+    }
+    function setWorking(v) {
+      working = v;
+      const btn = document.getElementById('generateBtn');
+      if (btn) {
+        btn.disabled = v;
+        document.getElementById('generateBtnText').textContent = v ? 'Generating...' : 'Generate Key';
+      }
+    }
+  </script>
+</body>
+</html>

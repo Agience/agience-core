@@ -1,0 +1,55 @@
+# Node / Vite
+node_modules
+dist
+dist-ssr
+.vite
+*.local
+*.log
+
+# Git & VCS
+.git
+.gitignore
+.gitattributes
+
+# Editor/IDE
+.vscode
+.idea
+.DS_Store
+*.swp
+
+# Claude Code worktrees
+.claude/
+
+# Env files
+.env
+.env.*
+
+# Python (if relevant to your project)
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Test artifacts & coverage
+coverage/
+*.lcov
+*.log
+
+# Docker-related
+Dockerfile
+.dockerignore
+
+# Cache / OS
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Data
+.data/
+
+# Backend: exclude backend test artifacts or temp files
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.log

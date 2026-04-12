@@ -1,0 +1,28 @@
+{
+  "content_type": "application/vnd.agience.person+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Agience Person",
+  "ui": {
+    "label": "Person",
+    "icon": "user",
+    "color": "#06b6d4",
+    "badge_class": "bg-cyan-100 text-cyan-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": null
+  }
+}

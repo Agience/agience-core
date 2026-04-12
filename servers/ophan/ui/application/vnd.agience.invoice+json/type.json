@@ -1,0 +1,39 @@
+{
+  "content_type": "application/vnd.agience.invoice+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "An invoice \u2014 accounts receivable record with line items, amounts, and payment tracking. Created by Ophan's create_invoice tool.",
+  "context_schema": {
+    "invoice_number": "string \u2014 unique invoice identifier",
+    "issuer": "string \u2014 issuer name or artifact ID",
+    "recipient": "string \u2014 recipient name or artifact ID",
+    "line_items": "object[] \u2014 [{description: string, quantity: number, unit_price: string, amount: string}]",
+    "total": "string \u2014 total amount as a decimal string",
+    "currency": "string \u2014 ISO 4217 currency code",
+    "status": "string \u2014 draft | sent | paid | void",
+    "due_date": "string? \u2014 ISO 8601 date",
+    "issued_at": "string \u2014 ISO 8601 timestamp"
+  },
+  "ui": {
+    "label": "Invoice",
+    "icon": "receipt",
+    "color": "#6366f1",
+    "badge_class": "bg-indigo-100 text-indigo-800",
+    "tile_class": "ring-1 ring-indigo-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "description": "Invoice \u2014 accounts receivable with line items and payment status."
+  }
+}

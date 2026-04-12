@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.agience.io/artifacts/application/vnd.agience.stream+json",
+  "title": "Stream Source Artifact Context",
+  "description": "Validates artifact.context for application/vnd.agience.stream+json artifacts. Represents a live stream source (OBS, browser, etc.).",
+  "type": "object",
+  "required": ["type"],
+  "additionalProperties": true,
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "stream"
+    },
+    "stream_key": {
+      "type": "string",
+      "description": "OBS stream key in format {source_artifact_id}:{agc_api_key}."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "live", "ended"],
+      "description": "Current stream status. Updated by the stream gateway."
+    },
+    "ingest_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "RTMP ingest URL for the stream source."
+    },
+    "playback_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "HLS or WebRTC playback URL."
+    },
+    "transcript_artifact_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID of the latest transcript artifact (created on stream end)."
+    }
+  }
+}

@@ -1,0 +1,53 @@
+# agience-server-astra — Ingestion & Streaming service stack
+#
+# Services:
+#   stream  — SRS 5 RTMP/HLS ingest server
+#   astra   — FastMCP server exposing ingest / stream lifecycle tools
+#
+# Stream webhook routes (publish/unpublish) run on Astra itself.
+# Transcription is handled by Verso (transcribe_artifact tool).
+# AWS credentials are stored as Seraph Secrets per-user.
+#
+# Usage (from this directory):
+#   docker compose up -d
+#
+# Required env vars (set in .env or export before running):
+#   AGIENCE_API_URI          — URL of the agience-core backend (e.g. https://api.example.com)
+#   AGIENCE_API_KEY          — Bearer token for authenticating with the platform
+
+services:
+
+  stream:
+    image: ${STREAM_IMAGE:-agience/astra-stream:latest}
+    build:
+      context: .
+      dockerfile: stream/Dockerfile
+    container_name: astra-stream
+    restart: unless-stopped
+    environment:
+      - BACKEND_URI=${ASTRA_WEBHOOK_URI:-http://astra:8087}
+    volumes:
+      - ${HOST_DATA_PATH:-./data}/stream:/var/stream
+    ports:
+      - "${STREAM_RTMP_PORT:-1936}:1936"
+      - "${STREAM_HTTP_PORT:-1985}:1985"
+
+  astra:
+    image: ${ASTRA_IMAGE:-${REGISTRY:-agience}/agience-server-astra:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: astra
+    restart: unless-stopped
+    depends_on:
+      - stream
+    environment:
+      - AGIENCE_API_URI=${AGIENCE_API_URI:-http://host.docker.internal:8081}
+      - AGIENCE_API_KEY=${AGIENCE_API_KEY}
+      - SRS_HTTP_API=${SRS_HTTP_API:-http://stream:1985}
+      - STREAM_BASE_URL=${STREAM_BASE_URL:-http://stream:1985/live}
+      - MCP_TRANSPORT=${MCP_TRANSPORT:-streamable-http}
+      - MCP_HOST=${MCP_HOST:-0.0.0.0}
+      - MCP_PORT=${MCP_PORT:-8087}
+    ports:
+      - "${MCP_PORT:-8087}:8087"

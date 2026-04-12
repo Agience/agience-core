@@ -1,0 +1,28 @@
+{
+  "content_type": "application/vnd.agience.mcp-client+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "MCP Client \u2014 connects an MCP-compatible client (VS Code, Claude Desktop, etc.) to this workspace via a scoped API key",
+  "ui": {
+    "label": "MCP Client",
+    "icon": "plug",
+    "color": "#6d28d9",
+    "badge_class": "bg-violet-100 text-violet-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "mcp-client"
+  }
+}

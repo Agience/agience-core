@@ -1,0 +1,53 @@
+{
+  "schema_version": "1",
+  "control_classes": {
+    "dev-local": {
+      "description": "Local developer posture for non-commercial development and testing",
+      "requires_signed_license": false,
+      "allows_white_label": false,
+      "allows_oem_redistribution": false,
+      "default_meter_dimensions": [],
+      "enforcement_profile": "dev-local"
+    },
+    "community-self-host": {
+      "description": "Below-threshold or community self-host posture",
+      "requires_signed_license": false,
+      "allows_white_label": false,
+      "allows_oem_redistribution": false,
+      "default_meter_dimensions": ["mai"],
+      "enforcement_profile": "community"
+    },
+    "commercial-self-host": {
+      "description": "Commercial self-host posture for standard hosted distributions",
+      "requires_signed_license": true,
+      "allows_white_label": false,
+      "allows_oem_redistribution": false,
+      "default_meter_dimensions": ["mai"],
+      "enforcement_profile": "commercial-self-host"
+    },
+    "white-label": {
+      "description": "Commercial posture permitting explicit branded product surfaces",
+      "requires_signed_license": true,
+      "allows_white_label": true,
+      "allows_oem_redistribution": false,
+      "default_meter_dimensions": ["mai"],
+      "enforcement_profile": "white-label"
+    },
+    "oem-embedded": {
+      "description": "Commercial posture permitting redistribution or embedded delivery",
+      "requires_signed_license": true,
+      "allows_white_label": true,
+      "allows_oem_redistribution": true,
+      "default_meter_dimensions": ["mad"],
+      "enforcement_profile": "oem-embedded"
+    },
+    "relay-client": {
+      "description": "Commercial or managed posture for relay and companion runtimes",
+      "requires_signed_license": true,
+      "allows_white_label": false,
+      "allows_oem_redistribution": false,
+      "default_meter_dimensions": ["mad"],
+      "enforcement_profile": "relay-client"
+    }
+  }
+}

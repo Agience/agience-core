@@ -1,0 +1,7 @@
+{
+  "capability": "preview",
+  "implementation": {
+    "kind": "builtin",
+    "id": "json.preview"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "content_type": "application/vnd.agience.host+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "A compute environment that runs MCP servers. May be a desktop, browser, mobile device, embedded hardware, remote server, or the integrated Agience Core instance.",
+  "context_schema": {
+    "title": { "type": "string" },
+    "platform": {
+      "type": "enum",
+      "values": ["desktop", "browser", "android", "rpi", "server", "integrated"],
+      "description": "Runtime environment type. 'integrated' means all servers run in-process within Agience Core."
+    },
+    "servers": {
+      "type": "array",
+      "items": "string",
+      "description": "Names of MCP servers registered on this host."
+    },
+    "relay_url": {
+      "type": "string",
+      "description": "WebSocket relay URL for non-integrated hosts that connect via the desktop relay. Omitted for platform='integrated'."
+    },
+    "authority": {
+      "type": "object",
+      "description": "Reference to the authority artifact this host operates under."
+    }
+  },
+  "ui": {
+    "label": "Host",
+    "icon": "monitor",
+    "color": "#64748b",
+    "badge_class": "bg-slate-100 text-slate-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "host"
+  }
+}

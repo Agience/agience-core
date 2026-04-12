@@ -1,0 +1,75 @@
+{
+  "$schema": "https://schemas.agience.io/mcp-server/v1/mcp.json",
+  "schema_version": "1",
+  "name": "agience-server-sage",
+  "display_name": "Sage — Research & Retrieval",
+  "description": "Hybrid semantic + keyword search, evidence-backed synthesis, and optional projection into Azure AI Search.",
+  "version": "0.1.0",
+  "image": "ghcr.io/agience/agience-server-sage:latest",
+  "endpoints": {
+    "streamable_http": "/mcp"
+  },
+  "tools": [
+    {
+      "name": "search",
+      "description": "Hybrid semantic + keyword search across workspaces and collections"
+    },
+    {
+      "name": "get_artifact",
+      "description": "Fetch an artifact by ID with full context"
+    },
+    {
+      "name": "browse_collections",
+      "description": "List and explore committed collections"
+    },
+    {
+      "name": "search_azure",
+      "description": "Search via an Azure AI Search index (BYOK connector)"
+    },
+    {
+      "name": "index_to_azure",
+      "description": "Project workspace artifacts into an Azure AI Search index"
+    },
+    {
+      "name": "research",
+      "description": "Multi-step retrieval + LLM synthesis constrained by evidence"
+    },
+    {
+      "name": "cite_sources",
+      "description": "Produce provenance receipts for a synthesised answer"
+    },
+    {
+      "name": "ask",
+      "description": "Ask a question with optional artifact context — search + synthesise"
+    },
+    {
+      "name": "extract_information",
+      "description": "Extract structured fields from an artifact's content using a schema"
+    },
+    {
+      "name": "generate_meeting_insights",
+      "description": "Derive meeting summary, action items, and coaching from a transcript artifact"
+    }
+  ],
+  "resources": [
+    {
+      "uri_template": "agience://workspaces/{workspace_id}/artifacts",
+      "description": "Browse artifacts in a workspace"
+    },
+    {
+      "uri_template": "agience://collections/{collection_id}/artifacts",
+      "description": "Browse committed artifacts in a collection"
+    }
+  ],
+  "prompts": [],
+  "artifact_types": [
+    "application/vnd.agience.research+json"
+  ],
+  "config": {
+    "env": {
+      "AGIENCE_API_URI": { "description": "Base URI of the agience-core backend", "required": true },
+      "AGIENCE_API_KEY": { "description": "Platform API key (Bearer token)", "required": true },
+      "MCP_PORT": { "description": "HTTP port for the MCP server", "default": "8084" }
+    }
+  }
+}

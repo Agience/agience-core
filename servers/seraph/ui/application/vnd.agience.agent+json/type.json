@@ -1,0 +1,28 @@
+{
+  "content_type": "application/vnd.agience.agent+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Agience Agent",
+  "ui": {
+    "label": "Agent",
+    "icon": "cpu",
+    "color": "#3b82f6",
+    "badge_class": "bg-blue-100 text-blue-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": null
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "content_type": "text/plain",
+  "version": 1,
+  "extensions": [
+    ".txt"
+  ],
+  "inherits": [
+    "text/*"
+  ],
+  "description": "Plain text",
+  "ui": {
+    "version": 1,
+    "label": "Plain Text",
+    "icon": "file-text",
+    "color": "#6b7280",
+    "badge_class": "bg-gray-100 text-gray-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview",
+      "inline"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "edit",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "text-plain",
+    "layout": [
+      {
+        "group": "Basics",
+        "fields": [
+          "title",
+          "language"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "content_type": "application/vnd.agience.research+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "A research synthesis \u2014 question, search results from hybrid retrieval, and an LLM-generated answer grounded in artifact evidence. Produced by Sage's research and ask tools.",
+  "context_schema": {
+    "question": "string \u2014 the research question or query",
+    "answer": "string \u2014 LLM-synthesized answer grounded in the sources",
+    "sources": "object[] \u2014 [{artifact_id: string, excerpt: string, score: number}] evidence used",
+    "model": "string? \u2014 LLM model used for synthesis",
+    "created_at": "string \u2014 ISO 8601 timestamp"
+  },
+  "ui": {
+    "label": "Research",
+    "icon": "book-open",
+    "color": "#3b82f6",
+    "badge_class": "bg-blue-100 text-blue-800",
+    "tile_class": "ring-1 ring-blue-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "description": "Research synthesis \u2014 question, grounded answer, and source evidence."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "implementations": [
+    {
+      "id": "ophan-market-isolated",
+      "planes": ["workspace-window", "admin-control-plane"],
+      "delivery": "web-component",
+      "trust": "first-party",
+      "priority": 100,
+      "viewer_key": "ophan-market",
+      "bridge": "agience-card-v1"
+    }
+  ]
+}

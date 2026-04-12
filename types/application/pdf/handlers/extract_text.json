@@ -1,0 +1,5 @@
+{
+  "capability": "extract_text",
+  "tool": "document_text_extract",
+  "server": "astra"
+}

@@ -1,0 +1,33 @@
+{
+  "content_type": "application/vnd.agience.evaluation+json",
+  "version": "1.0",
+  "description": "Evaluation result artifact \u2014 scored assessment of another artifact's quality or accuracy.",
+  "context_schema": {
+    "subject_artifact_id": "string \u2014 artifact being evaluated",
+    "criteria": "array of { name, score, max_score, notes? }",
+    "overall_score": "number",
+    "overall_max": "number",
+    "evaluator": "string \u2014 human name or agent ID",
+    "model": "string | null \u2014 LLM model used if automated",
+    "evaluated_at": "string \u2014 ISO 8601 timestamp"
+  },
+  "ui": {
+    "label": "Evaluation",
+    "icon": "star",
+    "color": "#f59e0b",
+    "badge_class": "bg-amber-100 text-amber-800",
+    "tile_class": "ring-1 ring-amber-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "description": "Evaluation result \u2014 scored assessment of output quality with criteria breakdown."
+  }
+}

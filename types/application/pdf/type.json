@@ -1,0 +1,30 @@
+{
+  "content_type": "application/pdf",
+  "version": 1,
+  "extensions": [
+    ".pdf"
+  ],
+  "inherits": [
+    "application/*"
+  ],
+  "description": "PDF document",
+  "ui": {
+    "label": "PDF",
+    "icon": "file-text",
+    "color": "#dc2626",
+    "badge_class": "bg-red-100 text-red-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "viewer": "pdf"
+  }
+}

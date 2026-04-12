@@ -1,0 +1,39 @@
+{
+  "content_type": "application/vnd.agience.stream+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Agience Stream Source \u2014 persistent configuration artifact for a live stream input. Creating an artifact of this type in a workspace generates a stream key. When OBS (or any RTMP client) connects with that key, a session artifact is automatically created and configured agents are dispatched.",
+  "context_schema": {
+    "title": "string \u2014 display name for this stream source",
+    "stream.obs_api_key_id": "string \u2014 ID of the API key used to authenticate OBS; raw key is never stored, only derived at rotation time",
+    "stream.target_content_type": "string \u2014 MIME type for session artifacts created on stream start (default: video/mp4)",
+    "stream.agents": "string[] \u2014 agent artifact IDs (in the same workspace) to dispatch when a session ends",
+    "stream.sessions": "string[] \u2014 session artifact IDs created by this source, most recent last",
+    "stream.auto_transcribe": "boolean \u2014 when true, automatically transcribe completed stream sessions via Verso",
+    "stream.credential_artifact_id": "string \u2014 ID of an application/json credential artifact (aws_access_key_id / aws_secret_access_key / aws_region) managed by Seraph",
+    "stream.server_url": "string \u2014 RTMP ingest URL for this platform instance (set automatically on first key rotation)",
+    "stream.language_code": "string \u2014 AWS Transcribe language code (default: en-US)"
+  },
+  "ui": {
+    "label": "Stream Source",
+    "icon": "radio",
+    "color": "#ef4444",
+    "badge_class": "bg-red-100 text-red-800",
+    "tile_class": "ring-1 ring-red-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "description": "Live stream source \u2014 configure an RTMP stream input. Paste the stream key into OBS. Each stream start creates a session artifact and dispatches the configured agents."
+  }
+}

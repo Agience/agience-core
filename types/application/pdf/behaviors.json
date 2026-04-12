@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "events": {
+    "upload_complete": {
+      "tool": "document_text_extract",
+      "server_artifact_id": "astra"
+    }
+  }
+}

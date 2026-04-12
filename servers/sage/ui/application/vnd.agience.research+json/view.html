@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Research</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5; }
+  .container { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .header { display: flex; align-items: center; gap: 8px; }
+  .icon { flex-shrink: 0; color: #3b82f6; }
+  .title { font-size: 14px; font-weight: 600; color: #111827; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .model-label { font-size: 11px; color: #9ca3af; font-family: 'SF Mono','Fira Code',monospace; }
+  .section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 4px; }
+  .body-text { font-size: 13px; color: #374151; white-space: pre-wrap; line-height: 1.6; }
+  .sources { display: flex; flex-direction: column; gap: 6px; }
+  .source { background: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; gap: 3px; }
+  .source-header { display: flex; align-items: center; gap: 6px; }
+  .source-id { font-family: 'SF Mono','Fira Code',monospace; font-size: 11px; color: #1d4ed8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .source-score { font-size: 11px; color: #3b82f6; flex-shrink: 0; }
+  .source-excerpt { font-size: 12px; color: #4b5563; font-style: italic; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .empty { font-size: 13px; color: #9ca3af; font-style: italic; padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="empty">Loading…</div>
+</div>
+<script>
+let _nextId = 1;
+const _pending = {};
+function sendRpc(method, params) {
+  return new Promise((resolve, reject) => {
+    const id = _nextId++;
+    _pending[id] = { resolve, reject };
+    window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+  });
+}
+function sendNotification(method, params) {
+  window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+}
+window.addEventListener('message', (e) => {
+  if (!e.data || e.data.jsonrpc !== '2.0') return;
+  if (typeof e.data.id === 'number' && _pending[e.data.id]) {
+    const { resolve, reject } = _pending[e.data.id];
+    delete _pending[e.data.id];
+    if (e.data.error) reject(new Error(e.data.error.message));
+    else resolve(e.data.result);
+  }
+  if (e.data.method === 'ui/notifications/tool-result') handleToolResult(e.data.params);
+});
+
+let _artifact = null;
+sendRpc('ui/initialize', {}).then(() => { sendNotification('ui/notifications/initialized', {}); });
+
+function handleToolResult(params) {
+  try {
+    const data = JSON.parse(params?.content?.[0]?.text);
+    if (data?.artifact_id) { _artifact = data; render(); }
+  } catch {}
+}
+
+function ctx() {
+  if (!_artifact) return {};
+  try { return typeof _artifact.context === 'string' ? JSON.parse(_artifact.context) : (_artifact.context || {}); }
+  catch { return {}; }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+
+function render() {
+  const app = document.getElementById('app');
+  if (!_artifact) return;
+  const c = ctx();
+  const sources = Array.isArray(c.sources) ? c.sources : [];
+  const displayTitle = c.title || c.question || 'Research';
+
+  app.innerHTML = `
+    <div class="header">
+      <svg class="icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+      </svg>
+      <span class="title">${esc(displayTitle)}</span>
+      ${c.model ? `<span class="model-label">${esc(c.model)}</span>` : ''}
+    </div>
+    ${c.question ? `<div><div class="section-label">Question</div><p class="body-text">${esc(c.question)}</p></div>` : ''}
+    ${c.answer ? `<div><div class="section-label">Answer</div><p class="body-text">${esc(c.answer)}</p></div>` : ''}
+    ${sources.length > 0 ? `
+      <div>
+        <div class="section-label">Sources (${sources.length})</div>
+        <div class="sources">
+          ${sources.map(src => `
+            <div class="source">
+              <div class="source-header">
+                <span class="source-id">${esc(src.card_id || '')}</span>
+                ${src.score != null ? `<span class="source-score">${Math.round((src.score || 0) * 100)}%</span>` : ''}
+              </div>
+              ${src.excerpt ? `<p class="source-excerpt">${esc(src.excerpt)}</p>` : ''}
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+  `;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workspace Settings</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f9fafb; color: #1f2937; font-size: 14px; line-height: 1.5;
+    }
+    .container {
+      max-width: 480px; margin: 0 auto; padding: 20px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+
+    /* Save status */
+    .save-status {
+      text-align: right; height: 16px; font-size: 12px;
+    }
+    .save-status .saving { color: #3b82f6; }
+    .save-status .saved { color: #16a34a; }
+
+    /* Section */
+    .section { display: flex; flex-direction: column; gap: 4px; }
+    .section-label {
+      font-size: 12px; font-weight: 500; color: #6b7280;
+    }
+
+    /* Textarea */
+    textarea {
+      width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px;
+      font-size: 13px; outline: none; font-family: inherit; background: white;
+      resize: vertical; min-height: 80px; line-height: 1.5;
+    }
+    textarea:focus { border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15); }
+
+    /* Read-only text */
+    .readonly-text {
+      font-size: 13px; color: #374151; white-space: pre-wrap;
+    }
+    .readonly-text.empty {
+      color: #9ca3af; font-style: italic;
+    }
+
+    /* Dates grid */
+    .dates-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      padding-top: 16px; border-top: 1px solid #f3f4f6;
+    }
+    .date-block { display: flex; flex-direction: column; gap: 2px; }
+    .date-label { font-size: 12px; font-weight: 500; color: #6b7280; }
+    .date-value { font-size: 12px; color: #374151; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Save status -->
+    <div class="save-status" id="saveStatus"></div>
+
+    <!-- Description -->
+    <div class="section">
+      <label class="section-label">Description</label>
+      <!-- Edit mode -->
+      <textarea
+        id="descriptionEdit"
+        class="hidden"
+        placeholder="What is this workspace for?"
+        rows="4"
+      ></textarea>
+      <!-- View mode -->
+      <div id="descriptionView" class="readonly-text empty">No description</div>
+    </div>
+
+    <!-- Dates -->
+    <div class="dates-grid">
+      <div class="date-block">
+        <div class="date-label">Created</div>
+        <div class="date-value" id="createdDate">&mdash;</div>
+      </div>
+      <div class="date-block">
+        <div class="date-label">Modified</div>
+        <div class="date-value" id="modifiedDate">&mdash;</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // =========================================================================
+    // MCP Apps client
+    // =========================================================================
+    let _rpcId = 0;
+    const _pending = {};
+    function sendRpc(method, params) {
+      const id = ++_rpcId;
+      return new Promise((resolve, reject) => {
+        _pending[id] = { resolve, reject };
+        parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+      });
+    }
+    function sendNotification(method, params) {
+      parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+    }
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || d.jsonrpc !== '2.0') return;
+      if (d.id && _pending[d.id]) {
+        if (d.error) _pending[d.id].reject(d.error);
+        else _pending[d.id].resolve(d.result);
+        delete _pending[d.id];
+        return;
+      }
+      if (d.method === 'ui/notifications/tool-result') handleToolResult(d.params);
+      if (d.method === 'ui/notifications/host-context-changed') handleHostContext(d.params);
+    });
+
+    // Initialize
+    sendRpc('ui/initialize', {
+      protocolVersion: '2026-01-26',
+      clientInfo: { name: 'agience-viewer', version: '0.1.0' }
+    }).then(result => {
+      if (result.hostContext) handleHostContext(result.hostContext);
+      sendNotification('ui/notifications/initialized');
+    });
+
+    // =========================================================================
+    // State
+    // =========================================================================
+    let artifactId = null;
+    let artifactContext = {};
+    let artifactData = {};
+    let description = '';
+    let isEditable = true;
+    let saveTimer = null;
+    let lastSavedValue = null;
+
+    // =========================================================================
+    // Host data handlers
+    // =========================================================================
+    function handleToolResult(params) {
+      if (!params || !params.content) return;
+      for (const block of params.content) {
+        if (block.type === 'text' && block.text) {
+          try {
+            const data = JSON.parse(block.text);
+            artifactId = data.artifact_id || artifactId;
+            artifactContext = data.context || {};
+            artifactData = data;
+            description = artifactContext.description || '';
+            lastSavedValue = description;
+            render();
+          } catch { /* ignore */ }
+        }
+      }
+    }
+
+    function handleHostContext(ctx) {
+      // Future: apply theme, etc.
+    }
+
+    // =========================================================================
+    // Rendering
+    // =========================================================================
+    function formatDate(iso) {
+      if (!iso) return '\u2014';
+      try {
+        return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      } catch {
+        return '\u2014';
+      }
+    }
+
+    function render() {
+      const editEl = document.getElementById('descriptionEdit');
+      const viewEl = document.getElementById('descriptionView');
+
+      if (isEditable) {
+        editEl.classList.remove('hidden');
+        viewEl.classList.add('hidden');
+        editEl.value = description;
+      } else {
+        editEl.classList.add('hidden');
+        viewEl.classList.remove('hidden');
+        if (description) {
+          viewEl.textContent = description;
+          viewEl.classList.remove('empty');
+        } else {
+          viewEl.textContent = 'No description';
+          viewEl.classList.add('empty');
+        }
+      }
+
+      // Dates from the artifact data
+      document.getElementById('createdDate').textContent = formatDate(artifactData.created_time);
+      document.getElementById('modifiedDate').textContent = formatDate(artifactData.modified_time);
+    }
+
+    // =========================================================================
+    // Auto-save on blur with debounce
+    // =========================================================================
+    const editEl = document.getElementById('descriptionEdit');
+
+    editEl.addEventListener('input', () => {
+      description = editEl.value;
+      debouncedSave();
+    });
+
+    editEl.addEventListener('blur', () => {
+      // Save immediately on blur
+      if (description !== lastSavedValue) {
+        clearTimeout(saveTimer);
+        saveNow();
+      }
+    });
+
+    function debouncedSave() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        if (description !== lastSavedValue) {
+          saveNow();
+        }
+      }, 1200);
+    }
+
+    async function saveNow() {
+      const statusEl = document.getElementById('saveStatus');
+      statusEl.innerHTML = '<span class="saving">Saving...</span>';
+      try {
+        const updatedContext = { ...artifactContext, description };
+        await sendRpc('tools/call', {
+          name: 'update_artifact',
+          arguments: { id: artifactId, patch: { context: JSON.stringify(updatedContext) } }
+        });
+        artifactContext = updatedContext;
+        lastSavedValue = description;
+        statusEl.innerHTML = '<span class="saved">Saved</span>';
+        setTimeout(() => { statusEl.innerHTML = ''; }, 2000);
+      } catch (err) {
+        console.error('Save failed:', err);
+        statusEl.innerHTML = '<span style="color:#dc2626">Save failed</span>';
+      }
+    }
+  </script>
+</body>
+</html>

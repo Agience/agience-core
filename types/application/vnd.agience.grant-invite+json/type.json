@@ -1,0 +1,62 @@
+{
+  "content_type": "application/vnd.agience.grant-invite+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "A shareable access grant — owner creates an invite naming a target resource, grantee claims it with a token to receive an active grant. Unifies public link, email invite, and domain invite flows behind one artifact type.",
+  "operations": {
+    "create": {
+      "enabled": true,
+      "requires_grant": "create",
+      "dispatch": { "kind": "native", "target": "grant_invite_service.create_invite" },
+      "audit": true,
+      "emits": [
+        { "event": "invite.created", "phase": "after" }
+      ]
+    },
+    "read": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "artifact_crud" }
+    },
+    "delete": {
+      "enabled": true,
+      "requires_grant": "delete",
+      "dispatch": { "kind": "native", "target": "grant_invite_service.revoke_invite" },
+      "emits": [
+        { "event": "invite.revoked", "phase": "after" }
+      ]
+    },
+    "claim": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "native", "target": "grant_invite_service.claim_invite" },
+      "audit": true,
+      "emits": [
+        { "event": "invite.claimed", "phase": "after" }
+      ]
+    },
+    "share": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "native", "target": "grant_invite_service.generate_share_link" },
+      "emits": [
+        { "event": "invite.shared", "phase": "after" }
+      ]
+    }
+  },
+  "ui": {
+    "label": "Invite",
+    "icon": "link",
+    "color": "#10b981",
+    "badge_class": "bg-emerald-100 text-emerald-800",
+    "modes": [ "floating" ],
+    "states": [ "view" ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": null
+  }
+}

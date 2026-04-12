@@ -1,0 +1,7 @@
+{
+  "capability": "properties",
+  "implementation": {
+    "kind": "builtin",
+    "id": "markdown.properties"
+  }
+}

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>License Usage</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; color: #1e293b; background: #fff; line-height: 1.5; }
+  .container { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .header { display: flex; align-items: flex-start; gap: 10px; }
+  .icon-wrap { background: #f9fafb; border-radius: 10px; padding: 7px; flex-shrink: 0; box-shadow: inset 0 0 0 1px #e5e7eb; }
+  .header-text { flex: 1; min-width: 0; }
+  .title { font-size: 13px; font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .subtitle { font-size: 11px; color: #6b7280; margin-top: 1px; }
+  .badge { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 9999px; text-transform: capitalize; white-space: nowrap; }
+  .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }
+  .field { display: flex; flex-direction: column; gap: 2px; }
+  .field-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
+  .field-value { font-size: 12px; color: #111827; word-break: break-all; }
+  .obj-block { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; }
+  .obj-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 4px; }
+  .obj-pre { font-family: 'SF Mono','Fira Code',monospace; font-size: 11px; color: #374151; white-space: pre-wrap; }
+  .summary-box { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; }
+  .summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 4px; font-weight: 600; }
+  .summary-text { font-size: 12px; color: #374151; line-height: 1.6; white-space: pre-wrap; }
+  .empty { font-size: 13px; color: #9ca3af; font-style: italic; padding: 24px 0; text-align: center; }
+  .s-active{background:#d1fae5;color:#065f46} .s-recorded{background:#dbeafe;color:#1e40af}
+  .s-grace,.s-warning{background:#fef3c7;color:#92400e} .s-revoked,.s-needs-license{background:#fee2e2;color:#991b1b}
+  .s-expired{background:#e2e8f0;color:#334155} .s-pending{background:#e0f2fe;color:#075985}
+  .s-suspended{background:#ffedd5;color:#9a3412} .s-default{background:#f3f4f6;color:#4b5563}
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="empty">Loading…</div></div>
+<script>
+const VARIANT = {
+  label: 'Usage Snapshot',
+  iconColor: '#f97316',
+  iconPath: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  fields: ['account_id','license_id','captured_at','reporting_period','source_card_id'],
+  idField: 'usage_id',
+};
+let _nextId = 1; const _pending = {};
+function sendRpc(m, p) { return new Promise((res, rej) => { const id = _nextId++; _pending[id] = {resolve:res, reject:rej}; window.parent.postMessage({jsonrpc:'2.0',id,method:m,params:p},'*'); }); }
+function sendNotification(m, p) { window.parent.postMessage({jsonrpc:'2.0',method:m,params:p},'*'); }
+window.addEventListener('message', e => {
+  if (!e.data || e.data.jsonrpc !== '2.0') return;
+  if (typeof e.data.id === 'number' && _pending[e.data.id]) { const {resolve,reject} = _pending[e.data.id]; delete _pending[e.data.id]; e.data.error ? reject(new Error(e.data.error.message)) : resolve(e.data.result); }
+  if (e.data.method === 'ui/notifications/tool-result') handleToolResult(e.data.params);
+});
+let _artifact = null;
+sendRpc('ui/initialize', {}).then(() => sendNotification('ui/notifications/initialized', {}));
+function handleToolResult(p) { try { const d = JSON.parse(p?.content?.[0]?.text); if (d?.artifact_id) { _artifact = d; render(); } } catch {} }
+function ctx() { if (!_artifact) return {}; try { return typeof _artifact.context === 'string' ? JSON.parse(_artifact.context) : (_artifact.context || {}); } catch { return {}; } }
+function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+function fmtVal(v) { if (v == null || v === '') return '—'; if (Array.isArray(v)) return v.length ? v.join(', ') : '—'; if (typeof v === 'object') return JSON.stringify(v); return String(v); }
+function badgeCls(s) { return {'active':'s-active','recorded':'s-recorded','grace':'s-grace','warning':'s-warning','revoked':'s-revoked','expired':'s-expired','pending':'s-pending','suspended':'s-suspended','needs-license':'s-needs-license'}[s] || 's-default'; }
+function renderObj(label, obj) { if (!obj||typeof obj!=='object'||Array.isArray(obj)) return ''; return `<div class="obj-block"><div class="obj-label">${esc(label)}</div><pre class="obj-pre">${esc(JSON.stringify(obj,null,2))}</pre></div>`; }
+function render() {
+  const app = document.getElementById('app'); if (!_artifact) return;
+  const c = ctx();
+  const badge = c.state || c.compliance_state || c.severity || 'recorded';
+  const subtitle = c[VARIANT.idField] || VARIANT.label;
+  app.innerHTML = `
+    <div class="header">
+      <div class="icon-wrap"><svg width="16" height="16" fill="none" stroke="${esc(VARIANT.iconColor)}" stroke-width="2" viewBox="0 0 24 24">${VARIANT.iconPath}</svg></div>
+      <div class="header-text"><div class="title">${esc(c.title||VARIANT.label)}</div><div class="subtitle">${esc(subtitle)}</div></div>
+      <span class="badge ${badgeCls(badge)}">${esc(badge)}</span>
+    </div>
+    <div class="fields-grid">${VARIANT.fields.map(f=>`<div class="field"><div class="field-label">${esc(f.replace(/_/g,' '))}</div><div class="field-value">${esc(fmtVal(c[f]))}</div></div>`).join('')}</div>
+    ${renderObj('Usage', c.usage)}
+    ${renderObj('Details', c.details)}
+    ${_artifact.content ? `<div class="summary-box"><div class="summary-label">Summary</div><div class="summary-text">${esc(_artifact.content)}</div></div>` : ''}
+  `;
+}
+</script>
+</body>
+</html>

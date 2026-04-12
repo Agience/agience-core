@@ -1,0 +1,49 @@
+{
+  "$schema": "./profile.schema.json",
+  "schema_version": "1",
+  "profile": "relay-desktop",
+  "display_name": "Desktop Relay Distribution",
+  "runtime_role": "relay",
+  "product_surface": "relay-client",
+  "license_class": "relay-client",
+  "branding_scope": [],
+  "services": [
+    "relay-runtime",
+    "local-server-supervisor"
+  ],
+  "first_party_servers": [],
+  "required_operator_inputs": [
+    {
+      "name": "cloud_endpoint",
+      "kind": "url",
+      "required": true,
+      "description": "Agience Cloud endpoint used by the relay"
+    },
+    {
+      "name": "activation_token",
+      "kind": "token",
+      "required": false,
+      "secret": true,
+      "description": "Optional activation credential for online licensing"
+    }
+  ],
+  "generated_secrets": [
+    {
+      "name": "device_id",
+      "strategy": "random-uuid",
+      "storage": "local-state"
+    }
+  ],
+  "proxy_mode": "none",
+  "packaging_targets": ["desktop-installer"],
+  "meter_dimensions": ["mad"],
+  "offline_supported": true,
+  "required_entitlements": ["relay_distribution"],
+  "policy_refs": ["relay-desktop"],
+  "attributes": {
+    "supports_custom_domain": false,
+    "supports_white_label": false,
+    "supports_local_capability_approval": true
+  },
+  "extensions": {}
+}

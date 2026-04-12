@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agience://types/application/json/schema.json",
+  "title": "Application/JSON Metadata",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "title": { "type": "string" },
+    "json": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "schema_uri": { "type": "string", "description": "Optional JSON Schema $id or URL" },
+        "root_type": { "type": "string", "description": "Optional hint about expected root type" }
+      }
+    }
+  }
+}

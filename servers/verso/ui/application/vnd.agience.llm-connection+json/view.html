@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLM Connection</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5; }
+  .container { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .header { display: flex; align-items: center; gap: 8px; }
+  .icon { flex-shrink: 0; color: #7c3aed; }
+  .title { font-size: 14px; font-weight: 500; color: #111827; }
+  .provider-hero { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px; }
+  .provider-name { font-size: 20px; font-weight: 700; color: #5b21b6; line-height: 1; }
+  .model-name { font-size: 14px; color: #7c3aed; }
+  .tier-badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .tier-free { background: #ecfdf5; color: #059669; }
+  .tier-pro { background: #eff6ff; color: #2563eb; }
+  .tier-power { background: #fef3c7; color: #d97706; }
+  .tier-custom { background: #f3f4f6; color: #4b5563; }
+  .section-label { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: #9ca3af; font-weight: 500; padding-bottom: 4px; border-bottom: 1px solid #f3f4f6; }
+  th.right, td.right { text-align: right; }
+  tr { border-bottom: 1px solid #f9fafb; }
+  tr:last-child { border-bottom: none; }
+  td { padding: 5px 0; color: #374151; }
+  td.mono { font-family: 'SF Mono','Fira Code',monospace; font-size: 11px; }
+  .cap-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cap-tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; background: #f3f4f6; color: #374151; }
+  .cap-tag.active { background: #ede9fe; color: #7c3aed; }
+  .resolution { font-size: 12px; color: #6b7280; padding: 8px; background: #f9fafb; border-radius: 8px; }
+  .resolution .label { font-weight: 500; color: #374151; }
+  .meta { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: #9ca3af; margin-top: auto; }
+  .empty { font-size: 13px; color: #9ca3af; font-style: italic; padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="empty">Loading...</div>
+</div>
+<script>
+let _nextId = 1;
+const _pending = {};
+function sendRpc(method, params) {
+  return new Promise((resolve, reject) => {
+    const id = _nextId++;
+    _pending[id] = { resolve, reject };
+    window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+  });
+}
+function sendNotification(method, params) {
+  window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+}
+window.addEventListener('message', (e) => {
+  if (!e.data || e.data.jsonrpc !== '2.0') return;
+  if (typeof e.data.id === 'number' && _pending[e.data.id]) {
+    const { resolve, reject } = _pending[e.data.id];
+    delete _pending[e.data.id];
+    if (e.data.error) reject(new Error(e.data.error.message));
+    else resolve(e.data.result);
+  }
+  if (e.data.method === 'ui/notifications/tool-result') handleToolResult(e.data.params);
+});
+
+let _artifact = null;
+sendRpc('ui/initialize', {}).then(() => { sendNotification('ui/notifications/initialized', {}); });
+
+function handleToolResult(params) {
+  try {
+    const data = JSON.parse(params?.content?.[0]?.text);
+    if (data?.artifact_id) { _artifact = data; render(); }
+  } catch {}
+}
+
+function ctx() {
+  if (!_artifact) return {};
+  try { return typeof _artifact.context === 'string' ? JSON.parse(_artifact.context) : (_artifact.context || {}); }
+  catch { return {}; }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+
+const PROVIDER_LABELS = {
+  openai: 'OpenAI', anthropic: 'Anthropic', azure: 'Azure OpenAI',
+  google: 'Google AI', mistral: 'Mistral AI', local: 'Local (Ollama)'
+};
+
+function fmtNum(n) {
+  if (n == null) return '\u2014';
+  return n >= 1000000 ? (n / 1000000).toFixed(1) + 'M' : n >= 1000 ? (n / 1000).toFixed(0) + 'K' : String(n);
+}
+
+function render() {
+  const app = document.getElementById('app');
+  if (!_artifact) return;
+  const c = ctx();
+  const provider = c.provider || 'unknown';
+  const model = c.model || 'not configured';
+  const tier = c.tier || 'custom';
+  const tierClass = 'tier-' + tier;
+  const rl = c.rate_limits || {};
+  const caps = c.capabilities || {};
+  const cref = c.credentials_ref || {};
+
+  const capList = ['chat', 'reasoning', 'vision', 'function_calling']
+    .map(k => `<span class="cap-tag ${caps[k] ? 'active' : ''}">${esc(k.replace('_', ' '))}</span>`)
+    .join('');
+
+  const resLabel = cref.resolution === 'platform_default' ? 'Platform default'
+    : cref.resolution === 'user_secret' ? 'User-provided API key'
+    : cref.resolution === 'workspace_secret' ? 'Workspace secret'
+    : cref.resolution || 'Not configured';
+
+  app.innerHTML = `
+    <div class="header">
+      <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a8 8 0 0 0-8 8c0 3.4 2.1 6.3 5 7.5V20a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-2.5c2.9-1.2 5-4.1 5-7.5a8 8 0 0 0-8-8z"/>
+        <path d="M10 22h4"/>
+      </svg>
+      <span class="title">${esc(c.title || 'LLM Connection')}</span>
+    </div>
+    <div class="provider-hero">
+      <div class="provider-name">${esc(PROVIDER_LABELS[provider] || provider)}</div>
+      <div class="model-name">${esc(model)}</div>
+      <span class="tier-badge ${tierClass}">${esc(tier)}</span>
+    </div>
+    ${c.description ? `<div style="font-size:12px;color:#6b7280;">${esc(c.description)}</div>` : ''}
+    <div class="section-label">Credentials</div>
+    <div class="resolution"><span class="label">${esc(resLabel)}</span>${cref.secret_id ? ` &mdash; <span class="mono">${esc(cref.secret_id.slice(0, 8))}...</span>` : ''}</div>
+    <div class="section-label">Rate Limits</div>
+    <table>
+      <thead><tr><th>Limit</th><th class="right">Value</th></tr></thead>
+      <tbody>
+        <tr><td>Requests / min</td><td class="right mono">${fmtNum(rl.requests_per_minute)}</td></tr>
+        <tr><td>Tokens / min</td><td class="right mono">${fmtNum(rl.tokens_per_minute)}</td></tr>
+        <tr><td>Tokens / day</td><td class="right mono">${fmtNum(rl.tokens_per_day)}</td></tr>
+      </tbody>
+    </table>
+    <div class="section-label">Capabilities</div>
+    <div class="cap-row">${capList}</div>
+    ${caps.max_context_tokens ? `<div style="font-size:11px;color:#9ca3af;margin-top:2px;">Context window: ${fmtNum(caps.max_context_tokens)} tokens</div>` : ''}
+    ${c.endpoint ? `<div class="meta"><span>Endpoint: ${esc(c.endpoint)}</span></div>` : ''}
+    ${c.is_platform_default ? '<div class="meta"><span>Platform default connection</span></div>' : ''}
+  `;
+}
+</script>
+</body>
+</html>

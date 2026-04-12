@@ -1,0 +1,55 @@
+{
+  "$schema": "./profile.schema.json",
+  "schema_version": "1",
+  "profile": "oem-embedded-core",
+  "display_name": "OEM Embedded Core Distribution",
+  "runtime_role": "embedded",
+  "product_surface": "embedded-core-app",
+  "license_class": "oem-embedded",
+  "branding_scope": [
+    "core-web-app",
+    "desktop-shell",
+    "browser-extension",
+    "visible-runtime-labels",
+    "operator-managed-product-assets"
+  ],
+  "services": [
+    "frontend",
+    "backend"
+  ],
+  "first_party_servers": [],
+  "required_operator_inputs": [
+    {
+      "name": "brand_name",
+      "kind": "string",
+      "required": true,
+      "description": "OEM product name shipped to downstream customers"
+    },
+    {
+      "name": "distribution_channel",
+      "kind": "string",
+      "required": true,
+      "description": "Partner or release channel used for the OEM distribution"
+    }
+  ],
+  "generated_secrets": [
+    {
+      "name": "install_id",
+      "strategy": "random-uuid",
+      "storage": "local-state"
+    }
+  ],
+  "proxy_mode": "embedded",
+  "packaging_targets": ["desktop-installer", "embedded-runtime", "private-release"],
+  "meter_dimensions": ["mad"],
+  "offline_supported": true,
+  "required_entitlements": ["oem_distribution"],
+  "policy_refs": ["oem-embedded-core"],
+  "attributes": {
+    "supports_custom_domain": false,
+    "supports_white_label": true,
+    "supports_downstream_activation": true,
+    "supports_partner_distribution": true
+  },
+  "extensions": {}
+}

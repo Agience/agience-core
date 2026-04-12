@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>View Artifact Viewer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f9fafb; color: #1f2937; font-size: 14px; line-height: 1.5;
+    }
+    .container { display: flex; flex-direction: column; height: 100vh; }
+
+    /* Header bar */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; border-bottom: 1px solid #e5e7eb; background: white;
+    }
+    .header-left { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+    .header-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .header-title {
+      font-size: 14px; font-weight: 600; color: #0f172a;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .header-desc {
+      font-size: 12px; color: #6b7280;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .header-mode { font-size: 12px; color: #6b7280; text-transform: capitalize; flex-shrink: 0; margin-left: 16px; }
+    .icon-teal { color: #0f766e; }
+
+    /* Body */
+    .body {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px; text-align: center;
+    }
+
+    /* Target info card */
+    .target-card {
+      background: white; border: 1px solid #e5e7eb; border-radius: 12px;
+      padding: 20px; max-width: 400px; width: 100%; text-align: left;
+    }
+    .label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+      color: #6b7280; margin-bottom: 6px;
+    }
+    .target-row {
+      display: flex; justify-content: space-between; align-items: center; padding: 6px 0;
+    }
+    .target-row:not(:last-child) { border-bottom: 1px solid #f3f4f6; }
+    .target-label { font-size: 12px; font-weight: 500; color: #6b7280; }
+    .target-value { font-size: 13px; color: #0f172a; font-family: 'SF Mono', Monaco, Consolas, monospace; }
+    .target-value.text { font-family: inherit; }
+
+    /* Open button */
+    .btn-open {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 16px; padding: 8px 16px; font-size: 13px; font-weight: 500;
+      border: 1px solid #0d9488; color: #0f766e; background: transparent;
+      border-radius: 6px; cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .btn-open:hover { background: #f0fdfa; }
+
+    /* Empty state */
+    .empty {
+      font-size: 13px; color: #6b7280; max-width: 360px;
+    }
+    .empty code {
+      font-size: 11px; background: #f3f4f6; padding: 2px 6px; border-radius: 4px;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+    }
+
+    /* Edit form */
+    .edit-card {
+      background: white; border: 1px solid #e5e7eb; border-radius: 12px;
+      padding: 20px; max-width: 400px; width: 100%; text-align: left; margin-top: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .form-group label { font-size: 12px; font-weight: 500; color: #374151; }
+    input, select {
+      width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px;
+      font-size: 13px; outline: none; font-family: inherit; background: white;
+    }
+    input:focus, select:focus { border-color: #0d9488; box-shadow: 0 0 0 2px rgba(13,148,136,0.15); }
+
+    .btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+    .btn-sm {
+      display: inline-flex; align-items: center; gap: 4px;
+      border: 1px solid #e2e8f0; background: white; border-radius: 6px;
+      padding: 6px 12px; font-size: 12px; font-weight: 500; color: #334155;
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .btn-sm:hover { background: #f8fafc; }
+    .btn-sm.primary { background: #0f172a; color: white; border-color: #0f172a; }
+    .btn-sm.primary:hover { background: #1e293b; }
+    .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <div class="header-row">
+          <svg class="icon-teal" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span class="header-title" id="viewTitle">View</span>
+        </div>
+        <span class="header-desc" id="viewDesc">View artifact</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn-sm" id="editToggle" onclick="toggleEdit()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+          Edit
+        </button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+      <!-- Has target -->
+      <div id="hasTarget" class="hidden">
+        <div class="target-card">
+          <div class="label">Target</div>
+          <div class="target-row">
+            <span class="target-label">Type</span>
+            <span class="target-value text" id="targetKind">collection</span>
+          </div>
+          <div class="target-row">
+            <span class="target-label">ID</span>
+            <span class="target-value" id="targetId">—</span>
+          </div>
+        </div>
+        <button class="btn-open" id="openBtn" onclick="handleOpen()">
+          Open collection view on desktop
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+
+      <!-- No target -->
+      <div id="noTarget" class="hidden">
+        <p class="empty">
+          This view does not specify a target yet. Edit its context to add a
+          <code>{"target": {"kind": "collection", "id": "..."}}</code>.
+        </p>
+      </div>
+
+      <!-- Edit form -->
+      <div id="editSection" class="hidden">
+        <div class="edit-card">
+          <div class="label">Edit View</div>
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="editTitle" placeholder="My View">
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <input type="text" id="editDescription" placeholder="Saved view over a collection">
+          </div>
+          <div class="form-group">
+            <label>Target Kind</label>
+            <select id="editTargetKind">
+              <option value="collection">Collection</option>
+              <option value="workspace">Workspace</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Target ID</label>
+            <input type="text" id="editTargetId" placeholder="Collection or workspace UUID">
+          </div>
+          <div class="btn-row">
+            <button class="btn-sm" onclick="cancelEdit()">Cancel</button>
+            <button class="btn-sm primary" id="saveBtn" onclick="handleSave()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // =========================================================================
+    // MCP Apps client
+    // =========================================================================
+    let _rpcId = 0;
+    const _pending = {};
+    function sendRpc(method, params) {
+      const id = ++_rpcId;
+      return new Promise((resolve, reject) => {
+        _pending[id] = { resolve, reject };
+        parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+      });
+    }
+    function sendNotification(method, params) {
+      parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+    }
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || d.jsonrpc !== '2.0') return;
+      if (d.id && _pending[d.id]) {
+        if (d.error) _pending[d.id].reject(d.error);
+        else _pending[d.id].resolve(d.result);
+        delete _pending[d.id];
+        return;
+      }
+      if (d.method === 'ui/notifications/tool-result') handleToolResult(d.params);
+      if (d.method === 'ui/notifications/host-context-changed') handleHostContext(d.params);
+    });
+
+    // Initialize
+    sendRpc('ui/initialize', {
+      protocolVersion: '2026-01-26',
+      clientInfo: { name: 'agience-viewer', version: '0.1.0' }
+    }).then(result => {
+      if (result.hostContext) handleHostContext(result.hostContext);
+      sendNotification('ui/notifications/initialized');
+    });
+
+    // =========================================================================
+    // State
+    // =========================================================================
+    let artifactId = null;
+    let artifactContext = {};
+    let isEditing = false;
+
+    // =========================================================================
+    // Host data handlers
+    // =========================================================================
+    function handleToolResult(params) {
+      if (!params || !params.content) return;
+      for (const block of params.content) {
+        if (block.type === 'text' && block.text) {
+          try {
+            const data = JSON.parse(block.text);
+            artifactId = data.artifact_id || artifactId;
+            artifactContext = data.context || {};
+            render();
+          } catch { /* ignore */ }
+        }
+      }
+    }
+
+    function handleHostContext(ctx) {
+      // Future: apply theme, etc.
+    }
+
+    // =========================================================================
+    // Rendering
+    // =========================================================================
+    function render() {
+      const ctx = artifactContext;
+
+      // Resolve target (mirrors the React viewer logic)
+      const target = ctx.target || (ctx.view && ctx.view.target);
+      const targetKind = ((target && target.kind) || 'collection').toLowerCase();
+      const explicitId = target && (target.collection_id || target.id);
+      const fallbackId = ctx.collection_id || ctx.target_collection_id;
+      const collectionId = targetKind === 'collection' ? (explicitId || fallbackId) : (explicitId || fallbackId);
+
+      const title = ctx.title || ctx.name || 'View';
+      const description = ctx.description || ctx.summary || 'View artifact — saved view over a collection or workspace.';
+
+      document.getElementById('viewTitle').textContent = title;
+      document.getElementById('viewDesc').textContent = description;
+
+      if (collectionId) {
+        document.getElementById('hasTarget').classList.remove('hidden');
+        document.getElementById('noTarget').classList.add('hidden');
+        document.getElementById('targetKind').textContent = targetKind;
+        document.getElementById('targetId').textContent = collectionId;
+        document.getElementById('openBtn').textContent =
+          targetKind === 'workspace' ? 'Open workspace' : 'Open collection view on desktop';
+      } else {
+        document.getElementById('hasTarget').classList.add('hidden');
+        document.getElementById('noTarget').classList.remove('hidden');
+      }
+    }
+
+    // =========================================================================
+    // Actions
+    // =========================================================================
+    window.toggleEdit = function() {
+      isEditing = true;
+      document.getElementById('editSection').classList.remove('hidden');
+      // Populate form
+      const ctx = artifactContext;
+      const target = ctx.target || (ctx.view && ctx.view.target) || {};
+      document.getElementById('editTitle').value = ctx.title || ctx.name || '';
+      document.getElementById('editDescription').value = ctx.description || ctx.summary || '';
+      document.getElementById('editTargetKind').value = (target.kind || 'collection').toLowerCase();
+      document.getElementById('editTargetId').value = target.id || target.collection_id || ctx.collection_id || ctx.target_collection_id || '';
+    };
+
+    window.cancelEdit = function() {
+      isEditing = false;
+      document.getElementById('editSection').classList.add('hidden');
+    };
+
+    window.handleSave = async function() {
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      try {
+        const updatedContext = {
+          ...artifactContext,
+          title: document.getElementById('editTitle').value.trim() || undefined,
+          description: document.getElementById('editDescription').value.trim() || undefined,
+          target: {
+            kind: document.getElementById('editTargetKind').value,
+            id: document.getElementById('editTargetId').value.trim() || undefined,
+          }
+        };
+        await sendRpc('tools/call', {
+          name: 'update_artifact',
+          arguments: { id: artifactId, patch: { context: JSON.stringify(updatedContext) } }
+        });
+        artifactContext = updatedContext;
+        isEditing = false;
+        document.getElementById('editSection').classList.add('hidden');
+        render();
+      } catch (err) {
+        console.error('Save failed:', err);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+    };
+
+    window.handleOpen = function() {
+      const ctx = artifactContext;
+      const target = ctx.target || (ctx.view && ctx.view.target) || {};
+      const targetKind = (target.kind || 'collection').toLowerCase();
+      const targetId = target.id || target.collection_id || ctx.collection_id || ctx.target_collection_id;
+      if (targetId && targetKind === 'collection') {
+        sendRpc('ui/open-link', { url: 'agience://collection/' + targetId });
+      } else if (targetId && targetKind === 'workspace') {
+        sendRpc('ui/open-link', { url: 'agience://workspace/' + targetId });
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "content_type": "application/vnd.agience.signature+json",
+  "version": "1.0",
+  "description": "Cryptographic signature artifact \u2014 tamper-evident signing of another artifact's content.",
+  "context_schema": {
+    "subject_artifact_id": "string \u2014 artifact ID of the signed document",
+    "signer_artifact_id": "string \u2014 artifact ID representing the signer identity",
+    "algorithm": "string \u2014 ed25519 | rsa-pss | sha256-rsa",
+    "signature_b64": "string \u2014 base64-encoded raw signature bytes",
+    "artifact_hash": "string \u2014 SHA-256 hex digest of the signed artifact content at signing time",
+    "signed_at": "string \u2014 ISO 8601 timestamp"
+  },
+  "ui": {
+    "label": "Signature",
+    "icon": "shield",
+    "color": "#10b981",
+    "badge_class": "bg-emerald-100 text-emerald-800",
+    "tile_class": "ring-1 ring-emerald-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "description": "Cryptographic signature record for a verified card."
+  }
+}

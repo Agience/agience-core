@@ -1,0 +1,5 @@
+{
+  "capability": "extract_text",
+  "tool": "process_uploaded_content",
+  "server": "astra"
+}

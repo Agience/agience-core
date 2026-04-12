@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agience.dev/schemas/packaging/profile.schema.json",
+  "title": "Agience Packaging Profile",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "profile",
+    "runtime_role",
+    "product_surface",
+    "license_class",
+    "services",
+    "meter_dimensions",
+    "required_entitlements"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "runtime_role": {
+      "type": "string",
+      "enum": ["standard", "relay", "embedded", "sidecar"]
+    },
+    "product_surface": {
+      "type": "string"
+    },
+    "license_class": {
+      "type": "string"
+    },
+    "branding_scope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "first_party_servers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "required_operator_inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/operatorInput"
+      },
+      "default": []
+    },
+    "generated_secrets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/generatedSecret"
+      },
+      "default": []
+    },
+    "proxy_mode": {
+      "type": "string"
+    },
+    "packaging_targets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "meter_dimensions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "offline_supported": {
+      "type": "boolean",
+      "default": false
+    },
+    "required_entitlements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "policy_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "attributes": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    },
+    "extensions": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "operatorInput": {
+      "type": "object",
+      "required": ["name", "kind"],
+      "properties": {
+        "name": { "type": "string" },
+        "kind": { "type": "string" },
+        "required": { "type": "boolean", "default": true },
+        "secret": { "type": "boolean", "default": false },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "generatedSecret": {
+      "type": "object",
+      "required": ["name", "strategy"],
+      "properties": {
+        "name": { "type": "string" },
+        "strategy": { "type": "string" },
+        "rotation": { "type": "string" },
+        "storage": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

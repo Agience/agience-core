@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Account</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5; }
+  .container { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .header { display: flex; align-items: center; gap: 8px; }
+  .icon { flex-shrink: 0; color: #f59e0b; }
+  .title { font-size: 14px; font-weight: 600; color: #111827; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .type-label { font-size: 12px; color: #9ca3af; text-transform: capitalize; }
+  .balance-box { display: flex; align-items: baseline; gap: 8px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 14px; }
+  .balance-amt { font-family: 'SF Mono','Fira Code',monospace; font-size: 24px; font-weight: 700; color: #b45309; }
+  .balance-cur { font-size: 14px; color: #d97706; }
+  .meta { font-size: 12px; color: #9ca3af; }
+  .empty { font-size: 13px; color: #9ca3af; font-style: italic; padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="empty">Loading…</div></div>
+<script>
+let _nextId = 1; const _pending = {};
+function sendRpc(m, p) { return new Promise((res, rej) => { const id = _nextId++; _pending[id] = {resolve:res, reject:rej}; window.parent.postMessage({jsonrpc:'2.0',id,method:m,params:p},'*'); }); }
+function sendNotification(m, p) { window.parent.postMessage({jsonrpc:'2.0',method:m,params:p},'*'); }
+window.addEventListener('message', e => {
+  if (!e.data || e.data.jsonrpc !== '2.0') return;
+  if (typeof e.data.id === 'number' && _pending[e.data.id]) { const {resolve,reject} = _pending[e.data.id]; delete _pending[e.data.id]; e.data.error ? reject(new Error(e.data.error.message)) : resolve(e.data.result); }
+  if (e.data.method === 'ui/notifications/tool-result') handleToolResult(e.data.params);
+});
+let _artifact = null;
+sendRpc('ui/initialize', {}).then(() => sendNotification('ui/notifications/initialized', {}));
+function handleToolResult(p) { try { const d = JSON.parse(p?.content?.[0]?.text); if (d?.artifact_id) { _artifact = d; render(); } } catch {} }
+function ctx() { if (!_artifact) return {}; try { return typeof _artifact.context === 'string' ? JSON.parse(_artifact.context) : (_artifact.context || {}); } catch { return {}; } }
+function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+function render() {
+  const app = document.getElementById('app'); if (!_artifact) return;
+  const c = ctx();
+  app.innerHTML = `
+    <div class="header">
+      <svg class="icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <span class="title">${esc(c.provider || c.title || 'Account')}</span>
+      ${c.account_type ? `<span class="type-label">${esc(c.account_type)}</span>` : ''}
+    </div>
+    ${c.balance ? `<div class="balance-box"><span class="balance-amt">${esc(c.balance)}</span><span class="balance-cur">${esc(c.currency || '')}</span></div>` : ''}
+    ${c.last_synced_at ? `<div class="meta">Last synced ${new Date(c.last_synced_at).toLocaleString()}</div>` : ''}
+  `;
+}
+</script>
+</body>
+</html>

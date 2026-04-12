@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Transaction</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5; }
+  .container { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .header { display: flex; align-items: center; gap: 8px; }
+  .icon { flex-shrink: 0; color: #10b981; }
+  .title { font-size: 14px; font-weight: 600; color: #111827; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 9999px; }
+  .badge-confirmed { background: #d1fae5; color: #065f46; }
+  .badge-pending { background: #fef3c7; color: #92400e; }
+  .badge-failed { background: #fee2e2; color: #991b1b; }
+  .rows { display: flex; flex-direction: column; gap: 6px; }
+  .row { display: flex; gap: 10px; font-size: 13px; }
+  .row-label { color: #6b7280; width: 72px; flex-shrink: 0; }
+  .row-value { font-family: 'SF Mono','Fira Code',monospace; font-size: 11px; color: #374151; word-break: break-all; }
+  .empty { font-size: 13px; color: #9ca3af; font-style: italic; padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="empty">Loading…</div></div>
+<script>
+let _nextId = 1; const _pending = {};
+function sendRpc(m, p) { return new Promise((res, rej) => { const id = _nextId++; _pending[id] = {resolve:res, reject:rej}; window.parent.postMessage({jsonrpc:'2.0',id,method:m,params:p},'*'); }); }
+function sendNotification(m, p) { window.parent.postMessage({jsonrpc:'2.0',method:m,params:p},'*'); }
+window.addEventListener('message', e => {
+  if (!e.data || e.data.jsonrpc !== '2.0') return;
+  if (typeof e.data.id === 'number' && _pending[e.data.id]) { const {resolve,reject} = _pending[e.data.id]; delete _pending[e.data.id]; e.data.error ? reject(new Error(e.data.error.message)) : resolve(e.data.result); }
+  if (e.data.method === 'ui/notifications/tool-result') handleToolResult(e.data.params);
+});
+let _artifact = null;
+sendRpc('ui/initialize', {}).then(() => sendNotification('ui/notifications/initialized', {}));
+function handleToolResult(p) { try { const d = JSON.parse(p?.content?.[0]?.text); if (d?.artifact_id) { _artifact = d; render(); } } catch {} }
+function ctx() { if (!_artifact) return {}; try { return typeof _artifact.context === 'string' ? JSON.parse(_artifact.context) : (_artifact.context || {}); } catch { return {}; } }
+function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+function render() {
+  const app = document.getElementById('app'); if (!_artifact) return;
+  const c = ctx();
+  const status = c.status || 'pending';
+  const displayTitle = (c.amount && c.currency) ? `${c.amount} ${c.currency}` : (c.title || 'Transaction');
+  const badgeCls = {confirmed:'badge-confirmed',pending:'badge-pending',failed:'badge-failed'}[status] || 'badge-pending';
+  const rows = [
+    ['Type', c.type_],
+    ['From', c.from_account],
+    ['To', c.to_account],
+    ['Amount', (c.amount && c.currency) ? `${c.amount} ${c.currency}` : null],
+    ['Recorded', c.recorded_at ? new Date(c.recorded_at).toLocaleString() : null],
+    ['Tx Hash', c.tx_hash],
+  ].filter(([, v]) => v);
+
+  app.innerHTML = `
+    <div class="header">
+      <svg class="icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+        <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+      </svg>
+      <span class="title">${esc(displayTitle)}</span>
+      <span class="badge ${badgeCls}">${esc(status)}</span>
+    </div>
+    <div class="rows">
+      ${rows.map(([l, v]) => `
+        <div class="row"><span class="row-label">${esc(l)}</span><span class="row-value">${esc(v)}</span></div>`).join('')}
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

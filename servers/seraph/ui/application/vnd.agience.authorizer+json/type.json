@@ -1,0 +1,28 @@
+{
+  "content_type": "application/vnd.agience.authorizer+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Agience Authorizer",
+  "ui": {
+    "label": "Authorizer",
+    "icon": "shield",
+    "color": "#dc2626",
+    "badge_class": "bg-red-100 text-red-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "authorizer"
+  }
+}

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Signature</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5; }
+  .container { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .header { display: flex; align-items: center; gap: 8px; }
+  .icon { flex-shrink: 0; color: #10b981; }
+  .title { font-size: 14px; font-weight: 500; color: #111827; flex: 1; }
+  .algo-badge { font-size: 11px; font-family: 'SF Mono','Fira Code',monospace; background: #d1fae5; color: #065f46; padding: 2px 7px; border-radius: 5px; }
+  .grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; }
+  .grid-label { color: #9ca3af; }
+  .grid-value { font-family: 'SF Mono','Fira Code',monospace; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 3px; }
+  .sig-code { font-family: 'SF Mono','Fira Code',monospace; font-size: 10px; background: #f9fafb; border-radius: 6px; padding: 8px; color: #4b5563; word-break: break-all; line-height: 1.5; }
+  .hash-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .hash-icon { flex-shrink: 0; }
+  .hash-label { color: #9ca3af; }
+  .hash-value { font-family: 'SF Mono','Fira Code',monospace; color: #4b5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty { font-size: 13px; color: #9ca3af; font-style: italic; padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="empty">Loading…</div>
+</div>
+<script>
+let _nextId = 1;
+const _pending = {};
+function sendRpc(method, params) {
+  return new Promise((resolve, reject) => {
+    const id = _nextId++;
+    _pending[id] = { resolve, reject };
+    window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+  });
+}
+function sendNotification(method, params) {
+  window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+}
+window.addEventListener('message', (e) => {
+  if (!e.data || e.data.jsonrpc !== '2.0') return;
+  if (typeof e.data.id === 'number' && _pending[e.data.id]) {
+    const { resolve, reject } = _pending[e.data.id];
+    delete _pending[e.data.id];
+    if (e.data.error) reject(new Error(e.data.error.message));
+    else resolve(e.data.result);
+  }
+  if (e.data.method === 'ui/notifications/tool-result') handleToolResult(e.data.params);
+});
+
+let _artifact = null;
+sendRpc('ui/initialize', {}).then(() => { sendNotification('ui/notifications/initialized', {}); });
+
+function handleToolResult(params) {
+  try {
+    const data = JSON.parse(params?.content?.[0]?.text);
+    if (data?.artifact_id) { _artifact = data; render(); }
+  } catch {}
+}
+
+function ctx() {
+  if (!_artifact) return {};
+  try { return typeof _artifact.context === 'string' ? JSON.parse(_artifact.context) : (_artifact.context || {}); }
+  catch { return {}; }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+function trunc(s, n) { return s && s.length > n ? s.slice(0, n) + '…' : (s || '—'); }
+
+const ALGO_LABELS = { 'ed25519': 'Ed25519', 'rsa-pss': 'RSA-PSS', 'sha256-rsa': 'SHA-256/RSA' };
+
+function render() {
+  const app = document.getElementById('app');
+  if (!_artifact) return;
+  const c = ctx();
+  const algoLabel = ALGO_LABELS[c.algorithm] || c.algorithm || null;
+  const rows = [
+    ['Subject card', c.subject_card_id],
+    ['Signer card', c.signer_card_id],
+    ['Signed at', c.signed_at ? new Date(c.signed_at).toLocaleString() : null],
+  ].filter(([, v]) => v);
+
+  app.innerHTML = `
+    <div class="header">
+      <svg class="icon" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <span class="title">Cryptographic Signature</span>
+      ${algoLabel ? `<span class="algo-badge">${esc(algoLabel)}</span>` : ''}
+    </div>
+    <div class="grid">
+      ${rows.map(([l, v]) => `<span class="grid-label">${esc(l)}</span><span class="grid-value" title="${esc(v)}">${esc(v)}</span>`).join('')}
+    </div>
+    ${c.signature_b64 ? `
+      <div>
+        <div class="section-label">Signature (base64)</div>
+        <code class="sig-code">${esc(trunc(c.signature_b64, 120))}</code>
+      </div>` : ''}
+    ${c.card_hash ? `
+      <div class="hash-row">
+        <svg class="hash-icon" width="12" height="12" fill="none" stroke="#10b981" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        <span class="hash-label">Card hash</span>
+        <span class="hash-value" title="${esc(c.card_hash)}">${esc(trunc(c.card_hash, 48))}</span>
+      </div>` : ''}
+  `;
+}
+</script>
+</body>
+</html>

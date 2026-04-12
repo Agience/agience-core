@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agience://types/text/markdown/schema.json",
+  "title": "Text/Markdown Metadata",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "title": { "type": "string" },
+    "language": { "type": "string" },
+    "render": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "style": { "type": "string", "description": "Optional render style preset" }
+      }
+    }
+  }
+}

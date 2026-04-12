@@ -1,0 +1,27 @@
+{
+  "content_type": "application/vnd.agience.view+json",
+  "version": 1,
+  "extensions": [],
+  "inherits": [],
+  "description": "A configurable live view. Stores a filter/query/grouping config and always renders matching artifacts from the current workspace or collection.",
+  "ui": {
+    "label": "View",
+    "icon": "eye",
+    "color": "#0f766e",
+    "badge_class": "bg-teal-100 text-teal-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "view"
+  }
+}

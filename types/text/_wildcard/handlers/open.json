@@ -1,0 +1,7 @@
+{
+  "capability": "open",
+  "implementation": {
+    "kind": "builtin",
+    "id": "text.open"
+  }
+}

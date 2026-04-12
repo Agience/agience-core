@@ -1,0 +1,45 @@
+{
+  "content_type": "application/json",
+  "version": 1,
+  "extensions": [
+    ".json"
+  ],
+  "inherits": [],
+  "description": "JSON document",
+  "ui": {
+    "version": 1,
+    "label": "JSON",
+    "icon": "code",
+    "color": "#10b981",
+    "badge_class": "bg-emerald-100 text-emerald-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "edit",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "json",
+    "layout": [
+      {
+        "group": "Basics",
+        "fields": [
+          "title"
+        ]
+      },
+      {
+        "group": "JSON",
+        "fields": [
+          "json.schema_uri",
+          "json.root_type"
+        ]
+      }
+    ]
+  }
+}

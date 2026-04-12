@@ -1,0 +1,45 @@
+# Local development overlay — source builds plus host-exposed ports.
+# This file is what turns the base deployment compose into a local build/run setup.
+# This file should NOT be used in production.
+#
+# Dev installs access the platform via localhost ports (8081 backend, 5173 frontend).
+
+services:
+
+  init:
+    image: ${INIT_IMAGE:-agience-core-init}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.init
+
+  content:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  graph:
+    ports:
+      - "8529:8529"
+
+  search:
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+
+  backend:
+    image: ${BACKEND_IMAGE:-agience-core-backend}
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    ports:
+      - "8081:8081"
+    volumes:
+      - ${DATA_PATH:-./.data}/keys:/app/.data/keys:ro
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-agience-core-frontend}
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"

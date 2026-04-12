@@ -1,0 +1,28 @@
+{
+  "mode": "host",
+  "authority_url": "https://agience.example.com",
+  "access_token": "",
+  "client_version": "0.1.0",
+  "heartbeat_interval_seconds": 30,
+  "reconnect_delay_seconds": 5,
+  "bind_host": "127.0.0.1",
+  "bind_port": 8082,
+  "display_name": "My Desktop Host",
+  "device_id": "desktop-host-001",
+  "relay_server_id": "desktop-host",
+  "allowed_roots": [
+    "."
+  ],
+  "service_definitions_dir": "./service-definitions",
+  "enabled_personas": [
+    "aria",
+    "sage",
+    "atlas",
+    "nexus",
+    "astra",
+    "verso",
+    "seraph",
+    "ophan"
+  ],
+  "log_level": "INFO"
+}

@@ -1,0 +1,121 @@
+{
+  "schema_version": "1",
+  "policies": {
+    "dev-local-core": {
+      "product_surface": "core-app",
+      "runtime_roles": ["standard"],
+      "profile_refs": ["dev-local"],
+      "control_class": "dev-local",
+      "allowed_branding_scope": [],
+      "meter_dimensions": [],
+      "offline_supported": true,
+      "required_entitlements": [],
+      "attributes": {
+        "development_only": true,
+        "requires_live_license_authority": false
+      },
+      "extensions": {}
+    },
+    "community-self-host-core": {
+      "product_surface": "core-app",
+      "runtime_roles": ["standard"],
+      "profile_refs": ["community-self-host"],
+      "control_class": "community-self-host",
+      "allowed_branding_scope": [],
+      "meter_dimensions": ["mai"],
+      "offline_supported": true,
+      "required_entitlements": [],
+      "attributes": {
+        "supports_custom_domain": true,
+        "supports_powered_by_agience": true,
+        "public_grant_eligible": true
+      },
+      "extensions": {}
+    },
+    "standard-hosted-core": {
+      "product_surface": "core-app",
+      "runtime_roles": ["standard"],
+      "profile_refs": ["standard"],
+      "control_class": "commercial-self-host",
+      "allowed_branding_scope": [],
+      "meter_dimensions": ["mai"],
+      "offline_supported": true,
+      "required_entitlements": ["host_standard"],
+      "attributes": {
+        "supports_custom_domain": true,
+        "supports_powered_by_agience": true
+      },
+      "extensions": {}
+    },
+    "white-label-core-app": {
+      "product_surface": "core-app",
+      "runtime_roles": ["standard"],
+      "profile_refs": ["white-label-core"],
+      "control_class": "white-label",
+      "allowed_branding_scope": [
+        "core-web-app",
+        "desktop-shell",
+        "browser-extension",
+        "visible-runtime-labels"
+      ],
+      "meter_dimensions": ["mai"],
+      "offline_supported": true,
+      "required_entitlements": ["host_standard", "white_label_branding"],
+      "attributes": {
+        "supports_custom_domain": true,
+        "requires_brand_asset_bundle": true
+      },
+      "extensions": {}
+    },
+    "relay-desktop": {
+      "product_surface": "relay-client",
+      "runtime_roles": ["relay"],
+      "profile_refs": ["relay-desktop"],
+      "control_class": "relay-client",
+      "allowed_branding_scope": [],
+      "meter_dimensions": ["mad"],
+      "offline_supported": true,
+      "required_entitlements": ["relay_distribution"],
+      "attributes": {
+        "supports_local_capability_approval": true
+      },
+      "extensions": {}
+    },
+    "managed-host-core": {
+      "product_surface": "core-app",
+      "runtime_roles": ["standard"],
+      "profile_refs": ["managed-host"],
+      "control_class": "commercial-self-host",
+      "allowed_branding_scope": [],
+      "meter_dimensions": ["mai"],
+      "offline_supported": false,
+      "required_entitlements": ["host_standard"],
+      "attributes": {
+        "managed_by_control_plane": true,
+        "requires_live_activation": true
+      },
+      "extensions": {}
+    },
+    "oem-embedded-core": {
+      "product_surface": "embedded-core-app",
+      "runtime_roles": ["embedded"],
+      "profile_refs": ["oem-embedded-core"],
+      "control_class": "oem-embedded",
+      "allowed_branding_scope": [
+        "core-web-app",
+        "desktop-shell",
+        "browser-extension",
+        "visible-runtime-labels",
+        "operator-managed-product-assets"
+      ],
+      "meter_dimensions": ["mad"],
+      "offline_supported": true,
+      "required_entitlements": ["oem_distribution"],
+      "attributes": {
+        "supports_downstream_activation": true,
+        "requires_partner_distribution_review": true
+      },
+      "extensions": {}
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "icon": "braces",
+  "visible_fields": ["title"],
+  "preview": {
+    "kind": "json_excerpt",
+    "max_chars": 280
+  }
+}

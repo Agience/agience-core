@@ -1,0 +1,35 @@
+{
+  "content_type": "application/vnd.agience.history+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Version history for an artifact — presents the commit timeline, diffs between versions, and authorship. Owned by Atlas.",
+  "context_schema": {
+    "artifact_id": { "type": "string", "description": "Root artifact whose version history this record tracks." },
+    "versions": {
+      "type": "array",
+      "items": "object",
+      "description": "Ordered list of committed versions, newest first. Each entry includes version_id, committed_at, committed_by, and a summary."
+    }
+  },
+  "ui": {
+    "label": "History",
+    "icon": "clock",
+    "color": "#0891b2",
+    "badge_class": "bg-cyan-100 text-cyan-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "viewer": "history"
+  }
+}

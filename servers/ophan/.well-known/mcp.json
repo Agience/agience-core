@@ -1,0 +1,60 @@
+{
+  "$schema": "https://schemas.agience.io/mcp-server/v1/mcp.json",
+  "schema_version": "1",
+  "name": "agience-server-ophan",
+  "display_name": "Ophan — Finance, Economic Logic & Performance",
+  "description": "Economic operations layer: value transfers, double-entry ledger, reconciliation, invoicing, market data, resource allocation, budgeting, performance metrics, and entitlement-gated licensing operations.",
+  "version": "0.1.0",
+  "image": "ghcr.io/agience/agience-server-ophan:latest",
+  "endpoints": {
+    "streamable_http": "/mcp"
+  },
+  "tools": [
+    { "name": "send_payment", "description": "Initiate a value transfer (crypto or fiat)" },
+    { "name": "record_transaction", "description": "Record an external transaction as a double-entry ledger artifact" },
+    { "name": "get_transaction", "description": "Fetch a transaction by ID or on-chain hash" },
+    { "name": "list_transactions", "description": "List transactions for an account over a date range" },
+    { "name": "fetch_statement", "description": "Import a bank, exchange, or payroll statement as workspace artifacts" },
+    { "name": "get_balance", "description": "Get current balance for a wallet, bank account, or ledger account" },
+    { "name": "reconcile_account", "description": "Match transactions against a statement and flag discrepancies" },
+    { "name": "create_invoice", "description": "Generate an invoice artifact (accounts receivable)" },
+    { "name": "apply_payment", "description": "Mark an invoice as paid and update the ledger" },
+    { "name": "run_report", "description": "Produce a P&L, balance sheet, or cash-flow report artifact" },
+    { "name": "get_price", "description": "Get current or historical price for a crypto or equity ticker" },
+    { "name": "get_market_data", "description": "Fetch OHLCV data for a symbol over a date range" },
+    { "name": "track_wallet", "description": "Monitor a blockchain wallet address for incoming activity" },
+    { "name": "get_portfolio", "description": "Retrieve holdings from a connected brokerage or exchange" },
+    { "name": "calculate_pnl", "description": "Calculate realised/unrealised P&L" },
+    { "name": "track_resource_usage", "description": "Track resource consumption and allocation" },
+    { "name": "get_metrics", "description": "Get system performance and efficiency metrics" },
+    { "name": "calculate_budget", "description": "Calculate or project budget for a workspace or project" },
+    { "name": "resolve_license_posture", "description": "Determine whether an organization falls inside the public self-host grant or needs a commercial license" },
+    { "name": "issue_license", "description": "Issue licensing artifacts for an entitled operator and profile" },
+    { "name": "renew_license", "description": "Renew an existing licensing projection and emit event artifacts" },
+    { "name": "revoke_license", "description": "Revoke a license projection and record the compliance event" },
+    { "name": "review_installation", "description": "Review or register installation health for a licensed deployment" },
+    { "name": "record_usage_snapshot", "description": "Record a licensing usage snapshot and overage warnings" },
+    { "name": "run_licensing_report", "description": "Generate a licensing summary report artifact for a workspace" }
+  ],
+  "resources": [],
+  "prompts": [],
+  "artifact_types": [
+    "application/vnd.agience.transaction+json",
+    "application/vnd.agience.account+json",
+    "application/vnd.agience.invoice+json",
+    "application/vnd.agience.portfolio+json",
+    "application/vnd.agience.market+json",
+    "application/vnd.agience.license+json",
+    "application/vnd.agience.entitlement+json",
+    "application/vnd.agience.license-installation+json",
+    "application/vnd.agience.license-usage+json",
+    "application/vnd.agience.license-event+json"
+  ],
+  "config": {
+    "env": {
+      "AGIENCE_API_URI": { "description": "Base URI of the agience-core backend", "required": true },
+      "AGIENCE_API_KEY": { "description": "Platform API key (Bearer token)", "required": true },
+      "MCP_PORT": { "description": "HTTP port for the MCP server", "default": "8090" }
+    }
+  }
+}

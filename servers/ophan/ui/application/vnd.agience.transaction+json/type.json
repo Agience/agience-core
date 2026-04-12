@@ -1,0 +1,37 @@
+{
+  "content_type": "application/vnd.agience.transaction+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "A financial transaction \u2014 double-entry ledger record of a value transfer between accounts. Amounts are stored as strings to avoid floating-point precision issues.",
+  "context_schema": {
+    "amount": "string \u2014 transaction amount as a decimal string (e.g. '125.00')",
+    "currency": "string \u2014 ISO 4217 currency code (e.g. USD, ETH, BTC)",
+    "from_account": "string? \u2014 source account artifact ID or address",
+    "to_account": "string? \u2014 destination account artifact ID or address",
+    "type": "string \u2014 debit | credit | transfer",
+    "status": "string \u2014 pending | confirmed | failed",
+    "tx_hash": "string? \u2014 blockchain transaction hash for on-chain transfers",
+    "recorded_at": "string \u2014 ISO 8601 timestamp"
+  },
+  "ui": {
+    "label": "Transaction",
+    "icon": "arrow-left-right",
+    "color": "#10b981",
+    "badge_class": "bg-emerald-100 text-emerald-800",
+    "tile_class": "ring-1 ring-emerald-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "preview",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "description": "Financial transaction \u2014 value transfer with amount, currency, and status."
+  }
+}

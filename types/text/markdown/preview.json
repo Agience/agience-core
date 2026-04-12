@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "icon": "file-text",
+  "visible_fields": ["title"],
+  "preview": {
+    "kind": "markdown_excerpt",
+    "max_chars": 280
+  }
+}

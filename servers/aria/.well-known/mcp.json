@@ -1,0 +1,29 @@
+{
+  "$schema": "https://schemas.agience.io/mcp-server/v1/mcp.json",
+  "schema_version": "1",
+  "name": "agience-server-aria",
+  "display_name": "Aria — Presentation & Interface",
+  "description": "Communicates results to humans through language, formatting, visualization, interface presentation, and channel-ready packaging while ensuring clarity and usability.",
+  "version": "0.1.0",
+  "image": "ghcr.io/agience/agience-server-aria:latest",
+  "endpoints": {
+    "streamable_http": "/mcp"
+  },
+  "tools": [
+    { "name": "format_response", "description": "Format content for human consumption (markdown, html, plain)" },
+    { "name": "render_visualization", "description": "Create charts, diagrams, or visual representations" },
+    { "name": "adapt_tone", "description": "Adjust language tone/style for a target audience" },
+    { "name": "present_artifact", "description": "Present an artifact's content with appropriate formatting" },
+    { "name": "narrate", "description": "Generate natural-language narrative from structured data" }
+  ],
+  "resources": [],
+  "prompts": [],
+  "artifact_types": [],
+  "config": {
+    "env": {
+      "AGIENCE_API_URI": { "description": "Base URI of the agience-core backend", "required": true },
+      "AGIENCE_API_KEY": { "description": "Platform API key (Bearer token)", "required": true },
+      "MCP_PORT": { "description": "HTTP port for the MCP server", "default": "8083" }
+    }
+  }
+}

@@ -1,0 +1,248 @@
+{
+  "content_type": "application/vnd.agience.transform+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Agience Transform \u2014 a named, executable transformation step invokable via POST /agents/invoke.",
+  "context_schema": {
+    "transform": {
+      "type": "object",
+      "description": "Transform identity and dispatch profile. Keep the MIME stable as application/vnd.agience.transform+json and use transform.kind / transform.subtype for sub-types instead of creating new transform MIME families.",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "description": "Transform context schema version"
+        },
+        "kind": {
+          "type": "string",
+          "description": "Semantic transform family used for UX, grouping, and validation. Examples: palette, llm, workflow, script, retrieval, ingest."
+        },
+        "subtype": {
+          "type": "string",
+          "description": "Optional narrower subtype within the semantic family. Examples: summarize, classify, research, transcript-finalize."
+        },
+        "run": {
+          "type": "object",
+          "description": "Dispatch configuration for this Transform. Defines how the transform executes, independent of the semantic family.",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "palette-run",
+                "mcp-tool",
+                "llm",
+                "workflow",
+                "flow-run",
+                "host-script",
+                "transform-ref",
+                "webhook"
+              ],
+              "description": "Execution runner. Examples: palette-run for Palette-authored transform specs, workflow for multi-step orchestrated pipelines, llm for direct prompt execution, host-script for certified host-side script execution."
+            }
+          }
+        },
+        "spec": {
+          "type": "object",
+          "description": "Optional embedded transform spec snapshot, typically used by Palette-authored transforms."
+        }
+      }
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable name shown in the Palette"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief explanation of what this Transform does"
+    },
+    "run": {
+      "type": "object",
+      "description": "Execution interface \u2014 defines how the Transform is dispatched when invoked via transform_id",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "mcp-tool",
+            "llm",
+            "workflow",
+            "transform-ref",
+            "webhook"
+          ],
+          "description": "Dispatch mode. 'mcp-tool' calls a named tool on an MCP server; 'workflow' orchestrates a sequence of child transforms with conditions and retry; 'llm' runs a prompt; 'transform-ref' delegates to another Transform artifact; 'webhook' POSTs to a URL."
+        },
+        "server": {
+          "type": "string",
+          "default": "astra",
+          "description": "MCP server name (type=mcp-tool only). Use an explicit persona server such as 'astra' for ingestion transforms, or 'agience-core' when the tool is owned by core itself."
+        },
+        "tool": {
+          "type": "string",
+          "description": "Tool name to invoke on the MCP server (type=mcp-tool only)"
+        },
+        "input_mapping": {
+          "type": "object",
+          "description": "Maps tool parameter names \u2192 values sourced from the invoke request. String values starting with '$.' are resolved as paths: '$.workspace_id', '$.artifacts[0]', etc."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "System prompt template (type=llm only)"
+        },
+        "transform_id": {
+          "type": "string",
+          "description": "Artifact ID of another Transform to delegate to (type=transform-ref only)"
+        },
+        "url": {
+          "type": "string",
+          "description": "Webhook URL (type=webhook only)"
+        },
+        "state_type": {
+          "type": "string",
+          "description": "Content type of the State Artifact (type=workflow only, informational)"
+        },
+        "steps": {
+          "type": "array",
+          "description": "Ordered list of child transform steps (type=workflow only)",
+          "items": {
+            "type": "object",
+            "required": ["transform_id"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Human-readable step name"
+              },
+              "transform_id": {
+                "type": "string",
+                "description": "Artifact ID of the child Transform to execute"
+              },
+              "condition": {
+                "type": "object",
+                "description": "Optional condition evaluated against State Artifact context. Step is skipped if condition is not met.",
+                "properties": {
+                  "field": { "type": "string" },
+                  "eq": {},
+                  "ne": {},
+                  "gt": {},
+                  "gte": {},
+                  "lt": {},
+                  "lte": {}
+                }
+              },
+              "input_mapping": {
+                "type": "object",
+                "description": "Additional input_mapping overrides for this step"
+              }
+            }
+          }
+        },
+        "retry": {
+          "type": "object",
+          "description": "Bounded retry configuration (type=workflow only)",
+          "properties": {
+            "on_field": {
+              "type": "string",
+              "description": "Field in State Artifact context to check for retry trigger"
+            },
+            "restart_from_step": {
+              "type": "integer",
+              "description": "0-based index of the step to restart from on retry"
+            },
+            "max_retries": {
+              "type": "integer",
+              "description": "Maximum number of retry iterations"
+            }
+          }
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "description": "Declares what the Transform expects as input (for documentation and palette display)",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "artifacts": {
+          "type": "object",
+          "description": "Expected artifact count range",
+          "properties": {
+            "min": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "description": "Declares what the Transform produces (for documentation and palette display)",
+      "properties": {
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "operations": {
+    "invoke": {
+      "enabled": true,
+      "requires_grant": "invoke",
+      "dispatch": {
+        "kind": "mcp_tool",
+        "server_ref": "$.context.run.server",
+        "tool_ref": "$.context.run.tool"
+      },
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "workspace_id": { "type": "string" },
+          "artifacts":    { "type": "array", "items": { "type": "string" } },
+          "input":        { "type": "string" },
+          "params":       { "type": "object" }
+        }
+      },
+      "emits": [
+        { "event": "artifact.invoke.started",   "phase": "before" },
+        { "event": "artifact.invoke.completed", "phase": "after"  },
+        { "event": "artifact.invoke.failed",    "phase": "error"  }
+      ],
+      "observe": {
+        "enabled": true,
+        "transports": ["sse", "websocket"],
+        "requires_grant": "read"
+      }
+    }
+  },
+  "ui": {
+    "label": "Transform",
+    "icon": "zap",
+    "color": "#8b5cf6",
+    "badge_class": "bg-indigo-100 text-indigo-800",
+    "tile_class": "ring-1 ring-indigo-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit",
+      "running"
+    ],
+    "default_mode": "floating",
+    "default_state": "edit",
+    "is_container": false,
+    "creatable": true,
+    "viewer": "transform",
+    "open_action": "palette",
+    "provider": "palette"
+  }
+}

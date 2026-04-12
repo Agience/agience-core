@@ -1,0 +1,10 @@
+{
+  "schema_version": "1",
+  "keys": [
+    {
+      "kid": "lic-2026-q1",
+      "alg": "EdDSA",
+      "public_key": "BASE64URL_RAW_ED25519_PUBLIC_KEY_BYTES"
+    }
+  ]
+}

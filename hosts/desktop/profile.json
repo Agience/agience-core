@@ -1,0 +1,11 @@
+{
+  "profile": "relay-desktop",
+  "runtime_role": "relay",
+  "runtime_mode": "host",
+  "entrypoint": "agience_relay_host.main:main",
+  "description": "Desktop relay host runtime using source-tree Agience persona servers without the full platform infrastructure.",
+  "services": [
+    "relay-runtime",
+    "local-server-supervisor"
+  ]
+}

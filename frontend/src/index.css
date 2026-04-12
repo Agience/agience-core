@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── TipTap / ProseMirror WYSIWYG editor styles ─────────────────────────── */
+.tiptap-editor .ProseMirror {
+  outline: none;
+  min-height: 120px;
+}
+
+/* Placeholder (shown when editor is empty) */
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Focused highlight: thin left accent on the active node */
+.tiptap-editor .ProseMirror:focus-visible {
+  outline: none;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-timeline: --page-scroll block;
+  }
+
+  /* Custom scroll behavior */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-timeline: --page-scroll block;
+      scroll-behavior: smooth;
+      transition-timing-function: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+      transition-duration: 800ms;
+    }
+  }
+
+  body {
+    @apply antialiased font-sans text-gray-900 text-sm;
+    font-feature-settings: 'liga' 1, 'calt' 1;
+  }
+
+  /* Heading styles - consistent sans-serif */
+  h1, h2, h3, h4, h5, h6 {
+    @apply antialiased font-sans text-gray-900;
+  }
+  
+  h1 { @apply text-2xl font-semibold; }
+  h2 { @apply text-xl font-semibold; }
+  h3 { @apply text-lg font-semibold; }
+  h4 { @apply text-base font-semibold; }
+  h5 { @apply text-sm font-semibold; }
+  h6 { @apply text-xs font-semibold; }
+  
+  /* Ensure all text elements use sans-serif */
+  p, span, div, label, input, textarea, select, button {
+    @apply font-sans;
+  }
+  
+  /* Monospace only for code */
+  code, pre, kbd, samp {
+    @apply font-mono;
+  }
+  :root {
+    /* Light mode - Purple brand from logo (#9B7EBD / HSL: 275° 30% 62%) */
+    --background: 0 0% 100%;
+    --foreground: 275 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 275 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 275 25% 15%;
+    --primary: 275 30% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 275 20% 95%;
+    --secondary-foreground: 275 30% 25%;
+    --muted: 275 15% 96%;
+    --muted-foreground: 275 10% 45%;
+    --accent: 275 10% 94%;
+    --accent-foreground: 275 30% 25%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 275 15% 90%;
+    --input: 275 15% 90%;
+    --ring: 275 30% 55%;
+    --chart-1: 275 40% 60%;
+    --chart-2: 275 20% 50%;
+    --chart-3: 45 90% 55%;
+    --chart-4: 275 15% 40%;
+    --chart-5: 320 45% 55%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    /* Dark mode - Deeper purples with logo brand */
+    --background: 275 30% 8%;
+    --foreground: 275 15% 95%;
+    --card: 275 25% 10%;
+    --card-foreground: 275 15% 95%;
+    --popover: 275 30% 8%;
+    --popover-foreground: 275 15% 95%;
+    --primary: 275 35% 65%;
+    --primary-foreground: 275 30% 10%;
+    --secondary: 275 20% 15%;
+    --secondary-foreground: 275 15% 95%;
+    --muted: 275 20% 15%;
+    --muted-foreground: 275 10% 60%;
+    --accent: 275 15% 18%;
+    --accent-foreground: 275 15% 95%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 275 20% 20%;
+    --input: 275 20% 20%;
+    --ring: 275 35% 65%;
+    --chart-1: 275 45% 65%;
+    --chart-2: 275 25% 55%;
+    --chart-3: 45 85% 60%;
+    --chart-4: 275 20% 45%;
+    --chart-5: 320 50% 60%;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+/* Search highlight styles */
+@layer utilities {
+  /* Highlighted text from search results */
+  em.search-highlight,
+  .search-highlight em {
+    @apply not-italic font-semibold bg-yellow-200 text-gray-900 px-0.5 rounded;
+  }
+  
+  .dark em.search-highlight,
+  .dark .search-highlight em {
+    @apply bg-yellow-500/30 text-yellow-100;
+  }
+  
+  /* For rendering raw HTML highlights from OpenSearch */
+  [dangerouslySetInnerHTML] em {
+    @apply not-italic font-semibold bg-yellow-200 text-gray-900 px-0.5 rounded;
+  }
+  
+  .dark [dangerouslySetInnerHTML] em {
+    @apply bg-yellow-500/30 text-yellow-100;
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "content_type": "application/vnd.agience.license+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "A projected license record managed by Ophan. Captures operational state for an issued license without making the artifact itself the trust artifact.",
+  "context_schema": {
+    "license_id": "string \u2014 license identifier",
+    "entitlement_id": "string \u2014 parent entitlement identifier",
+    "account_id": "string \u2014 licensed operator or account",
+    "policy_id": "string \u2014 commercial policy identifier",
+    "control_class": "string? \u2014 licensing control class",
+    "product_surface": "string? \u2014 target product surface",
+    "runtime_roles": "string[] \u2014 allowed runtime roles",
+    "distribution_profiles": "string[] \u2014 allowed packaging profiles",
+    "branding_scope": "string[] \u2014 allowed branding surfaces",
+    "entitlements": "string[] \u2014 resolved entitlements in effect",
+    "state": "string \u2014 active | grace | revoked | expired",
+    "issued_at": "string \u2014 ISO 8601 timestamp",
+    "not_before": "string \u2014 ISO 8601 timestamp",
+    "expires_at": "string \u2014 ISO 8601 timestamp",
+    "artifact_status": "string? \u2014 issued | pending | superseded",
+    "artifact_ref": "string? \u2014 opaque reference to artifact storage",
+    "limits": "object? \u2014 current commercial limits",
+    "features": "object? \u2014 enabled commercial features"
+  },
+  "ui": {
+    "label": "License",
+    "icon": "shield-check",
+    "color": "#059669",
+    "badge_class": "bg-emerald-100 text-emerald-800",
+    "tile_class": "ring-1 ring-emerald-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "description": "Operational license projection owned by Ophan."
+  }
+}

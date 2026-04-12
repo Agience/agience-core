@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agience.dev/schemas/licensing/activation-lease.schema.json",
+  "title": "Agience Activation Lease",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "lease_id",
+    "license_id",
+    "install_id",
+    "runtime_role",
+    "issued_at",
+    "not_before",
+    "lease_expires_at",
+    "signature"
+  ],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "lease_id": { "type": "string" },
+    "license_id": { "type": "string" },
+    "install_id": { "type": "string" },
+    "instance_id": { "type": "string" },
+    "device_id": { "type": "string" },
+    "runtime_role": { "type": "string" },
+    "profile": { "type": "string" },
+    "issued_at": { "type": "string" },
+    "not_before": { "type": "string" },
+    "lease_expires_at": { "type": "string" },
+    "heartbeat_interval_hours": { "type": "integer" },
+    "reporting": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "attributes": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    },
+    "extensions": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    },
+    "signature": {
+      "type": "object",
+      "required": ["alg", "kid", "value"],
+      "properties": {
+        "alg": { "type": "string" },
+        "kid": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

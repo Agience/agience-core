@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authority Viewer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f9fafb; color: #1f2937; font-size: 14px; line-height: 1.5;
+    }
+    .container { max-width: 640px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Hero banner */
+    .hero {
+      background: linear-gradient(135deg, #fffbeb, white);
+      border: 1px solid #fde68a; border-radius: 12px; padding: 20px;
+    }
+    .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .hero-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #b45309;
+    }
+    .hero-title { font-size: 18px; font-weight: 600; color: #0f172a; margin-top: 8px; }
+    .hero-desc { font-size: 13px; color: #475569; margin-top: 8px; max-width: 440px; }
+
+    /* Info pill */
+    .info-pill {
+      background: white; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px;
+      font-size: 12px; color: #475569; min-width: 160px; flex-shrink: 0;
+    }
+    .info-pill div { padding: 2px 0; }
+    .info-pill .il { font-weight: 600; color: #0f172a; }
+
+    /* Action buttons */
+    .actions { display: flex; gap: 8px; }
+    .btn-icon {
+      display: inline-flex; align-items: center; gap: 4px;
+      border: 1px solid #e2e8f0; background: white; border-radius: 6px;
+      padding: 6px 12px; font-size: 12px; font-weight: 500; color: #334155;
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .btn-icon:hover { background: #f8fafc; border-color: #cbd5e1; }
+    .btn-save {
+      background: #0f172a; color: white; border-color: #0f172a;
+    }
+    .btn-save:hover { background: #1e293b; }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Stat cards */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .stat-card {
+      background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;
+    }
+    .stat-header { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #0f172a; }
+    .stat-value { font-size: 24px; font-weight: 600; color: #0f172a; margin-top: 8px; }
+    .stat-desc { font-size: 12px; color: #475569; margin-top: 4px; }
+
+    /* Edit form */
+    .edit-card {
+      background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;
+    }
+    .edit-title { font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 12px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 12px; font-weight: 500; color: #374151; }
+    input, textarea {
+      width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px;
+      font-size: 13px; outline: none; font-family: inherit; background: white; resize: vertical;
+    }
+    input:focus, textarea:focus { border-color: #92400e; box-shadow: 0 0 0 2px rgba(146,64,14,0.1); }
+
+    /* Topology section */
+    .topology-card {
+      background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;
+    }
+    .topology-title { font-size: 14px; font-weight: 600; color: #0f172a; }
+    .topology-desc { font-size: 13px; color: #475569; margin-top: 8px; }
+    .topology-empty {
+      margin-top: 12px; background: #f8fafc; border: 1px dashed #e2e8f0; border-radius: 8px;
+      padding: 8px 12px; font-size: 13px; color: #475569;
+    }
+
+    .hidden { display: none; }
+
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .hero-top { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="app">
+    <!-- Hero banner -->
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+            Authority
+          </div>
+          <h2 class="hero-title" id="heroTitle">Authority</h2>
+          <p class="hero-desc">The authority artifact is the root domain and trust surface for a deployment. It declares governance, validation posture, and the hosts that execute work on its behalf.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <div class="actions" id="actionButtons">
+            <button class="btn-icon" id="editBtn" onclick="toggleEdit()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+              Edit
+            </button>
+          </div>
+          <div class="info-pill" id="infoPill">
+            <div><span class="il">Domain:</span> <span id="pillDomain">not declared</span></div>
+            <div><span class="il">Issuer:</span> <span id="pillIssuer">not declared</span></div>
+            <div><span class="il">Trust model:</span> <span id="pillTrust">not declared</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit form (hidden by default) -->
+    <div class="edit-card hidden" id="editSection">
+      <div class="edit-title">Edit Authority</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Title</label>
+          <input type="text" id="editTitle" placeholder="Deployment Authority">
+        </div>
+        <div class="form-group">
+          <label>Domain</label>
+          <input type="text" id="editDomain" placeholder="acme.example">
+        </div>
+        <div class="form-group">
+          <label>Issuer</label>
+          <input type="text" id="editIssuer" placeholder="platform">
+        </div>
+        <div class="form-group">
+          <label>Trust Model</label>
+          <input type="text" id="editTrustModel" placeholder="delegated">
+        </div>
+        <div class="form-group">
+          <label>Currency</label>
+          <input type="text" id="editCurrency" placeholder="AGC">
+        </div>
+        <div class="form-group full">
+          <label>Host Artifact IDs (one per line)</label>
+          <textarea id="editHosts" rows="3" placeholder="One host id per line"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>Certifications (one per line)</label>
+          <textarea id="editCerts" rows="3" placeholder="One certification per line"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
+          Hosts
+        </div>
+        <div class="stat-value" id="hostCount">0</div>
+        <div class="stat-desc">Execution boundaries recognized by this authority.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-header">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-4a2 2 0 0 1 2-2h4"/><path d="M7 3v4a2 2 0 0 1-2 2H1"/><rect x="2" y="2" width="20" height="20" rx="2"/><path d="m17 8-5 5"/><path d="m12 8 5 5"/></svg>
+          Certifications
+        </div>
+        <div class="stat-value" id="certCount">0</div>
+        <div class="stat-desc">Attestation or validation programs this authority publishes.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-header">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+          Currency
+        </div>
+        <div class="stat-value" id="currencyValue" style="font-size:18px">Not configured</div>
+        <div class="stat-desc">Reserved for authority-scoped trust and settlement models.</div>
+      </div>
+    </div>
+
+    <!-- Topology -->
+    <div class="topology-card">
+      <div class="topology-title">Topology</div>
+      <div class="topology-desc">This viewer scaffolds the target model only. Runtime bootstrap still provisions the current instance as a host-first surface until authority provisioning is wired.</div>
+      <div class="topology-empty" id="topologyMsg">No linked current-host artifact is declared on this authority yet.</div>
+    </div>
+  </div>
+
+  <script type="module">
+    // =========================================================================
+    // MCP Apps client
+    // =========================================================================
+    let _rpcId = 0;
+    const _pending = {};
+    function sendRpc(method, params) {
+      const id = ++_rpcId;
+      return new Promise((resolve, reject) => {
+        _pending[id] = { resolve, reject };
+        parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+      });
+    }
+    function sendNotification(method, params) {
+      parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+    }
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || d.jsonrpc !== '2.0') return;
+      if (d.id && _pending[d.id]) {
+        if (d.error) _pending[d.id].reject(d.error);
+        else _pending[d.id].resolve(d.result);
+        delete _pending[d.id];
+        return;
+      }
+      if (d.method === 'ui/notifications/tool-result') handleToolResult(d.params);
+      if (d.method === 'ui/notifications/host-context-changed') handleHostContext(d.params);
+    });
+
+    // Initialize
+    sendRpc('ui/initialize', {
+      protocolVersion: '2026-01-26',
+      clientInfo: { name: 'agience-viewer', version: '0.1.0' }
+    }).then(result => {
+      if (result.hostContext) handleHostContext(result.hostContext);
+      sendNotification('ui/notifications/initialized');
+    });
+
+    // =========================================================================
+    // State
+    // =========================================================================
+    let artifactId = null;
+    let artifactContext = {};
+    let isEditing = false;
+    let saving = false;
+
+    // =========================================================================
+    // Host data handlers
+    // =========================================================================
+    function handleToolResult(params) {
+      if (!params || !params.content) return;
+      for (const block of params.content) {
+        if (block.type === 'text' && block.text) {
+          try {
+            const data = JSON.parse(block.text);
+            artifactId = data.artifact_id || artifactId;
+            artifactContext = data.context || {};
+            render();
+          } catch { /* ignore */ }
+        }
+      }
+    }
+
+    function handleHostContext(ctx) {
+      // Future: apply theme, etc.
+    }
+
+    // =========================================================================
+    // Rendering
+    // =========================================================================
+    function render() {
+      const ctx = artifactContext;
+      const authority = ctx.authority || {};
+
+      // Hero title
+      document.getElementById('heroTitle').textContent = ctx.title || authority.domain || 'Authority';
+
+      // Info pill
+      document.getElementById('pillDomain').textContent = authority.domain || 'not declared';
+      document.getElementById('pillIssuer').textContent = authority.issuer || 'not declared';
+      document.getElementById('pillTrust').textContent = authority.trust_model || 'not declared';
+
+      // Stats
+      const hosts = Array.isArray(authority.host_artifact_ids) ? authority.host_artifact_ids : [];
+      const certs = Array.isArray(authority.certifications) ? authority.certifications : [];
+      document.getElementById('hostCount').textContent = String(hosts.length);
+      document.getElementById('certCount').textContent = String(certs.length);
+      document.getElementById('currencyValue').textContent = authority.currency || 'Not configured';
+
+      // Topology
+      if (authority.current_host_artifact_id) {
+        document.getElementById('topologyMsg').textContent =
+          'Current host: ' + authority.current_host_artifact_id;
+      } else {
+        document.getElementById('topologyMsg').textContent =
+          'No linked current-host artifact is declared on this authority yet.';
+      }
+
+      // Populate edit form if editing
+      if (isEditing) {
+        populateEditForm();
+      }
+
+      renderButtons();
+    }
+
+    function renderButtons() {
+      const container = document.getElementById('actionButtons');
+      if (isEditing) {
+        container.innerHTML = `
+          <button class="btn-icon" onclick="cancelEdit()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            Cancel
+          </button>
+          <button class="btn-icon btn-save" id="saveBtn" onclick="handleSave()" ${saving ? 'disabled' : ''}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>
+            ${saving ? 'Saving...' : 'Save'}
+          </button>
+        `;
+      } else {
+        container.innerHTML = `
+          <button class="btn-icon" id="editBtn" onclick="toggleEdit()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+            Edit
+          </button>
+        `;
+      }
+    }
+
+    function populateEditForm() {
+      const ctx = artifactContext;
+      const authority = ctx.authority || {};
+      document.getElementById('editTitle').value = ctx.title || '';
+      document.getElementById('editDomain').value = authority.domain || '';
+      document.getElementById('editIssuer').value = authority.issuer || '';
+      document.getElementById('editTrustModel').value = authority.trust_model || '';
+      document.getElementById('editCurrency').value = authority.currency || '';
+      document.getElementById('editHosts').value = Array.isArray(authority.host_artifact_ids)
+        ? authority.host_artifact_ids.join('\n') : '';
+      document.getElementById('editCerts').value = Array.isArray(authority.certifications)
+        ? authority.certifications.join('\n') : '';
+    }
+
+    // =========================================================================
+    // Actions
+    // =========================================================================
+    window.toggleEdit = function() {
+      isEditing = true;
+      document.getElementById('editSection').classList.remove('hidden');
+      populateEditForm();
+      renderButtons();
+    };
+
+    window.cancelEdit = function() {
+      isEditing = false;
+      document.getElementById('editSection').classList.add('hidden');
+      renderButtons();
+    };
+
+    window.handleSave = async function() {
+      saving = true;
+      renderButtons();
+      try {
+        const parseLines = (v) => v.split('\n').map(l => l.trim()).filter(Boolean);
+        const updatedContext = {
+          ...artifactContext,
+          title: document.getElementById('editTitle').value.trim() || undefined,
+          authority: {
+            ...(artifactContext.authority || {}),
+            domain: document.getElementById('editDomain').value.trim() || undefined,
+            issuer: document.getElementById('editIssuer').value.trim() || undefined,
+            trust_model: document.getElementById('editTrustModel').value.trim() || undefined,
+            currency: document.getElementById('editCurrency').value.trim() || undefined,
+            host_artifact_ids: parseLines(document.getElementById('editHosts').value),
+            certifications: parseLines(document.getElementById('editCerts').value),
+          }
+        };
+        await sendRpc('tools/call', {
+          name: 'update_artifact',
+          arguments: { id: artifactId, patch: { context: JSON.stringify(updatedContext) } }
+        });
+        artifactContext = updatedContext;
+        isEditing = false;
+        document.getElementById('editSection').classList.add('hidden');
+        render();
+      } catch (err) {
+        console.error('Save failed:', err);
+      } finally {
+        saving = false;
+        renderButtons();
+      }
+    };
+  </script>
+</body>
+</html>

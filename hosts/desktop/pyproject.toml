@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agience-relay-desktop"
+version = "0.1.0"
+license = "AGPL-3.0-only"
+description = "Agience desktop relay host runtime"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "mcp[cli]>=1.6.0",
+    "httpx>=0.27",
+    "websockets>=12.0",
+    "github-copilot-sdk>=0.1.30",
+    "requests",
+    "amazon-transcribe"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4"
+]
+
+[project.scripts]
+agience-relay-desktop = "agience_relay_host.main:main"
+
+[tool.ruff]
+line-length = 100

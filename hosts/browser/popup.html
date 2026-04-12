@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agience</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px; color: #1e293b; background: #fff;
+    width: 320px; padding: 20px;
+  }
+  .header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .header h1 { font-size: 16px; font-weight: 700; color: #0f172a; }
+  .header .logo {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: #6366f1; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 14px; font-weight: 700; flex-shrink: 0;
+  }
+  .field-group { margin-bottom: 14px; }
+  label { display: block; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  input[type="text"], input[type="password"] {
+    width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
+    font-size: 13px; color: #1e293b; outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.15); }
+  .btn-save {
+    width: 100%; padding: 9px; background: #6366f1; color: #fff;
+    border: none; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; margin-top: 4px; transition: background 0.15s;
+  }
+  .btn-save:hover { background: #4f46e5; }
+  .status {
+    margin-top: 14px; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 6px; font-size: 12px; color: #64748b; min-height: 44px;
+  }
+  .status .label { font-weight: 600; color: #475569; margin-bottom: 2px; }
+  .status .value { color: #1e293b; word-break: break-all; }
+  .status .empty { color: #cbd5e1; font-style: italic; }
+  .toast-msg { font-size: 12px; color: #10b981; font-weight: 600; margin-top: 6px; display: none; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">A</div>
+  <h1>Agience</h1>
+</div>
+
+<div class="field-group">
+  <label>Agience URL</label>
+  <input type="text" id="baseUrl" placeholder="https://app.agience.ai" />
+</div>
+<div class="field-group">
+  <label>API Key</label>
+  <input type="password" id="apiKey" placeholder="agk_..." />
+</div>
+<div class="field-group">
+  <label>Workspace ID</label>
+  <input type="text" id="workspaceId" placeholder="Paste workspace UUID" />
+</div>
+
+<button class="btn-save" id="saveBtn">Save settings</button>
+<div class="toast-msg" id="toastMsg">Settings saved.</div>
+
+<div class="status" id="statusArea">
+  <div class="label">Last captured</div>
+  <div class="value empty" id="lastCapture">Nothing captured yet</div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

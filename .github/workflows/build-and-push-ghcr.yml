@@ -1,0 +1,160 @@
+name: Build and push images (GHCR + Docker Hub stable release)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: build-and-push-ghcr-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push-ghcr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read build version
+        id: build-info
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(python3 -c "
+          import json, pathlib
+          data = json.loads(pathlib.Path('build_info.json').read_text())
+          v = str(data.get('version', '')).strip()
+          if not v: raise SystemExit('build_info.json must contain a non-empty version string')
+          print(v)
+          ")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Validate stable release tag matches build_info
+        shell: bash
+        env:
+          BUILD_VERSION: ${{ steps.build-info.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if printf '%s' "$TAG_VERSION" | grep -q -- '-'; then
+            echo "Prerelease image publishing should come from release/* branches, not prerelease Git tags." >&2
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$BUILD_VERSION" ]; then
+            echo "Release tag version '$TAG_VERSION' does not match build_info.json version '$BUILD_VERSION'." >&2
+            exit 1
+          fi
+
+      # -----------------------------------------------------------------
+      # Registry login — Docker Hub + GHCR
+      # -----------------------------------------------------------------
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_NAMESPACE }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------------------------------
+      # Tag matrix
+      #
+      #   tag vX.Y.Z → :latest  :X.Y  :X.Y.Z
+      #
+      # Each image is pushed to both registries:
+      #   agience/<image>:<tag>           (Docker Hub)
+      #   ghcr.io/agience/<image>:<tag>   (GHCR)
+      # -----------------------------------------------------------------
+
+      - name: Prepare image tags
+        id: tags
+        env:
+          DOCKERHUB_NS: ${{ secrets.DOCKERHUB_NAMESPACE }}
+          GHCR_NS: ghcr.io/${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          RELEASE_LINE="${VERSION%.*}"
+          TAGS=("latest" "$RELEASE_LINE" "$VERSION")
+
+          IMAGES=(agience-backend agience-frontend agience-servers agience-stream agience-init)
+          OUTPUT_NAMES=(backend frontend servers stream init)
+
+          for i in "${!IMAGES[@]}"; do
+            IMG="${IMAGES[$i]}"
+            OUT="${OUTPUT_NAMES[$i]}"
+            {
+              echo "${OUT}<<EOF"
+              for tag in "${TAGS[@]}"; do
+                echo "${DOCKERHUB_NS}/${IMG}:${tag}"
+                echo "${GHCR_NS}/${IMG}:${tag}"
+              done
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/backend.Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.backend }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/frontend.Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.frontend }}
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push servers (unified MCP host)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: servers/_host/Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.servers }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push stream ingest service (SRS RTMP)
+        uses: docker/build-push-action@v5
+        with:
+          context: servers/astra
+          file: servers/astra/stream/Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.stream }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push init container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.init
+          push: true
+          tags: ${{ steps.tags.outputs.init }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

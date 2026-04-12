@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Authorizer Viewer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5;
+  }
+  .container { padding: 20px; max-width: 520px; margin: 0 auto; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #0f172a; }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 9999px;
+  }
+  .status-badge .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .status-connected { background: #ecfdf5; color: #065f46; }
+  .status-connected .dot { background: #10b981; }
+  .status-disconnected { background: #fef2f2; color: #991b1b; }
+  .status-disconnected .dot { background: #ef4444; }
+  .status-pending { background: #fffbeb; color: #92400e; }
+  .status-pending .dot { background: #f59e0b; }
+  .section { margin-bottom: 20px; }
+  .field-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #94a3b8; margin-bottom: 4px;
+  }
+  .field-value {
+    font-size: 14px; color: #1e293b; padding: 8px 12px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    word-break: break-all;
+  }
+  .field-value.empty { color: #cbd5e1; font-style: italic; }
+  .provider-icon {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 10px; font-size: 15px; font-weight: 500;
+  }
+  .provider-icon .icon {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+  }
+  .scopes-list {
+    display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0;
+  }
+  .scope-tag {
+    font-size: 12px; font-weight: 500; padding: 4px 10px;
+    background: #fef2f2; color: #dc2626; border-radius: 6px;
+    border: 1px solid #fecaca;
+  }
+  .connect-section {
+    text-align: center; padding: 20px 0;
+  }
+  .connect-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 600; padding: 12px 28px; border-radius: 10px;
+    border: none; cursor: pointer; transition: all 0.2s;
+    background: #dc2626; color: #fff;
+    box-shadow: 0 2px 8px rgba(220,38,38,0.25);
+  }
+  .connect-btn:hover { background: #b91c1c; box-shadow: 0 4px 12px rgba(220,38,38,0.35); }
+  .connect-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+  .connect-btn .lock {
+    font-size: 16px;
+  }
+  .connected-info {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0;
+    border-radius: 10px; font-size: 13px; color: #065f46;
+  }
+  .connected-info .check { font-size: 18px; }
+  .detail-row {
+    display: flex; gap: 12px;
+  }
+  .detail-row .section { flex: 1; min-width: 0; }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    background: #10b981; color: #fff; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div style="color:#94a3b8;text-align:center;padding:40px 0;">Loading...</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* --- MCP Apps JSON-RPC boilerplate --- */
+let _rpcId = 0;
+const _pending = {};
+function sendRpc(method, params) {
+  const id = ++_rpcId;
+  return new Promise((resolve, reject) => {
+    _pending[id] = { resolve, reject };
+    parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+  });
+}
+function sendNotification(method, params) {
+  parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+}
+let _artifactData = null;
+let _hostCtx = {};
+function handleHostContext(ctx) { _hostCtx = { ..._hostCtx, ...ctx }; }
+function handleToolResult(params) {
+  const text = (params.content || []).find(c => c.type === 'text');
+  if (text) { _artifactData = JSON.parse(text.text); render(); }
+}
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || d.jsonrpc !== '2.0') return;
+  if (d.id && _pending[d.id]) {
+    if (d.error) _pending[d.id].reject(d.error);
+    else _pending[d.id].resolve(d.result);
+    delete _pending[d.id]; return;
+  }
+  if (d.method === 'ui/notifications/tool-result') handleToolResult(d.params);
+  if (d.method === 'ui/notifications/host-context-changed') handleHostContext(d.params);
+});
+sendRpc('ui/initialize', {
+  protocolVersion: '2026-01-26',
+  clientInfo: { name: 'agience-viewer', version: '0.1.0' }
+}).then(result => {
+  if (result.hostContext) handleHostContext(result.hostContext);
+  sendNotification('ui/notifications/initialized');
+});
+async function updateArtifact(patch) {
+  return sendRpc('tools/call', { name: 'update_artifact', arguments: { id: _artifactData.artifact_id, patch } });
+}
+
+/* --- Authorizer viewer --- */
+
+function parseContent() {
+  // Authorizer reads from artifact.content (not context)
+  if (!_artifactData) return {};
+  try {
+    const raw = _artifactData.content;
+    if (!raw) return {};
+    return typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch { return {}; }
+}
+
+function ctx() {
+  if (!_artifactData) return {};
+  try {
+    return typeof _artifactData.context === 'string'
+      ? JSON.parse(_artifactData.context)
+      : (_artifactData.context || {});
+  } catch { return {}; }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+const PROVIDER_COLORS = {
+  google: '#4285f4',
+  microsoft: '#00a4ef',
+  github: '#24292e',
+  slack: '#4a154b',
+  twitter: '#1da1f2',
+  default: '#64748b',
+};
+
+function providerColor(p) {
+  return PROVIDER_COLORS[(p || '').toLowerCase()] || PROVIDER_COLORS.default;
+}
+
+function connectionStatus(content, context) {
+  if (content.connected === true || context.connected === true) return 'connected';
+  if (content.oauth_url || context.oauth_url) return 'pending';
+  return 'disconnected';
+}
+
+function statusLabel(s) {
+  if (s === 'connected') return 'Connected';
+  if (s === 'pending') return 'Ready to connect';
+  return 'Disconnected';
+}
+
+function handleConnect() {
+  const content = parseContent();
+  const context = ctx();
+  const url = content.oauth_url || context.oauth_url;
+  if (url) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } else {
+    showToast('No OAuth URL configured');
+  }
+}
+
+function render() {
+  if (!_artifactData) return;
+  const content = parseContent();
+  const context = ctx();
+  const app = document.getElementById('app');
+
+  const provider = content.provider || context.provider || '';
+  const account = content.account || context.account || '';
+  const scopes = content.scopes || context.scopes || [];
+  const status = connectionStatus(content, context);
+  const statusCls = 'status-' + status;
+  const title = context.title || _artifactData.description || 'Authorizer';
+
+  app.innerHTML = `
+    <div class="header">
+      <h1>${esc(title)}</h1>
+      <span class="status-badge ${statusCls}"><span class="dot"></span>${statusLabel(status)}</span>
+    </div>
+
+    ${provider ? `
+    <div class="section">
+      <div class="field-label">Provider</div>
+      <div class="provider-icon">
+        <span class="icon" style="background:${providerColor(provider)}">${esc(provider.charAt(0).toUpperCase())}</span>
+        ${esc(provider)}
+      </div>
+    </div>` : ''}
+
+    ${account ? `
+    <div class="section">
+      <div class="field-label">Account</div>
+      <div class="field-value">${esc(account)}</div>
+    </div>` : ''}
+
+    ${scopes.length > 0 ? `
+    <div class="section">
+      <div class="field-label">Scopes</div>
+      <div class="scopes-list">
+        ${scopes.map(s => `<span class="scope-tag">${esc(String(s))}</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${status === 'connected' ? `
+    <div class="connected-info">
+      <span class="check">&#10003;</span>
+      <span>OAuth connection is active${account ? ' for <strong>' + esc(account) + '</strong>' : ''}.</span>
+    </div>
+    ` : `
+    <div class="connect-section">
+      <button class="connect-btn" onclick="handleConnect()">
+        <span class="lock">&#128274;</span>
+        Connect${provider ? ' with ' + esc(provider) : ''}
+      </button>
+      ${status === 'pending' ? '<p style="margin-top:10px;font-size:12px;color:#92400e;">Click to authorize access via OAuth.</p>' : ''}
+      ${status === 'disconnected' && !content.oauth_url && !context.oauth_url ? '<p style="margin-top:10px;font-size:12px;color:#94a3b8;">No OAuth URL is configured for this authorizer.</p>' : ''}
+    </div>
+    `}
+  `;
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

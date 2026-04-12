@@ -1,0 +1,58 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read build version
+        id: build-info
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(python3 -c "
+          import json, pathlib
+          data = json.loads(pathlib.Path('build_info.json').read_text())
+          print(str(data.get('version', '')).strip())
+          ")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Agience v${{ steps.build-info.outputs.version }}
+          generate_release_notes: true
+          body: |
+            ## Docker Images
+
+            Pull from **Docker Hub** or **GitHub Container Registry**:
+
+            ```bash
+            # Docker Hub
+            docker pull agience/agience-backend:${{ steps.build-info.outputs.version }}
+            docker pull agience/agience-frontend:${{ steps.build-info.outputs.version }}
+            docker pull agience/agience-servers:${{ steps.build-info.outputs.version }}
+            docker pull agience/agience-stream:${{ steps.build-info.outputs.version }}
+            docker pull agience/agience-init:${{ steps.build-info.outputs.version }}
+
+            # GitHub Container Registry
+            docker pull ghcr.io/agience/agience-backend:${{ steps.build-info.outputs.version }}
+            docker pull ghcr.io/agience/agience-frontend:${{ steps.build-info.outputs.version }}
+            docker pull ghcr.io/agience/agience-servers:${{ steps.build-info.outputs.version }}
+            docker pull ghcr.io/agience/agience-stream:${{ steps.build-info.outputs.version }}
+            docker pull ghcr.io/agience/agience-init:${{ steps.build-info.outputs.version }}
+            ```
+
+            To deploy, set `VERSION=${{ steps.build-info.outputs.version }}` in your host `.env` and run `docker compose pull && docker compose up -d`.

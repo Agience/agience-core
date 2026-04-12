@@ -1,0 +1,81 @@
+{
+  "content_type": "application/vnd.agience.collection+json",
+  "version": 1,
+  "extensions": [],
+  "inherits": [],
+  "operations": {
+    "create": {
+      "enabled": true,
+      "requires_grant": "create",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [
+        { "event": "artifact.created", "phase": "after" }
+      ],
+      "observe": { "enabled": true, "transports": ["sse", "websocket"] }
+    },
+    "read": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "artifact_crud" }
+    },
+    "update": {
+      "enabled": true,
+      "requires_grant": "update",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [
+        { "event": "artifact.updated", "phase": "after" }
+      ],
+      "observe": { "enabled": true, "transports": ["sse", "websocket"] }
+    },
+    "delete": {
+      "enabled": true,
+      "requires_grant": "delete",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [
+        { "event": "artifact.deleted", "phase": "after" }
+      ],
+      "observe": { "enabled": true, "transports": ["sse", "websocket"] }
+    },
+    "commit": {
+      "enabled": true,
+      "requires_grant": "update",
+      "dispatch": { "kind": "native", "target": "collection_service.commit_workspace" },
+      "emits": [
+        { "event": "collection.commit.started",   "phase": "before" },
+        { "event": "collection.commit.completed", "phase": "after"  },
+        { "event": "collection.commit.failed",    "phase": "error"  }
+      ]
+    },
+    "search": {
+      "enabled": true,
+      "requires_grant": "search",
+      "dispatch": { "kind": "native", "target": "search_service.search" }
+    }
+  },
+  "ui": {
+    "label": "Collection",
+    "icon": "package",
+    "color": "#3b82f6",
+    "badge_class": "bg-blue-100 text-blue-800",
+    "tile_class": "",
+    "modes": [
+      "tree",
+      "grid",
+      "list",
+      "floating"
+    ],
+    "states": [
+      "view",
+      "edit",
+      "expanded",
+      "collapsed"
+    ],
+    "default_mode": "grid",
+    "default_state": "view",
+    "is_container": true,
+    "creatable": true,
+    "viewer": null,
+    "default_depth": 2,
+    "max_depth": 5
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "content_type": "application/*",
+  "version": 1,
+  "extensions": [],
+  "inherits": [],
+  "description": "Fallback for all unrecognised application/* types",
+  "ui": {
+    "label": "File",
+    "icon": "file",
+    "color": "#9ca3af",
+    "badge_class": "",
+    "tile_class": "",
+    "modes": [
+      "floating"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "viewer": null
+  }
+}

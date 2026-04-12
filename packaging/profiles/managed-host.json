@@ -1,0 +1,47 @@
+{
+  "$schema": "./profile.schema.json",
+  "schema_version": "1",
+  "profile": "managed-host",
+  "display_name": "Managed Cloud Host Distribution",
+  "runtime_role": "standard",
+  "product_surface": "core-app",
+  "license_class": "commercial-self-host",
+  "branding_scope": [],
+  "services": [
+    "frontend",
+    "backend",
+    "postgres",
+    "arango",
+    "opensearch",
+    "internal-router"
+  ],
+  "first_party_servers": [],
+  "required_operator_inputs": [
+    {
+      "name": "control_plane_environment",
+      "kind": "string",
+      "required": true,
+      "description": "Managed environment or tenant identifier"
+    }
+  ],
+  "generated_secrets": [
+    {
+      "name": "install_id",
+      "strategy": "random-uuid",
+      "storage": "local-state"
+    }
+  ],
+  "proxy_mode": "managed-ingress",
+  "packaging_targets": ["docker-compose", "private-release", "managed-control-plane"],
+  "meter_dimensions": ["mai"],
+  "offline_supported": false,
+  "required_entitlements": ["host_standard"],
+  "policy_refs": ["managed-host-core"],
+  "attributes": {
+    "supports_custom_domain": true,
+    "supports_white_label": false,
+    "managed_by_control_plane": true,
+    "requires_live_activation": true
+  },
+  "extensions": {}
+}

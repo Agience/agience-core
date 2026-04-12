@@ -1,0 +1,10 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Vitest: MainLayout minimal",
+			"type": "shell",
+			"command": "npx vitest run --reporter=verbose src/components/main/__tests__/MainLayout.minimal.test.tsx"
+		}
+	]
+}

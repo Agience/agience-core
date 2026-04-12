@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "events": {
+    "upload_complete": {
+      "tool": "process_uploaded_content",
+      "server_artifact_id": "astra"
+    },
+    "on_open": { "handler": "handlers/open.json" },
+    "on_preview": { "handler": "handlers/preview.json" },
+    "on_thumbnail": { "handler": "handlers/thumbnail.json" },
+    "on_properties": { "handler": "handlers/properties.json" }
+  }
+}

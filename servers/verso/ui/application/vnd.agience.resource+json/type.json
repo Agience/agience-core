@@ -1,0 +1,28 @@
+{
+  "content_type": "application/vnd.agience.resource+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Agience Resource",
+  "ui": {
+    "label": "Resource",
+    "icon": "database",
+    "color": "#0f766e",
+    "badge_class": "bg-teal-100 text-teal-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": null
+  }
+}

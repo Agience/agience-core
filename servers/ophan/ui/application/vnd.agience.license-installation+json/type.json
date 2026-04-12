@@ -1,0 +1,38 @@
+{
+  "content_type": "application/vnd.agience.license-installation+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "A license installation record tracking a specific deployment of a license on a device or instance.",
+  "context_schema": {
+    "install_id": "string \u2014 installation identifier",
+    "license_id": "string \u2014 parent license identifier",
+    "instance_id": "string? \u2014 cloud instance or container ID",
+    "device_id": "string? \u2014 device fingerprint",
+    "profile": "string? \u2014 deployment profile",
+    "state": "string \u2014 active | suspended | revoked | expired",
+    "lease_expires_at": "string \u2014 ISO 8601 lease expiry timestamp",
+    "last_validated_at": "string? \u2014 ISO 8601 last validation timestamp",
+    "details": "object? \u2014 additional installation metadata"
+  },
+  "ui": {
+    "label": "Installation",
+    "icon": "monitor",
+    "color": "#8b5cf6",
+    "badge_class": "bg-violet-100 text-violet-800",
+    "tile_class": "ring-1 ring-violet-200/70",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "description": "License installation \u2014 a specific deployment instance tracked against a license."
+  }
+}

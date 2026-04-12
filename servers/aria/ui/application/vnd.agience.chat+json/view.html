@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chat Viewer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5;
+  }
+  .chat-container { display: flex; flex-direction: column; height: 100%; }
+
+  /* --- Messages area --- */
+  .messages {
+    flex: 1; overflow-y: auto; padding: 16px; min-height: 0;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+  .empty-state {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: #94a3b8; font-size: 14px;
+  }
+
+  /* --- Message bubbles --- */
+  .msg-row { display: flex; flex-direction: column; gap: 2px; }
+  .msg-row.user { align-items: flex-end; }
+  .msg-row.assistant { align-items: flex-start; }
+  .bubble {
+    max-width: 85%; border-radius: 16px; padding: 10px 14px;
+    font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+  }
+  .bubble.user {
+    background: linear-gradient(135deg, #7c3aed, #6366f1);
+    color: #fff; border-bottom-right-radius: 4px;
+  }
+  .bubble.assistant {
+    background: #f1f5f9; color: #1e293b; border-bottom-left-radius: 4px;
+  }
+
+  /* --- Tool call badges --- */
+  .tool-calls { max-width: 85%; display: flex; flex-direction: column; gap: 4px; }
+  .tool-badge {
+    border: 1px solid #bae6fd; border-radius: 8px; overflow: hidden;
+    background: #f0f9ff; font-size: 12px;
+  }
+  .tool-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px; cursor: pointer; color: #0369a1;
+    transition: background 0.15s; user-select: none;
+  }
+  .tool-header:hover { background: #e0f2fe; }
+  .tool-icon {
+    width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .tool-icon svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .tool-name { font-family: 'SF Mono', 'Fira Code', monospace; font-weight: 600; }
+  .tool-chevron {
+    margin-left: auto; font-size: 10px; transition: transform 0.15s;
+  }
+  .tool-chevron.open { transform: rotate(90deg); }
+  .tool-body {
+    padding: 0 10px 8px; display: none;
+  }
+  .tool-body.open { display: block; }
+  .tool-section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #0284c7; margin: 4px 0 2px;
+  }
+  .tool-pre {
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; line-height: 1.4;
+    color: #475569; white-space: pre-wrap; word-break: break-all;
+    max-height: 120px; overflow: auto;
+  }
+
+  /* --- Loading indicator --- */
+  .loading-row { display: flex; align-items: flex-start; }
+  .loading-bubble {
+    background: #f1f5f9; border-radius: 16px; border-bottom-left-radius: 4px;
+    padding: 12px 16px; display: flex; gap: 4px; align-items: center;
+  }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #94a3b8;
+    animation: bounce 1.2s infinite;
+  }
+  .dot:nth-child(2) { animation-delay: 0.15s; }
+  .dot:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* --- Error --- */
+  .error-msg {
+    text-align: center; font-size: 12px; color: #ef4444; padding: 4px 0;
+  }
+
+  /* --- Input bar --- */
+  .input-bar {
+    border-top: 1px solid #f1f5f9; padding: 10px 12px;
+    display: flex; align-items: flex-end; gap: 8px;
+  }
+  .input-wrap { flex: 1; position: relative; }
+  .input-wrap textarea {
+    width: 100%; resize: none; font-size: 14px; font-family: inherit;
+    border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px;
+    outline: none; min-height: 36px; max-height: 128px; line-height: 1.4;
+    overflow-y: auto; transition: border-color 0.15s;
+  }
+  .input-wrap textarea:focus {
+    border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.12);
+  }
+  .input-wrap textarea:disabled { opacity: 0.5; }
+  .input-wrap textarea::placeholder { color: #94a3b8; }
+  .send-btn {
+    width: 36px; height: 36px; border-radius: 10px; border: none;
+    background: #7c3aed; color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s; flex-shrink: 0;
+  }
+  .send-btn:hover { background: #6d28d9; }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .send-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<div class="chat-container" id="app">
+  <div class="messages"><div class="empty-state">Loading...</div></div>
+  <div class="input-bar">
+    <div class="input-wrap"><textarea disabled placeholder="Loading..."></textarea></div>
+    <button class="send-btn" disabled><svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg></button>
+  </div>
+</div>
+
+<script>
+/* --- MCP Apps JSON-RPC boilerplate --- */
+let _rpcId = 0;
+const _pending = {};
+function sendRpc(method, params) {
+  const id = ++_rpcId;
+  return new Promise((resolve, reject) => {
+    _pending[id] = { resolve, reject };
+    parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+  });
+}
+function sendNotification(method, params) {
+  parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+}
+let _artifactData = null;
+let _hostCtx = {};
+function handleHostContext(ctx) { _hostCtx = { ..._hostCtx, ...ctx }; }
+function handleToolResult(params) {
+  const text = (params.content || []).find(c => c.type === 'text');
+  if (text) { _artifactData = JSON.parse(text.text); render(); }
+}
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || d.jsonrpc !== '2.0') return;
+  if (d.id && _pending[d.id]) {
+    if (d.error) _pending[d.id].reject(d.error);
+    else _pending[d.id].resolve(d.result);
+    delete _pending[d.id]; return;
+  }
+  if (d.method === 'ui/notifications/tool-result') handleToolResult(d.params);
+  if (d.method === 'ui/notifications/host-context-changed') handleHostContext(d.params);
+  if (d.method === 'ui/notifications/chat-delta') handleChatDelta(d.params);
+  if (d.method === 'ui/notifications/chat-status') handleChatStatus(d.params);
+});
+sendRpc('ui/initialize', {
+  protocolVersion: '2026-01-26',
+  clientInfo: { name: 'agience-viewer', version: '0.1.0' }
+}).then(result => {
+  if (result.hostContext) handleHostContext(result.hostContext);
+  sendNotification('ui/notifications/initialized');
+});
+async function updateArtifact(patch) {
+  return sendRpc('tools/call', { name: 'update_artifact', arguments: { id: _artifactData.artifact_id, patch } });
+}
+
+/* --- Chat viewer state --- */
+let _messages = [];
+let _toolCallsMap = {};   // index -> [{name, arguments, result}]
+let _loading = false;
+let _error = null;
+let _autoSent = false;
+let _openTools = {};       // track which tool badges are expanded
+let _streamingContent = '';  // accumulates streamed tokens
+let _streamingStatus = '';   // 'streaming' | 'tool_calling' | 'completed' | ''
+
+function handleChatDelta(params) {
+  if (params && params.delta) {
+    _streamingContent += params.delta;
+    renderStreaming();
+  }
+}
+
+function handleChatStatus(params) {
+  if (!params) return;
+  _streamingStatus = params.status || '';
+  if (params.status === 'tool_calling') {
+    renderStreaming();
+  }
+}
+
+function renderStreaming() {
+  // Fast-path: update only the streaming bubble without full re-render
+  const el = document.getElementById('streaming-bubble');
+  if (el) {
+    el.textContent = _streamingContent || '';
+    scrollToBottom();
+  } else if (_streamingContent) {
+    // First delta arrived — do a full render to create the bubble
+    render();
+    scrollToBottom();
+  }
+}
+
+function ctx() {
+  if (!_artifactData) return {};
+  try {
+    return typeof _artifactData.context === 'string'
+      ? JSON.parse(_artifactData.context)
+      : (_artifactData.context || {});
+  } catch { return {}; }
+}
+
+function initFromArtifact() {
+  const c = ctx();
+  const chat = c.chat || {};
+  _messages = (chat.messages || []).filter(m => m.role !== 'system');
+
+  // Rebuild tool calls map from flat array
+  _toolCallsMap = {};
+  if (chat.tool_calls && chat.tool_calls.length > 0) {
+    // Assign all tool calls to the last assistant message
+    const lastAssistantIdx = _messages.reduce((acc, m, i) => m.role === 'assistant' ? i : acc, -1);
+    if (lastAssistantIdx >= 0) {
+      _toolCallsMap[lastAssistantIdx] = chat.tool_calls;
+    }
+  }
+}
+
+function scrollToBottom() {
+  const el = document.getElementById('messages');
+  if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+}
+
+function buildTranscript(msgs) {
+  return msgs.filter(m => m.role !== 'system')
+    .map(m => (m.role === 'user' ? 'User' : 'Assistant') + ': ' + m.content)
+    .join('\n\n');
+}
+
+async function persistMessages() {
+  try {
+    const c = ctx();
+    const allToolCalls = Object.values(_toolCallsMap).flat();
+    const newCtx = {
+      ...c,
+      chat: {
+        workspace_id: (c.chat && c.chat.workspace_id) || undefined,
+        messages: _messages,
+        tool_calls: allToolCalls.length > 0 ? allToolCalls : undefined,
+      },
+    };
+    await updateArtifact({
+      context: JSON.stringify(newCtx),
+      content: buildTranscript(_messages),
+    });
+  } catch (err) {
+    console.error('[ChatViewer] persist failed', err);
+  }
+}
+
+async function sendTurn(messages) {
+  _loading = true;
+  _error = null;
+  _streamingContent = '';
+  _streamingStatus = '';
+  render();
+  scrollToBottom();
+
+  try {
+    const c = ctx();
+    const workspaceId = (c.chat && c.chat.workspace_id) || undefined;
+    const chatArtifactId = _artifactData ? _artifactData.artifact_id : undefined;
+    const result = await sendRpc('tools/call', {
+      name: 'run_chat_turn',
+      arguments: {
+        messages: JSON.stringify(messages),
+        workspace_id: workspaceId,
+        chat_artifact_id: chatArtifactId,
+      },
+    });
+
+    // Parse the tool result
+    const textContent = (result.content || []).find(c => c.type === 'text');
+    if (!textContent) throw new Error('No response from chat turn');
+
+    const parsed = JSON.parse(textContent.text);
+    if (parsed.error) throw new Error(parsed.error);
+
+    const assistantMsg = { role: 'assistant', content: parsed.reply || '' };
+    _messages = [...messages, assistantMsg];
+    const assistantIdx = _messages.length - 1;
+
+    if (parsed.tool_calls && parsed.tool_calls.length > 0) {
+      _toolCallsMap[assistantIdx] = parsed.tool_calls;
+    }
+
+    await persistMessages();
+  } catch (err) {
+    console.error('[ChatViewer] turn failed', err);
+    _error = 'Something went wrong. Please try again.';
+  } finally {
+    _loading = false;
+    _streamingContent = '';
+    _streamingStatus = '';
+    render();
+    scrollToBottom();
+  }
+}
+
+function handleSend() {
+  const textarea = document.getElementById('chat-input');
+  if (!textarea) return;
+  const text = textarea.value.trim();
+  if (!text || _loading) return;
+
+  textarea.value = '';
+  textarea.style.height = 'auto';
+
+  const userMsg = { role: 'user', content: text };
+  _messages = [..._messages, userMsg];
+  render();
+  scrollToBottom();
+  sendTurn(_messages);
+}
+
+function handleKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleSend();
+  }
+}
+
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+}
+
+function toggleTool(key) {
+  _openTools[key] = !_openTools[key];
+  render();
+  scrollToBottom();
+}
+
+function render() {
+  if (!_artifactData) return;
+
+  if (!_autoSent && _messages.length === 0) {
+    initFromArtifact();
+  }
+
+  const app = document.getElementById('app');
+  const messagesHtml = _messages.map((msg, i) => {
+    const isUser = msg.role === 'user';
+    const rowCls = isUser ? 'user' : 'assistant';
+    let toolCallsHtml = '';
+
+    if (!isUser && _toolCallsMap[i] && _toolCallsMap[i].length > 0) {
+      const badges = _toolCallsMap[i].map((tc, ti) => {
+        const key = i + '-' + ti;
+        const isOpen = _openTools[key];
+        return `
+          <div class="tool-badge">
+            <div class="tool-header" onclick="toggleTool('${key}')">
+              <span class="tool-icon"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
+              <span class="tool-name">${esc(tc.name)}</span>
+              <span class="tool-chevron ${isOpen ? 'open' : ''}">&#9654;</span>
+            </div>
+            <div class="tool-body ${isOpen ? 'open' : ''}">
+              <div class="tool-section-label">Arguments</div>
+              <pre class="tool-pre">${esc(JSON.stringify(tc.arguments || {}, null, 2))}</pre>
+              ${tc.result != null ? `
+              <div class="tool-section-label" style="margin-top:6px">Result</div>
+              <pre class="tool-pre">${esc(typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result, null, 2))}</pre>
+              ` : ''}
+            </div>
+          </div>`;
+      }).join('');
+      toolCallsHtml = `<div class="tool-calls">${badges}</div>`;
+    }
+
+    return `
+      <div class="msg-row ${rowCls}">
+        ${!isUser ? toolCallsHtml : ''}
+        <div class="bubble ${rowCls}">${esc(msg.content)}</div>
+      </div>`;
+  }).join('');
+
+  const loadingHtml = _loading ? (
+    _streamingContent
+      ? `<div class="msg-row assistant">
+           <div class="bubble assistant" id="streaming-bubble">${esc(_streamingContent)}</div>
+         </div>`
+      : (_streamingStatus === 'tool_calling'
+        ? `<div class="loading-row">
+             <div class="loading-bubble" style="font-size:12px;color:#64748b;">
+               <span class="tool-icon" style="margin-right:4px"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" stroke="#64748b" stroke-width="2" fill="none"/></svg></span>
+               Running tools\u2026
+             </div>
+           </div>`
+        : `<div class="loading-row">
+             <div class="loading-bubble">
+               <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+             </div>
+           </div>`)
+  ) : '';
+
+  const errorHtml = _error ? `<div class="error-msg">${esc(_error)}</div>` : '';
+
+  app.innerHTML = `
+    <div class="messages" id="messages">
+      ${_messages.length === 0 && !_loading ? '<div class="empty-state">Start a conversation...</div>' : ''}
+      ${messagesHtml}
+      ${loadingHtml}
+      ${errorHtml}
+      <div id="bottom-anchor"></div>
+    </div>
+    <div class="input-bar">
+      <div class="input-wrap">
+        <textarea id="chat-input" placeholder="Message..." rows="1" ${_loading ? 'disabled' : ''}
+          onkeydown="handleKeyDown(event)" oninput="autoGrow(this)"></textarea>
+      </div>
+      <button class="send-btn" onclick="handleSend()" ${_loading ? 'disabled' : ''}>
+        <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+      </button>
+    </div>
+  `;
+
+  scrollToBottom();
+
+  // Focus input
+  const input = document.getElementById('chat-input');
+  if (input && !_loading) input.focus();
+
+  // Auto-send on first mount if last message is from user
+  if (!_autoSent) {
+    _autoSent = true;
+    if (_messages.length > 0 && _messages[_messages.length - 1].role === 'user') {
+      sendTurn(_messages);
+    }
+  }
+}
+
+function esc(s) {
+  if (s == null) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

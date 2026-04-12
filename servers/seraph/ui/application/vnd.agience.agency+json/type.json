@@ -1,0 +1,62 @@
+{
+  "content_type": "application/vnd.agience.agency+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Agience Agency \u2014 a named, owned group of agents ready to act on the user's behalf.",
+  "context_schema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "const": "agency"
+      },
+      "content_type": {
+        "const": "application/vnd.agience.agency+json"
+      },
+      "agency": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "lead_agent": {
+            "description": "Optional artifact_id of the primary agent in this Agency.",
+            "type": "string"
+          },
+          "agents": {
+            "type": "array",
+            "description": "artifact_ids of Agent artifacts belonging to this Agency.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "agents"
+        ]
+      }
+    }
+  },
+  "ui": {
+    "label": "Agency",
+    "icon": "users",
+    "color": "#8b5cf6",
+    "badge_class": "bg-purple-100 text-purple-800",
+    "tile_class": "",
+    "modes": [
+      "floating",
+      "preview"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "floating",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true,
+    "viewer": null
+  }
+}

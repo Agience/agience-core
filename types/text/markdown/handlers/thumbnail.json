@@ -1,0 +1,7 @@
+{
+  "capability": "thumbnail",
+  "implementation": {
+    "kind": "builtin",
+    "id": "markdown.thumbnail"
+  }
+}

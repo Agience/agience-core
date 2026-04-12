@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.agience.io/artifacts/application/vnd.agience.chat+json",
+  "title": "Chat Artifact Context",
+  "description": "Validates artifact.context for application/vnd.agience.chat+json artifacts (the 'Ask anything' chat window).",
+  "type": "object",
+  "required": ["type", "chat"],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "chat"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Artifact title — typically the first 60 chars of the opening message."
+    },
+    "content_type": {
+      "type": "string",
+      "const": "application/vnd.agience.chat+json"
+    },
+    "chat": {
+      "type": "object",
+      "required": ["messages"],
+      "additionalProperties": false,
+      "properties": {
+        "workspace_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["role", "content"],
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": ["user", "assistant", "system"]
+              },
+              "content": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "arguments": { "type": "object" },
+              "result": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}

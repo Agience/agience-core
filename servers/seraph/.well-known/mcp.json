@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schemas.agience.io/mcp-server/v1/mcp.json",
+  "schema_version": "1",
+  "name": "agience-server-seraph",
+  "display_name": "Seraph — Security, Governance & Trust",
+  "description": "Guardian layer for the Agience platform: access control, audit trails, identity verification, policy compliance, and cryptographic artifact signing.",
+  "version": "0.1.0",
+  "image": "ghcr.io/agience/agience-server-seraph:latest",
+  "endpoints": {
+    "streamable_http": "/mcp"
+  },
+  "tools": [
+    { "name": "audit_access", "description": "Query the access audit log for a resource, collection, or user" },
+    { "name": "check_permissions", "description": "Check what a person or API key can access" },
+    { "name": "grant_access", "description": "Grant access to a collection for a person or team" },
+    { "name": "revoke_access", "description": "Revoke access to a collection" },
+    { "name": "rotate_api_key", "description": "Rotate a scoped API key and return the new key details" },
+    { "name": "verify_token", "description": "Verify a JWT or API key and return its decoded claims" },
+    { "name": "list_audit_events", "description": "List recent security events (logins, grants, revocations, key usage)" },
+    { "name": "sign_artifact", "description": "Create a tamper-evident cryptographic signature artifact for an artifact" },
+    { "name": "enforce_policy", "description": "Evaluate a request or artifact against active system policies" },
+    { "name": "list_policies", "description": "List active governance policies" },
+    { "name": "check_compliance", "description": "Check compliance of a resource or workflow against governance rules" }
+  ],
+  "resources": [],
+  "prompts": [],
+  "artifact_types": [
+    "application/vnd.agience.signature+json"
+  ],
+  "config": {
+    "env": {
+      "AGIENCE_API_URI": { "description": "Base URI of the agience-core backend", "required": true },
+      "AGIENCE_API_KEY": { "description": "Platform API key (Bearer token)", "required": true },
+      "MCP_PORT": { "description": "HTTP port for the MCP server", "default": "8089" }
+    }
+  }
+}

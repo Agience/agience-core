@@ -1,0 +1,15 @@
+# docker/Dockerfile.init
+#
+# One-shot init container image.
+# Generates all cryptographic key material on first boot (idempotent).
+#
+# Published as: ${REGISTRY}/agience-init:latest (Docker Hub)
+# Source:       docker/init.py
+
+FROM python:3.12-slim
+
+RUN pip install --no-cache-dir cryptography
+
+COPY docker/init.py /init.py
+
+CMD ["python", "/init.py"]

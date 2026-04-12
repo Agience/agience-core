@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#111;background:#fff;padding:0}
+.section{margin-bottom:24px}
+.section-title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;margin-bottom:12px}
+.plan-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.plan-name{font-size:17px;font-weight:600;color:#111}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.badge-free{background:#f3f4f6;color:#6b7280}
+.badge-pro{background:#dbeafe;color:#1d4ed8}
+.badge-power{background:#ede9fe;color:#6d28d9}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:background .15s}
+.btn-primary{background:#4f46e5;color:#fff}.btn-primary:hover{background:#4338ca}
+.btn-outline{background:#fff;color:#374151;border:1px solid #d1d5db}.btn-outline:hover{background:#f9fafb}
+.bar-wrap{margin-bottom:14px}
+.bar-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px}
+.bar-label span:first-child{color:#6b7280}
+.bar-label span:last-child{font-weight:500;color:#111}
+.bar-label span.hi{color:#ea580c}
+.bar-track{height:6px;background:#f3f4f6;border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.bar-fill-normal{background:#6366f1}
+.bar-fill-high{background:#f97316}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+.plan-card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;display:flex;flex-direction:column}
+.plan-card.current{border-color:#a5b4fc;background:#f5f3ff}
+.plan-card-name{font-size:15px;font-weight:700;margin-bottom:2px}
+.plan-card-price{font-size:20px;font-weight:800;color:#111;margin-bottom:8px}
+.current-chip{display:inline-block;font-size:10px;font-weight:700;background:#c7d2fe;color:#3730a3;padding:1px 8px;border-radius:999px;margin-bottom:8px}
+.feat-list{list-style:none;flex:1;margin-bottom:12px}
+.feat-list li{display:flex;align-items:baseline;gap:6px;font-size:12px;color:#374151;margin-bottom:5px}
+.feat-list li .check{color:#22c55e;font-weight:700}
+.upgrade-btn{width:100%;padding:8px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#4f46e5;color:#fff;border:none;transition:background .15s}
+.upgrade-btn:hover{background:#4338ca}
+.upgrade-btn:disabled{opacity:.5;cursor:not-allowed}
+.vu-alert{background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}
+.vu-alert-text{font-size:13px;color:#92400e}
+.err{text-align:center;padding:32px 0;color:#9ca3af;font-size:13px}
+.loading{text-align:center;padding:32px 0;color:#9ca3af;font-size:13px}
+</style>
+</head>
+<body>
+<div id="root"><div class="loading">Loading billing information...</div></div>
+<script>
+'use strict';
+
+// ---- JSON-RPC bridge over postMessage ----
+var _id=1,_pending={};
+function sendRpc(m,p){return new Promise(function(res,rej){var id=_id++;_pending[id]={resolve:res,reject:rej};window.parent.postMessage({jsonrpc:'2.0',id:id,method:m,params:p},'*');})}
+function notify(m,p){window.parent.postMessage({jsonrpc:'2.0',method:m,params:p},'*')}
+window.addEventListener('message',function(e){
+  var d=e.data;
+  if(!d||d.jsonrpc!=='2.0')return;
+  if(typeof d.id==='number'&&_pending[d.id]){
+    var cb=_pending[d.id];delete _pending[d.id];
+    d.error?cb.reject(new Error(d.error.message)):cb.resolve(d.result);
+  }
+});
+
+// ---- State ----
+var _personId='',_billing=null,_busy=false,_showPlans=false;
+
+// ---- Init ----
+sendRpc('ui/initialize',{}).then(function(r){
+  _personId=(r&&r.hostContext&&r.hostContext.extensions&&r.hostContext.extensions.agience&&r.hostContext.extensions.agience.userId)||'';
+  return tool('get_billing_summary',{person_id:_personId});
+}).then(function(d){
+  _billing=d;render();
+}).catch(function(){
+  document.getElementById('root').innerHTML='<div class="err">Unable to load billing information.</div>';
+  notifySize();
+});
+
+// ---- Tool helper ----
+function tool(name,args){
+  return sendRpc('tools/call',{name:name,arguments:args}).then(function(r){
+    var text=(r&&r.content&&r.content[0]&&r.content[0].text)||'{}';
+    return JSON.parse(text);
+  });
+}
+
+// ---- Render ----
+var PLANS=[
+  {key:'free',name:'Free',price:'$0',feats:['1 workspace','500 artifacts','100 VU/mo']},
+  {key:'pro',name:'Pro',price:'$60/seat/mo',feats:['3 workspaces','10,000 artifacts','2,000 VU/mo','API access']},
+  {key:'power',name:'Power',price:'$120/seat/mo',feats:['10 workspaces','100,000 artifacts','10,000 VU/mo','Priority support']}
+];
+
+function pct(used,max){if(!max||max<0)return 0;return Math.min(100,Math.round(used/max*100));}
+
+function bar(label,used,max){
+  var p=pct(used,max),hi=p>=80;
+  var valStr=used+' / '+(max||'Unlimited');
+  return '<div class="bar-wrap">'
+    +'<div class="bar-label"><span>'+label+'</span><span class="'+(hi?'hi':'')+'">'+valStr+'</span></div>'
+    +'<div class="bar-track"><div class="bar-fill '+(hi?'bar-fill-high':'bar-fill-normal')+'" style="width:'+p+'%"></div></div>'
+    +'</div>';
+}
+
+function planCards(){
+  var cur=_billing.plan;
+  return PLANS.map(function(p){
+    var isCur=p.key===cur;
+    var canUp=!isCur&&p.key!=='free';
+    var featsHtml=p.feats.map(function(f){return '<li><span class="check">&#10003;</span> '+f+'</li>';}).join('');
+    return '<div class="plan-card'+(isCur?' current':'')+'">'+
+      '<div class="plan-card-name">'+p.name+'</div>'+
+      '<div class="plan-card-price">'+p.price+'</div>'+
+      (isCur?'<div class="current-chip">Current</div>':'')+
+      '<ul class="feat-list">'+featsHtml+'</ul>'+
+      (canUp?'<button class="upgrade-btn" onclick="upgrade(\''+p.key+'\')" id="upbtn-'+p.key+'">Upgrade to '+p.name+'</button>':'<div style="height:28px"></div>')+
+      '</div>';
+  }).join('');
+}
+
+function render(){
+  var b=_billing;if(!b)return;
+  var plan=b.plan||'free';
+  var badgeClass='badge-'+(plan==='pro'?'pro':plan==='power'?'power':'free');
+  var isPaid=plan!=='free';
+  var vuLow=(b.vu_remaining||0)<20&&(b.vu_included||0)>0;
+
+  var html='';
+
+  // Plan header
+  html+='<div class="plan-row">'
+    +'<div><div class="plan-name">Current Plan</div>'
+    +'<span class="badge '+badgeClass+'" style="margin-top:6px;display:inline-block">'+plan.charAt(0).toUpperCase()+plan.slice(1)+'</span></div>'
+    +(isPaid?'<button class="btn btn-outline" onclick="manageSubscription()">Manage Subscription</button>'
+            :'<button class="btn btn-primary" onclick="togglePlans()">Upgrade</button>')
+    +'</div>';
+
+  // Usage
+  html+='<div class="section"><div class="section-title">Usage This Period</div>'
+    +bar('Workspaces',b.workspaces_used,b.max_workspaces)
+    +bar('Artifacts',b.artifacts_used,b.max_artifacts)
+    +bar('Value Units (VU)',b.vu_used,b.vu_included)
+    +'</div>';
+
+  // VU low alert
+  if(vuLow){
+    html+='<div class="vu-alert"><span class="vu-alert-text">Running low on VU credits ('+b.vu_remaining+' remaining).</span>'
+      +'<button class="btn btn-primary" onclick="topup()">Add Credits</button></div>';
+  }
+
+  // Plan comparison (for free users or when toggled)
+  if(!isPaid||_showPlans){
+    html+='<div class="section" style="margin-top:24px"><div class="section-title">Plans</div>'
+      +'<div class="plans">'+planCards()+'</div></div>';
+  }
+
+  document.getElementById('root').innerHTML=html;
+  notifySize();
+}
+
+function notifySize(){
+  var h=document.documentElement.scrollHeight;
+  notify('ui/notifications/size-changed',{height:h});
+}
+
+// ---- Actions ----
+function togglePlans(){_showPlans=!_showPlans;render();}
+
+function manageSubscription(){
+  if(_busy)return;
+  if(!_billing||!_billing.stripe_customer_id)return;
+  _busy=true;
+  tool('create_portal_session',{
+    stripe_customer_id:_billing.stripe_customer_id
+  }).then(function(d){
+    if(d.portal_url) sendRpc('ui/open-link',{href:d.portal_url});
+  }).catch(function(e){alert('Unable to open subscription management.\n'+e.message);
+  }).finally(function(){_busy=false;});
+}
+
+function upgrade(planKey){
+  if(_busy)return;
+  var btn=document.getElementById('upbtn-'+planKey);
+  if(btn){btn.disabled=true;btn.textContent='Redirecting...';}
+  _busy=true;
+  tool('create_checkout_session',{
+    plan:planKey,
+    person_id:_personId
+  }).then(function(d){
+    if(d.checkout_url) sendRpc('ui/open-link',{href:d.checkout_url});
+  }).catch(function(e){
+    alert('Unable to start checkout.\n'+e.message);
+    if(btn){btn.disabled=false;btn.textContent='Upgrade to '+planKey.charAt(0).toUpperCase()+planKey.slice(1);}
+  }).finally(function(){_busy=false;});
+}
+
+function topup(){
+  if(_busy)return;
+  _busy=true;
+  tool('create_vu_topup',{
+    person_id:_personId,
+    stripe_customer_id:_billing.stripe_customer_id||undefined,
+    quantity:1
+  }).then(function(d){
+    if(d.checkout_url) sendRpc('ui/open-link',{href:d.checkout_url});
+  }).catch(function(e){alert('Unable to start checkout.\n'+e.message);
+  }).finally(function(){_busy=false;});
+}
+</script>
+</body>
+</html>

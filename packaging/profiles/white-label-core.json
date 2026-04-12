@@ -1,0 +1,67 @@
+{
+  "$schema": "./profile.schema.json",
+  "schema_version": "1",
+  "profile": "white-label-core",
+  "display_name": "White-Label Core App Distribution",
+  "runtime_role": "standard",
+  "product_surface": "core-app",
+  "license_class": "white-label",
+  "branding_scope": [
+    "core-web-app",
+    "desktop-shell",
+    "browser-extension",
+    "visible-runtime-labels"
+  ],
+  "services": [
+    "frontend",
+    "backend",
+    "postgres",
+    "arango",
+    "opensearch",
+    "internal-router"
+  ],
+  "first_party_servers": [],
+  "required_operator_inputs": [
+    {
+      "name": "domain",
+      "kind": "hostname",
+      "required": true,
+      "description": "Primary host name for the branded app"
+    },
+    {
+      "name": "brand_name",
+      "kind": "string",
+      "required": true,
+      "description": "Customer-facing product name"
+    }
+  ],
+  "generated_secrets": [
+    {
+      "name": "postgres_password",
+      "strategy": "random-password",
+      "storage": "env-file"
+    },
+    {
+      "name": "arango_root_password",
+      "strategy": "random-password",
+      "storage": "env-file"
+    },
+    {
+      "name": "data_encryption_key",
+      "strategy": "random-base64-32",
+      "storage": "env-file"
+    }
+  ],
+  "proxy_mode": "internal-router",
+  "packaging_targets": ["docker-compose", "private-release"],
+  "meter_dimensions": ["mai"],
+  "offline_supported": true,
+  "required_entitlements": ["host_standard", "white_label_branding"],
+  "policy_refs": ["white-label-core-app"],
+  "attributes": {
+    "supports_custom_domain": true,
+    "supports_white_label": true,
+    "brand_assets_required": true
+  },
+  "extensions": {}
+}

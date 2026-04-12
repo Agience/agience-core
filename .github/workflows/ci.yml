@@ -1,0 +1,251 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'dev/**'
+      - 'feature/**'
+      - 'release/**'
+      - 'hotfix/**'
+  pull_request:
+    branches:
+      - main
+      - 'dev/**'
+      - 'release/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      docs: ${{ steps.filter.outputs.docs }}
+      publish: ${{ steps.filter.outputs.publish }}
+      build_backend: ${{ steps.filter.outputs.build_backend }}
+      build_frontend: ${{ steps.filter.outputs.build_frontend }}
+      build_servers: ${{ steps.filter.outputs.build_servers }}
+      build_stream: ${{ steps.filter.outputs.build_stream }}
+      build_init: ${{ steps.filter.outputs.build_init }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+              - 'types/**'
+            docs:
+              - 'docs/**'
+              - '.dev/**'
+            publish:
+              - 'backend/**'
+              - 'frontend/**'
+              - 'types/**'
+              - 'docker/**'
+              - 'servers/**'
+              - 'build_info.json'
+              - 'package.json'
+              - '.github/workflows/build-and-push.yml'
+            build_backend:
+              - 'backend/**'
+              - 'docker/backend.Dockerfile'
+              - 'build_info.json'
+              - '.github/workflows/build-and-push.yml'
+            build_frontend:
+              - 'frontend/**'
+              - 'types/**'
+              - 'docker/frontend.Dockerfile'
+              - 'build_info.json'
+              - '.github/workflows/build-and-push.yml'
+            build_servers:
+              - 'servers/**'
+              - '!servers/astra/stream/**'
+              - 'build_info.json'
+              - '.github/workflows/build-and-push.yml'
+            build_stream:
+              - 'servers/astra/stream/**'
+              - 'build_info.json'
+              - '.github/workflows/build-and-push.yml'
+            build_init:
+              - 'docker/init.py'
+              - 'docker/Dockerfile.init'
+              - '.github/workflows/build-and-push.yml'
+
+  backend:
+    name: Backend lint & tests
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: No backend changes
+        if: needs.changes.outputs.backend != 'true'
+        run: echo "No backend changes detected; skipping backend lint/test steps."
+
+      - name: Install system dependencies
+        if: needs.changes.outputs.backend == 'true'
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev build-essential
+
+      - name: Setup Python
+        if: needs.changes.outputs.backend == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Upgrade pip
+        if: needs.changes.outputs.backend == 'true'
+        run: python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        if: needs.changes.outputs.backend == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Install lint tooling
+        if: needs.changes.outputs.backend == 'true'
+        run: pip install ruff
+
+      - name: Lint (ruff)
+        if: needs.changes.outputs.backend == 'true'
+        run: ruff check .
+
+      - name: Run pytest suite
+        if: needs.changes.outputs.backend == 'true'
+        env:
+          OPENAI_API_KEY: placeholder
+          JWT_SECRET_KEY: placeholder
+        run: pytest tests -n auto --dist=loadfile --timeout=120
+
+  frontend:
+    name: Frontend lint & tests
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+    defaults:
+      run:
+        shell: bash
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: No frontend changes
+        if: needs.changes.outputs.frontend != 'true'
+        run: echo "No frontend changes detected; skipping frontend lint/test steps."
+
+      - name: Setup Node.js
+        if: needs.changes.outputs.frontend == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: needs.changes.outputs.frontend == 'true'
+        run: npm ci
+
+      - name: Lint (eslint)
+        if: needs.changes.outputs.frontend == 'true'
+        run: npm run lint
+
+      - name: Build (type-check + bundle)
+        if: needs.changes.outputs.frontend == 'true'
+        run: npm run build
+
+      - name: Run vitest suite
+        if: needs.changes.outputs.frontend == 'true'
+        run: npm run test
+
+  docs-links:
+    name: Docs link check
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: No docs changes
+        if: needs.changes.outputs.docs != 'true'
+        run: echo "No docs changes detected; skipping docs link check."
+
+      - name: Checkout repository
+        if: needs.changes.outputs.docs == 'true'
+        uses: actions/checkout@v4
+
+      - name: Prepare lychee output directory
+        if: needs.changes.outputs.docs == 'true'
+        run: mkdir -p lychee
+
+      - name: Run lychee link checker (offline)
+        if: needs.changes.outputs.docs == 'true'
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
+        with:
+          args: >-
+            --offline
+            --no-progress
+            --exclude-path '_archive/'
+            --exclude-path 'node_modules/'
+            --exclude-path '17-full-source-dump\.md'
+            'docs/**/*.md'
+          output: lychee/lychee-report.md
+          format: markdown
+          fail: true
+          jobSummary: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload lychee report artifact
+        if: needs.changes.outputs.docs == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lychee-report
+          path: lychee/lychee-report.md
+
+  publish-images:
+    name: Publish images
+    needs:
+      - changes
+      - backend
+      - frontend
+      - docs-links
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref_name == 'main' || startsWith(github.ref_name, 'release/')) &&
+      needs.changes.outputs.publish == 'true'
+    uses: ./.github/workflows/build-and-push.yml
+    with:
+      ref_name: ${{ github.ref_name }}
+      ref_type: ${{ github.ref_type }}
+      sha: ${{ github.sha }}
+      backend_changed: ${{ needs.changes.outputs.build_backend == 'true' }}
+      frontend_changed: ${{ needs.changes.outputs.build_frontend == 'true' }}
+      servers_changed: ${{ needs.changes.outputs.build_servers == 'true' }}
+      stream: ${{ needs.changes.outputs.build_stream == 'true' }}
+      init_changed: ${{ needs.changes.outputs.build_init == 'true' }}
+    secrets:
+      DOCKERHUB_NAMESPACE: ${{ secrets.DOCKERHUB_NAMESPACE }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+

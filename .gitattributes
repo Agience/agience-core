@@ -1,0 +1,25 @@
+# Auto-detect text files and perform LF normalization
+* text=auto
+
+# Force LF for shell scripts (critical for Docker containers)
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Force LF for Python files
+*.py text eol=lf
+
+# Force LF for Docker-related files
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+*.dockerfile text eol=lf
+
+# Force LF for config files
+*.conf text eol=lf
+*.config text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Windows-specific files can keep CRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf

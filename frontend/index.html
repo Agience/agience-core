@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agience</title>
+    <link rel="icon" href="/favicon.png" data-agience-favicon="true" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,100..1000&display=swap" rel="stylesheet">
+    <script src="/config.js"></script>
+    <style>
+      /* Inline critical styles — visible before JS loads to prevent white flash */
+      body { margin: 0; background: hsl(0 0% 100%); }
+      .dark body, body.dark { background: hsl(275 30% 8%); }
+      @media (prefers-color-scheme: dark) {
+        body:not([data-color-mode="light"]) { background: hsl(275 30% 8%); }
+      }
+      #root:empty {
+        display: flex; align-items: center; justify-content: center;
+        min-height: 100vh;
+      }
+      #root:empty::after {
+        content: ''; width: 2.5rem; height: 2.5rem;
+        border: 3px solid hsl(275 15% 90%); border-top-color: hsl(275 30% 55%);
+        border-radius: 50%; animation: _spin .7s linear infinite;
+      }
+      @keyframes _spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body class="font-sans" data-color-mode="light">
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>

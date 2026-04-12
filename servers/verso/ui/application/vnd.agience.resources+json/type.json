@@ -1,0 +1,36 @@
+{
+  "content_type": "application/vnd.agience.resources+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Agience Resources (container)",
+  "ui": {
+    "id": "resources",
+    "label": "Resources",
+    "icon": "database",
+    "color": "#0f766e",
+    "badge_class": "bg-teal-100 text-teal-800",
+    "tile_class": "",
+    "modes": [
+      "tree",
+      "grid",
+      "list",
+      "floating"
+    ],
+    "states": [
+      "view",
+      "edit",
+      "expanded",
+      "collapsed"
+    ],
+    "default_mode": "grid",
+    "default_state": "view",
+    "is_container": true,
+    "creatable": false,
+    "viewer": null,
+    "default_depth": 2,
+    "max_depth": 5,
+    "container_variant": "resources"
+  }
+}

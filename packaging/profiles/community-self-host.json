@@ -1,0 +1,63 @@
+{
+  "$schema": "./profile.schema.json",
+  "schema_version": "1",
+  "profile": "community-self-host",
+  "display_name": "Community Self-Host Distribution",
+  "runtime_role": "standard",
+  "product_surface": "core-app",
+  "license_class": "community-self-host",
+  "branding_scope": [],
+  "services": [
+    "frontend",
+    "backend",
+    "postgres",
+    "arango",
+    "opensearch",
+    "internal-router"
+  ],
+  "first_party_servers": [],
+  "required_operator_inputs": [
+    {
+      "name": "domain",
+      "kind": "hostname",
+      "required": true,
+      "description": "Primary host name for the core app"
+    },
+    {
+      "name": "api_domain",
+      "kind": "hostname",
+      "required": true,
+      "description": "API host name for the backend"
+    }
+  ],
+  "generated_secrets": [
+    {
+      "name": "postgres_password",
+      "strategy": "random-password",
+      "storage": "env-file"
+    },
+    {
+      "name": "arango_root_password",
+      "strategy": "random-password",
+      "storage": "env-file"
+    },
+    {
+      "name": "data_encryption_key",
+      "strategy": "random-base64-32",
+      "storage": "env-file"
+    }
+  ],
+  "proxy_mode": "internal-router",
+  "packaging_targets": ["docker-compose"],
+  "meter_dimensions": ["mai"],
+  "offline_supported": true,
+  "required_entitlements": [],
+  "policy_refs": ["community-self-host-core"],
+  "attributes": {
+    "supports_custom_domain": true,
+    "supports_white_label": false,
+    "default_brand_posture": "agience-or-powered-by-agience",
+    "public_grant_eligible": true
+  },
+  "extensions": {}
+}

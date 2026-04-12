@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agience://types/text/plain/schema.json",
+  "title": "Text/Plain Metadata",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "title": { "type": "string" },
+    "language": { "type": "string" }
+  }
+}

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Provenance Viewer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5;
+  }
+  .container { padding: 20px; max-width: 640px; margin: 0 auto; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #0f172a; }
+  .badge {
+    font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 9999px;
+    background: #ede9fe; color: #6d28d9; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .placeholder {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 60px 20px; gap: 12px; color: #94a3b8; text-align: center;
+  }
+  .placeholder svg { opacity: 0.35; }
+  .placeholder p { font-size: 13px; max-width: 280px; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div style="color:#94a3b8;text-align:center;padding:40px 0;">Loading...</div>
+</div>
+
+<script>
+/* --- MCP Apps JSON-RPC boilerplate --- */
+let _rpcId = 0;
+const _pending = {};
+function sendRpc(method, params) {
+  const id = ++_rpcId;
+  return new Promise((resolve, reject) => {
+    _pending[id] = { resolve, reject };
+    parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+  });
+}
+function sendNotification(method, params) {
+  parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+}
+let _artifactData = null;
+let _hostCtx = {};
+function handleHostContext(ctx) { _hostCtx = { ..._hostCtx, ...ctx }; }
+function handleToolResult(params) {
+  const text = (params.content || []).find(c => c.type === 'text');
+  if (text) { _artifactData = JSON.parse(text.text); render(); }
+}
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || d.jsonrpc !== '2.0') return;
+  if (d.id && _pending[d.id]) {
+    if (d.error) _pending[d.id].reject(d.error);
+    else _pending[d.id].resolve(d.result);
+    delete _pending[d.id]; return;
+  }
+  if (d.method === 'ui/notifications/tool-result') handleToolResult(d.params);
+  if (d.method === 'ui/notifications/host-context-changed') handleHostContext(d.params);
+});
+sendRpc('ui/initialize', {
+  protocolVersion: '2026-01-26',
+  clientInfo: { name: 'agience-viewer', version: '0.1.0' }
+}).then(result => {
+  if (result.hostContext) handleHostContext(result.hostContext);
+  sendNotification('ui/notifications/initialized');
+});
+
+function ctx() {
+  if (!_artifactData) return {};
+  try {
+    return typeof _artifactData.context === 'string'
+      ? JSON.parse(_artifactData.context)
+      : (_artifactData.context || {});
+  } catch { return {}; }
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s || '');
+  return d.innerHTML;
+}
+
+function render() {
+  if (!_artifactData) return;
+  const c = ctx();
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="header">
+      <h1>${esc(c.title || _artifactData.description || 'Provenance')}</h1>
+      <span class="badge">Provenance</span>
+    </div>
+    <div class="placeholder">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.5">
+        <circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>
+        <path d="M8 6h8M7 8l4 8M17 8l-4 8"/>
+      </svg>
+      <p>Provenance graph viewer coming soon. Source chain, attribution, and transform history will render here.</p>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

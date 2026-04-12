@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schemas.agience.io/mcp-server/v1/mcp.json",
+  "schema_version": "1",
+  "name": "agience-server-verso",
+  "display_name": "Verso — Reasoning & Workflow",
+  "description": "Handles reasoning, workflow execution, synthesis, multi-step coordination, evaluation, and training feedback.",
+  "version": "0.1.0",
+  "image": "ghcr.io/agience/agience-server-verso:latest",
+  "endpoints": {
+    "streamable_http": "/mcp"
+  },
+  "tools": [
+    { "name": "synthesize", "description": "Synthesize information from multiple sources via LLM" },
+    { "name": "run_workflow", "description": "Execute a defined multi-step workflow" },
+    { "name": "chain_tasks", "description": "Chain multiple MCP tool calls sequentially" },
+    { "name": "schedule_action", "description": "Schedule a deferred action for future execution" },
+    { "name": "evaluate_output", "description": "Evaluate quality/accuracy of generated output" },
+    { "name": "submit_feedback", "description": "Submit evaluation feedback for training improvement" }
+  ],
+  "resources": [],
+  "prompts": [],
+  "artifact_types": [
+    "application/vnd.agience.evaluation+json"
+  ],
+  "config": {
+    "env": {
+      "AGIENCE_API_URI": { "description": "Base URI of the agience-core backend", "required": true },
+      "AGIENCE_API_KEY": { "description": "Platform API key (Bearer token)", "required": true },
+      "MCP_PORT": { "description": "HTTP port for the MCP server", "default": "8088" }
+    }
+  }
+}

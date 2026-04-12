@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.agience.io/artifacts/application/vnd.agience.mcp-server+json",
+  "title": "MCP Server Artifact Context",
+  "description": "Validates artifact.context for application/vnd.agience.mcp-server+json artifacts. Registered in a workspace to connect an external MCP server.",
+  "type": "object",
+  "required": ["type", "url"],
+  "additionalProperties": true,
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "mcp-server"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Base URL of the MCP server. Discovery fetched from {url}/.well-known/mcp.json."
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name override. Falls back to manifest display_name."
+    },
+    "auth": {
+      "type": "object",
+      "description": "Auth config for connecting to the server.",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["bearer", "api_key", "none"],
+          "default": "bearer"
+        },
+        "secret_ref": {
+          "type": "string",
+          "description": "Reference to a user secret key for the token value."
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "description": "Cached snapshot of /.well-known/mcp.json at registration time."
+    },
+    "pinned_version": {
+      "type": "string",
+      "description": "Locked semver version. If set, platform warns when a newer server version is published."
+    }
+  }
+}

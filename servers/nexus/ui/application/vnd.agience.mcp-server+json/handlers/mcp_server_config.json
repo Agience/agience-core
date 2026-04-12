@@ -1,0 +1,8 @@
+{
+  "capability": "mcp_server_config",
+  "description": "Parse a vnd.agience.mcp-server+json artifact into a runtime MCPServerConfig. Core resolves this through types_service.resolve_capability_target rather than importing the parser directly, keeping the schema knowledge with the type definition.",
+  "implementation": {
+    "kind": "builtin",
+    "id": "mcp_client.config_parser.parse_mcp_server_artifact"
+  }
+}

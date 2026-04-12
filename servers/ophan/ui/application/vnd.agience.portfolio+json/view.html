@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Portfolio</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #1e293b; background: #fff; line-height: 1.5; }
+  .container { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .header { display: flex; align-items: center; gap: 8px; }
+  .icon { flex-shrink: 0; color: #ec4899; }
+  .title { font-size: 14px; font-weight: 600; color: #111827; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .snap-date { font-size: 12px; color: #9ca3af; margin-left: auto; }
+  .total-box { display: flex; align-items: baseline; gap: 8px; background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 10px; padding: 10px 14px; }
+  .total-amt { font-family: 'SF Mono','Fira Code',monospace; font-size: 24px; font-weight: 700; color: #9d174d; }
+  .total-cur { font-size: 14px; color: #db2777; }
+  .section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: #9ca3af; font-weight: 500; padding-bottom: 4px; border-bottom: 1px solid #f3f4f6; }
+  th.right, td.right { text-align: right; }
+  tr { border-bottom: 1px solid #f9fafb; }
+  tr:last-child { border-bottom: none; }
+  td { padding: 4px 0; color: #374151; }
+  td.mono { font-family: 'SF Mono','Fira Code',monospace; font-weight: 500; }
+  .empty { font-size: 13px; color: #9ca3af; font-style: italic; padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="empty">Loading…</div></div>
+<script>
+let _nextId = 1; const _pending = {};
+function sendRpc(m, p) { return new Promise((res, rej) => { const id = _nextId++; _pending[id] = {resolve:res, reject:rej}; window.parent.postMessage({jsonrpc:'2.0',id,method:m,params:p},'*'); }); }
+function sendNotification(m, p) { window.parent.postMessage({jsonrpc:'2.0',method:m,params:p},'*'); }
+window.addEventListener('message', e => {
+  if (!e.data || e.data.jsonrpc !== '2.0') return;
+  if (typeof e.data.id === 'number' && _pending[e.data.id]) { const {resolve,reject} = _pending[e.data.id]; delete _pending[e.data.id]; e.data.error ? reject(new Error(e.data.error.message)) : resolve(e.data.result); }
+  if (e.data.method === 'ui/notifications/tool-result') handleToolResult(e.data.params);
+});
+let _artifact = null;
+sendRpc('ui/initialize', {}).then(() => sendNotification('ui/notifications/initialized', {}));
+function handleToolResult(p) { try { const d = JSON.parse(p?.content?.[0]?.text); if (d?.artifact_id) { _artifact = d; render(); } } catch {} }
+function ctx() { if (!_artifact) return {}; try { return typeof _artifact.context === 'string' ? JSON.parse(_artifact.context) : (_artifact.context || {}); } catch { return {}; } }
+function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+function render() {
+  const app = document.getElementById('app'); if (!_artifact) return;
+  const c = ctx();
+  const holdings = Array.isArray(c.holdings) ? c.holdings : [];
+
+  app.innerHTML = `
+    <div class="header">
+      <svg class="icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+      <span class="title">${esc(c.provider || c.title || 'Portfolio')}</span>
+      ${c.snapshot_at ? `<span class="snap-date">${new Date(c.snapshot_at).toLocaleDateString()}</span>` : ''}
+    </div>
+    ${c.total_value ? `<div class="total-box"><span class="total-amt">${esc(c.total_value)}</span><span class="total-cur">${esc(c.currency || '')}</span></div>` : ''}
+    ${holdings.length > 0 ? `
+      <div>
+        <div class="section-label">Holdings (${holdings.length})</div>
+        <table>
+          <thead><tr><th>Symbol</th><th class="right">Qty</th><th class="right">Price</th><th class="right">Value</th></tr></thead>
+          <tbody>
+            ${holdings.map(h => `
+              <tr>
+                <td class="mono">${esc(h.symbol || '')}</td>
+                <td class="right mono">${esc(h.quantity ?? '')}</td>
+                <td class="right mono">${esc(h.current_price ?? '')}</td>
+                <td class="right mono">${esc(h.market_value ?? '')}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
+  `;
+}
+</script>
+</body>
+</html>

@@ -78,24 +78,25 @@ See [ROADMAP.md](ROADMAP.md) for the full capability inventory and what's coming
 
 ### Run Agience (canary build — no build tools required)
 
-Pull and run the latest pre-built images directly from this repo. No Node, Python, or build tools needed — just Docker.
+No git clone needed. Paste one command and Docker does the rest.
 
-```
-git clone https://github.com/Agience/agience-core.git
-cd agience-core
-agience canary
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/canary/install.ps1 | iex
 ```
 
 **Linux / macOS:**
 ```bash
-./agience canary
+curl -fsSL https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/canary/install.sh | sh
 ```
 
-Images are tagged `:canary` and published automatically on every merge to `main`. The setup wizard runs on first boot.
+This downloads the compose file, pulls all `:canary` images, and opens the setup wizard automatically. Images are published on every merge to `main`.
 
-To force-pull the latest images after an update:
+Already have a clone? Run directly:
 ```
-agience canary -f
+agience canary          # Windows
+./agience canary        # Linux / macOS
+agience canary -f       # force-pull latest images
 ```
 
 ### Run Agience at Home (stable build)

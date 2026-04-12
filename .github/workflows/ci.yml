@@ -232,19 +232,19 @@ jobs:
       - frontend
       - docs-links
     if: >-
-      github.event_name == 'push' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       (github.ref_name == 'main' || startsWith(github.ref_name, 'release/')) &&
-      needs.changes.outputs.publish == 'true'
+      (github.ref_name == 'main' || needs.changes.outputs.publish == 'true' || github.event_name == 'workflow_dispatch')
     uses: ./.github/workflows/build-and-push.yml
     with:
       ref_name: ${{ github.ref_name }}
       ref_type: ${{ github.ref_type }}
       sha: ${{ github.sha }}
-      backend_changed: ${{ needs.changes.outputs.build_backend == 'true' }}
-      frontend_changed: ${{ needs.changes.outputs.build_frontend == 'true' }}
-      servers_changed: ${{ needs.changes.outputs.build_servers == 'true' }}
-      stream: ${{ needs.changes.outputs.build_stream == 'true' }}
-      init_changed: ${{ needs.changes.outputs.build_init == 'true' }}
+      backend_changed: ${{ github.ref_name == 'main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_backend == 'true' }}
+      frontend_changed: ${{ github.ref_name == 'main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_frontend == 'true' }}
+      servers_changed: ${{ github.ref_name == 'main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_servers == 'true' }}
+      stream: ${{ github.ref_name == 'main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_stream == 'true' }}
+      init_changed: ${{ github.ref_name == 'main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_init == 'true' }}
     secrets:
       DOCKERHUB_NAMESPACE: ${{ secrets.DOCKERHUB_NAMESPACE }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

@@ -1,12 +1,10 @@
 # ──────────────────────────────────────────────────────────────────────
-# Agience — Home Install Script (Windows)
+# Agience — Local Install Script (Windows)
 #
-# One shot: installs, starts Agience, and opens your browser.
-#
-# Source: https://github.com/Agience/agience-core/blob/main/packaging/install/home/install.ps1
+# Stable images, no domain, no TLS. Runs at http://localhost:8080.
 #
 # Usage:
-#   irm https://get.agience.ai/home/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/local/install.ps1 | iex
 #
 # After install:
 #   agience up      start
@@ -24,7 +22,8 @@ $ErrorActionPreference = 'Stop'
 
 $InstallDir = if ($DataPath) { $DataPath } else { Join-Path $env:USERPROFILE '.agience' }
 $BinDir     = Join-Path $env:USERPROFILE '.agience\bin'
-$ComposeUrl = 'https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/home/docker-compose.yml'
+$ComposeUrl = 'https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/local/docker-compose.yml'
+$OpenUrl    = 'http://localhost:8080'
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -50,8 +49,8 @@ function Add-ToUserPath {
 
 Write-Host ""
 Write-Host "  +--------------------------------------+" -ForegroundColor Magenta
-Write-Host "  |        Agience -- Install            |" -ForegroundColor Magenta
-Write-Host "  |        home.agience.ai               |" -ForegroundColor Magenta
+Write-Host "  |        Agience -- Local Install      |" -ForegroundColor Magenta
+Write-Host "  |        http://localhost:8080         |" -ForegroundColor Magenta
 Write-Host "  +--------------------------------------+" -ForegroundColor Magenta
 Write-Host ""
 
@@ -84,18 +83,13 @@ Write-Ok "Docker is installed and running"
 
 # ── Step 2: Check Port Conflicts ────────────────────────────────────
 
-Write-Info "Checking for port conflicts..."
+Write-Info "Checking for port conflicts on port 8080..."
 
-$conflicts = @()
-foreach ($port in @(80, 443)) {
-    $used = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-    if ($used) { $conflicts += $port }
-}
-
-if ($conflicts.Count -gt 0) {
-    Write-Warn "Ports in use: $($conflicts -join ', '). Stop those services before running 'agience up'."
+$used = Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue
+if ($used) {
+    Write-Warn "Port 8080 is in use. Stop that service before running 'agience up'."
 } else {
-    Write-Ok "Ports 80 and 443 are available"
+    Write-Ok "Port 8080 is available"
 }
 
 # ── Step 3: Create Install Directory ────────────────────────────────
@@ -126,7 +120,7 @@ if ((Get-Item $composeFile).Length -eq 0) {
 
 Write-Ok "Compose file downloaded"
 
-# ── Step 5: Pull Images ─────────────────────────────────────────────
+# ── Step 5: Pull Images ──────────────────────────────────────────────
 
 Write-Info "Pulling container images (this may take a few minutes)..."
 Write-Host ""
@@ -138,7 +132,7 @@ Pop-Location
 Write-Host ""
 Write-Ok "All images pulled"
 
-# ── Step 6: Install agience.bat ─────────────────────────────────────
+# ── Step 6: Install agience.bat ──────────────────────────────────────
 
 Write-Info "Installing agience command..."
 
@@ -164,7 +158,7 @@ exit /b 1
 :do_up
 docker compose up -d
 echo.
-echo Agience is running. Open: https://home.agience.ai
+echo Agience is running. Open: http://localhost:8080
 goto done
 
 :do_down
@@ -206,7 +200,7 @@ Write-Ok "Agience is running"
 
 # ── Step 8: Open browser ─────────────────────────────────────────────
 
-Start-Process 'https://home.agience.ai'
+Start-Process $OpenUrl
 
 # ── Done ─────────────────────────────────────────────────────────────
 
@@ -215,7 +209,7 @@ Write-Host "  +--------------------------------------+" -ForegroundColor Green
 Write-Host "  |     Agience is running!              |" -ForegroundColor Green
 Write-Host "  +--------------------------------------+" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Open:   https://home.agience.ai" -ForegroundColor White
+Write-Host "  Open:   $OpenUrl" -ForegroundColor White
 Write-Host "  Data:   $InstallDir\.data\" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  Commands:" -ForegroundColor White

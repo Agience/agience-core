@@ -1,16 +1,15 @@
-# Agience Home — local install (home.agience.ai → 127.0.0.1)
+# Agience Local — stable build, no domain, no TLS
 #
-# Self-contained — no .env file, no external config files required.
+# Self-contained — no .env file, no external config required.
 # The init container generates all credentials on first boot.
-# The Caddy image fetches the TLS cert from CDN at startup.
-# Platform settings are configured through the setup wizard in the browser.
+# Runs on http://localhost:8080 — no domain or certificate needed.
 #
-# Set REGISTRY in .env to override the Docker Hub namespace (default: agience).
+# Set REGISTRY in environment to override the Docker Hub namespace (default: agience).
 #
-# Install:   curl -fsSL https://get.agience.ai/home/install.sh | sh
+# Install:   irm https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/local/install.ps1 | iex
+#            curl -fsSL https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/local/install.sh | sh
 # Start:     docker compose up -d
-# Open:      https://home.agience.ai
-# Update:    docker compose pull && docker compose up -d
+# Open:      http://localhost:8080
 
 services:
 
@@ -134,6 +133,7 @@ services:
       - AGIENCE_SERVER_HOST_URI=http://servers:8082
       - MINIO_ROOT_USER=agience
       - KEYS_DIR=/app/.data/keys
+      - CONTENT_URI=http://localhost:8080/content
     volumes:
       - ./.data/keys:/app/.data/keys:ro
     depends_on:
@@ -185,21 +185,20 @@ services:
     container_name: frontend
     restart: unless-stopped
 
-  # ── Router — Caddy with TLS cert fetched from CDN at startup ─────────
-  # The agience-home image has the Caddyfile baked in and fetches
-  # the TLS cert from get.agience.ai on every container start.
+  # ── Router — plain Caddy, HTTP only, no domain required ──────────────
+  # Serves on http://localhost:8080.
+  # No TLS cert, no agience-home image needed.
 
   caddy:
-    image: ${REGISTRY:-agience}/agience-home:latest
+    image: caddy:alpine
     pull_policy: always
     container_name: caddy
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./.data/keys:/run/keys
+      - "8080:8080"
+    configs:
+      - source: caddy_config
+        target: /etc/caddy/Caddyfile
     depends_on:
       init:
         condition: service_completed_successfully
@@ -211,3 +210,35 @@ services:
         condition: service_started
       stream:
         condition: service_started
+
+configs:
+  caddy_config:
+    content: |
+      :8080 {
+        handle /auth/* { reverse_proxy backend:8081 }
+        handle /artifacts/* { reverse_proxy backend:8081 }
+        handle /agents/* { reverse_proxy backend:8081 }
+        handle /events* { reverse_proxy backend:8081 }
+        handle /grants/* { reverse_proxy backend:8081 }
+        handle /api-keys/* { reverse_proxy backend:8081 }
+        handle /secrets/* { reverse_proxy backend:8081 }
+        handle /types/* { reverse_proxy backend:8081 }
+        handle /mcp* { reverse_proxy backend:8081 }
+        handle /platform/* { reverse_proxy backend:8081 }
+        handle /setup/* { reverse_proxy backend:8081 }
+        handle /relay/* { reverse_proxy backend:8081 }
+        handle /server-credentials/* { reverse_proxy backend:8081 }
+        handle /gate/* { reverse_proxy backend:8081 }
+        handle /passkey/* { reverse_proxy backend:8081 }
+        handle /otp/* { reverse_proxy backend:8081 }
+        handle /inbound/* { reverse_proxy backend:8081 }
+        handle /.well-known/* { reverse_proxy backend:8081 }
+        handle /version { reverse_proxy backend:8081 }
+        handle /content/* {
+          uri strip_prefix /content
+          reverse_proxy content:9000
+        }
+        handle {
+          reverse_proxy frontend:80
+        }
+      }

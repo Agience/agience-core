@@ -63,7 +63,12 @@ if ($TagExists) {
 }
 $RemoteTagExists = "$(git ls-remote --tags origin $Tag 2>&1)".Trim()
 if ($RemoteTagExists) {
-    Write-Host "ERROR: Tag '$Tag' already exists on remote." -ForegroundColor Red
+    Write-Host "ERROR: Tag '$Tag' already exists on origin (private)." -ForegroundColor Red
+    exit 1
+}
+$PublicTagExists = "$(git ls-remote --tags public $Tag 2>&1)".Trim()
+if ($PublicTagExists) {
+    Write-Host "ERROR: Tag '$Tag' already exists on public." -ForegroundColor Red
     exit 1
 }
 
@@ -73,12 +78,12 @@ Write-Host ""
 Write-Host "  Tagged:  $Tag" -ForegroundColor Green
 Write-Host "  On:      $ReleaseBranch @ $(git rev-parse --short HEAD)" -ForegroundColor Gray
 
-# Push release branch
+# Push release branch to origin (private)
 Write-Host ""
-Write-Host "  Pushing $ReleaseBranch..." -ForegroundColor Cyan
+Write-Host "  Pushing $ReleaseBranch to origin..." -ForegroundColor Cyan
 git push origin $ReleaseBranch
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to push '$ReleaseBranch'." -ForegroundColor Red
+    Write-Host "ERROR: Failed to push '$ReleaseBranch' to origin." -ForegroundColor Red
     exit 1
 }
 
@@ -90,19 +95,22 @@ git merge --no-ff $ReleaseBranch -m "Forward-port $ReleaseBranch into main (post
 
 Write-Host "  Merged." -ForegroundColor Green
 
-# Push main and tag
+# Push main to origin (private)
 Write-Host ""
-Write-Host "  Pushing main..." -ForegroundColor Cyan
+Write-Host "  Pushing main to origin..." -ForegroundColor Cyan
 git push origin main
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to push main." -ForegroundColor Red
+    Write-Host "ERROR: Failed to push main to origin." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "  Pushing $Tag..." -ForegroundColor Cyan
-git push origin $Tag
+# Publish to public repo (strips private content, stacks commit on release/X.Y, pushes tag -> triggers CI)
+Write-Host ""
+Write-Host "  Publishing to public repo..." -ForegroundColor Cyan
+$PublishScript = Join-Path $PSScriptRoot "publish_public.ps1"
+& $PublishScript -Version $Version -ReleaseBranch
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to push tag '$Tag'." -ForegroundColor Red
+    Write-Host "ERROR: publish_public.ps1 failed." -ForegroundColor Red
     exit 1
 }
 

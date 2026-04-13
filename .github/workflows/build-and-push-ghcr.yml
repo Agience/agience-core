@@ -84,6 +84,7 @@ jobs:
           DOCKERHUB_NS: ${{ secrets.DOCKERHUB_NAMESPACE }}
           GHCR_NS: ghcr.io/${{ github.repository_owner }}
         run: |
+          GHCR_NS="${GHCR_NS,,}"
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           RELEASE_LINE="${VERSION%.*}"

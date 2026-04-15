@@ -23,7 +23,7 @@ from fastapi.security import (
 from arango.database import StandardDatabase
 
 from core.dependencies import get_arango_db
-from core.config import AUTHORITY_ISSUER
+from core import config
 from services.person_service import get_user_by_id  # now expects StandardDatabase
 from services.auth_service import verify_token, verify_api_key
 from db.arango import (
@@ -102,7 +102,7 @@ def _validate_aud_for_principal(payload: dict) -> None:
         if not aud:
             raise HTTPException(status_code=401, detail="Missing aud in delegation token")
     else:
-        if aud != AUTHORITY_ISSUER:
+        if aud != config.AUTHORITY_ISSUER:
             raise HTTPException(status_code=401, detail="Invalid token audience")
 
 
@@ -128,7 +128,7 @@ def _check_grant_permission(grants: List[GrantEntity], action: str, resource_typ
 
 def _get_end_user_token_payload(token: str) -> dict:
     """Decode user-only JWT, rejecting API-key JWTs."""
-    payload = verify_token(token, expected_audience=AUTHORITY_ISSUER)
+    payload = verify_token(token, expected_audience=config.AUTHORITY_ISSUER)
     if not payload or "sub" not in payload:
         raise HTTPException(status_code=401, detail="Invalid or malformed token")
     if is_api_key_jwt_payload(payload):

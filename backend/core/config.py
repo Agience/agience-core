@@ -27,7 +27,12 @@ import os
 import uuid as _uuid
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse as _urlparse
+from urllib.parse import urlparse as _urlparse, urlunparse as _urlunparse
+
+def _origin_only(uri: str) -> str:
+    """Return scheme+host+port (strip path, query, fragment)."""
+    p = _urlparse(uri)
+    return _urlunparse((p.scheme, p.netloc, "", "", "", ""))
 
 from dotenv import load_dotenv as _load_dotenv
 
@@ -108,7 +113,7 @@ FRONTEND_URI: str = os.getenv("FRONTEND_URI", "http://localhost:5173")
 BACKEND_URI: str = os.getenv("BACKEND_URI", "http://localhost:8081")
 PLATFORM_CLIENT_ID: str = os.getenv("PLATFORM_CLIENT_ID", "agience-client")
 AUTHORITY_DOMAIN: str = _urlparse(os.getenv("BACKEND_URI", "http://localhost:8081")).hostname or "localhost"
-AUTHORITY_ISSUER: str = os.getenv("BACKEND_URI", "http://localhost:8081")
+AUTHORITY_ISSUER: str = _origin_only(os.getenv("BACKEND_URI", "http://localhost:8081"))
 
 # Features
 ALLOW_LOCAL_MCP_SERVERS: bool = False
@@ -373,7 +378,7 @@ def load_settings_from_db() -> None:
     except Exception:
         _hostname = "localhost"
     AUTHORITY_DOMAIN = _hostname
-    # Use BACKEND_URI as-is for the issuer — preserves scheme, host, and port exactly.
-    # Constructing from hostname alone would strip non-standard ports (e.g. :8081) and
-    # force HTTPS which breaks local and non-proxy self-hosted deployments.
-    AUTHORITY_ISSUER = _backend_uri
+    # Use the origin (scheme+host+port) of BACKEND_URI as the issuer.
+    # BACKEND_URI may include a path prefix (e.g. /api) which must not
+    # appear in the JWT issuer/audience.
+    AUTHORITY_ISSUER = _origin_only(_backend_uri)

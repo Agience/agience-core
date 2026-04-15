@@ -195,11 +195,17 @@ configs:
             flush_interval -1
           }
         }
+        @mcp path /mcp /mcp/*
+        handle @mcp {
+          reverse_proxy backend:8081 {
+            flush_interval -1
+          }
+        }
+        handle /.well-known/* {
+          reverse_proxy backend:8081
+        }
         handle_path /content/* {
           reverse_proxy content:9000
-        }
-        handle_path /stream/* {
-          reverse_proxy stream:1985
         }
         handle {
           reverse_proxy frontend:80

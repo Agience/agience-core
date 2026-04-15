@@ -760,6 +760,23 @@ def mcp_well_known():
     }
     return JSONResponse(content=base, status_code=200, headers={"Cache-Control": "no-store"})
 
+
+@app.get("/.well-known/oauth-protected-resource", include_in_schema=False)
+def oauth_protected_resource(request: Request):
+    """RFC 9728 — OAuth Protected Resource Metadata for MCP clients."""
+    base_url = str(request.base_url).rstrip("/")
+    return JSONResponse(
+        content={
+            "resource": f"{base_url}/mcp",
+            "authorization_servers": [base_url],
+            "bearer_methods_supported": ["header"],
+            "scopes_supported": ["read", "write", "invoke"],
+        },
+        status_code=200,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 # ----------------------------
 # Basic routes
 # ----------------------------

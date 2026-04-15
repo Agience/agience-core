@@ -72,8 +72,8 @@ DEFAULTS: dict[str, str] = {
     # Branding
     "branding.title": "Agience",
     "branding.favicon": "favicon.png",
-    "branding.frontend_uri": "http://localhost:5173",
-    "branding.backend_uri": "http://localhost:8081",
+    "branding.frontend_uri": os.getenv("FRONTEND_URI", "http://localhost:5173"),
+    "branding.backend_uri": os.getenv("BACKEND_URI", "http://localhost:8081"),
 
     # Auth
     "auth.password.enabled": "true",

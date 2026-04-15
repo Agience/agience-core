@@ -132,6 +132,9 @@ mcp = FastMCP(
     ),
 )
 
+from artifact_helpers import register_types_manifest
+register_types_manifest(mcp, "verso", __file__)
+
 
 # ---------------------------------------------------------------------------
 # Tool: synthesize

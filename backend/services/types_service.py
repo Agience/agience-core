@@ -520,12 +520,81 @@ _OP_NAME_TO_GRANT_FLAG = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Runtime type registration (MCP server discovery)
+# ---------------------------------------------------------------------------
+
+# Types discovered at runtime from MCP servers (not on the filesystem).
+_runtime_types: Dict[str, TypeResolutionResult] = {}
+
+
+def _parse_raw_type_definition(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Parse a raw type.json dict into the standard definition shape.
+
+    Mirrors ``_load_folder_definition`` logic: pops ``ui`` and ``operations``
+    from the type block and promotes them to top-level keys.
+    """
+    type_json = dict(raw)  # don't mutate the caller's dict
+    ui_json = type_json.pop("ui", None)
+    operations_json = type_json.pop("operations", None)
+
+    definition: Dict[str, Any] = {"type": type_json, "handlers": {}}
+    if ui_json is not None:
+        definition["ui"] = ui_json
+    if operations_json is not None:
+        definition["operations"] = operations_json
+    return definition
+
+
+def register_runtime_type(
+    content_type: str,
+    raw_definition: Dict[str, Any],
+    source: str,
+) -> None:
+    """Register a type definition discovered at runtime (e.g. from an MCP server).
+
+    The ``raw_definition`` is the full ``type.json`` content as returned by a
+    server's ``types://`` manifest resource.  It is parsed into the standard
+    definition shape before storage.
+
+    If the type already exists in the filesystem roots or was already
+    registered at runtime, the call is a no-op (first-seen wins).
+    """
+    key = _normalize_content_type(content_type)
+    if not key:
+        return
+    # Filesystem definitions take precedence; don't shadow them.
+    if _find_type_folder(get_types_roots(), key) is not None:
+        return
+    if key in _runtime_types:
+        return  # already registered
+
+    definition = _parse_raw_type_definition(raw_definition)
+    _runtime_types[key] = TypeResolutionResult(
+        content_type=key,
+        definition=definition,
+        sources=[source],
+        validation_errors=_collect_type_validation_errors(definition),
+    )
+    logger.info("Registered runtime type '%s' from %s", key, source)
+
+
+def clear_runtime_types() -> None:
+    """Clear all runtime-registered types (for tests)."""
+    _runtime_types.clear()
+
+
 # Process-wide type resolution cache. Keyed by content type. Cleared via invalidate_type_cache().
 _type_cache: Dict[str, Optional[TypeResolutionResult]] = {}
 
 
 def resolve_type_definition_cached(content_type: str) -> Optional[TypeResolutionResult]:
     """Cached variant of `resolve_type_definition` using default roots.
+
+    Resolution order:
+      1. Process-wide cache (fast path).
+      2. Filesystem roots (``types/`` and ``servers/*/ui/`` when present).
+      3. Runtime-registered types (discovered from MCP servers at bootstrap).
 
     The cache is in-process and survives until `invalidate_type_cache()` is
     called (e.g. on an admin reload). Tests should call `invalidate_type_cache()`
@@ -535,6 +604,8 @@ def resolve_type_definition_cached(content_type: str) -> Optional[TypeResolution
     if key in _type_cache:
         return _type_cache[key]
     res = resolve_type_definition(key)
+    if res is None:
+        res = _runtime_types.get(key)
     _type_cache[key] = res
     return res
 

@@ -233,6 +233,9 @@ mcp = FastMCP(
     ),
 )
 
+from artifact_helpers import register_types_manifest
+register_types_manifest(mcp, "astra", __file__)
+
 
 # ---------------------------------------------------------------------------
 # Tool: ingest_file

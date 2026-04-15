@@ -734,6 +734,9 @@ mcp = FastMCP(
     ),
 )
 
+from artifact_helpers import register_types_manifest
+register_types_manifest(mcp, "ophan", __file__)
+
 
 # ---------------------------------------------------------------------------
 # Tool stubs (Phase 1i implementation)

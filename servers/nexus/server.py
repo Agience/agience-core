@@ -152,6 +152,9 @@ mcp = FastMCP(
     ),
 )
 
+from artifact_helpers import register_types_manifest
+register_types_manifest(mcp, "nexus", __file__)
+
 
 # ---------------------------------------------------------------------------
 # Tool: send_email

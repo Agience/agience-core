@@ -120,6 +120,63 @@ def _redact_setup_token(token: str) -> str:
     return f"{token[:4]}...{token[-4:]}"
 
 
+def _discover_server_types(arango_db) -> None:
+    """Discover type definitions from first-party MCP servers.
+
+    For each manifest-registered server, reads ``types://{name}/manifest``
+    via the MCP client.  Each manifest is a JSON object mapping content-type
+    strings to their full ``type.json`` definitions.  Discovered types are
+    registered in ``types_service`` so the operation dispatcher can resolve
+    them without filesystem access.
+    """
+    from services import server_registry, mcp_service, types_service
+    from core.config import AGIENCE_PLATFORM_USER_ID
+    import json
+
+    for entry in server_registry.all_entries():
+        uri = f"types://{entry.name}/manifest"
+        try:
+            result = mcp_service.read_resource(
+                db=arango_db,
+                user_id=AGIENCE_PLATFORM_USER_ID,
+                server_artifact_id=entry.name,
+                uri=uri,
+            )
+            # read_resource returns a single content item dict:
+            # {"text": "<json>", "uri": "...", "mimeType": "..."}
+            raw_text = None
+            if isinstance(result, dict):
+                raw_text = result.get("text")
+            elif isinstance(result, str):
+                raw_text = result
+
+            if not raw_text:
+                logger.debug("Server '%s' returned empty types manifest", entry.name)
+                continue
+
+            manifest = json.loads(raw_text)
+            if not isinstance(manifest, dict):
+                logger.warning("Server '%s' types manifest is not a JSON object", entry.name)
+                continue
+
+            for content_type, definition in manifest.items():
+                if isinstance(definition, dict):
+                    types_service.register_runtime_type(
+                        content_type,
+                        definition,
+                        source=f"mcp-server:{entry.name}",
+                    )
+            logger.info(
+                "Discovered %d type(s) from server '%s'",
+                len(manifest), entry.name,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to discover types from server '%s': %s",
+                entry.name, exc,
+            )
+
+
 def _run_phase4_core_sync(loop) -> None:
     """Run core Phase 4 initialization (ArangoDB, seeding, operator bootstrap).
 
@@ -172,6 +229,16 @@ def _run_phase4_core_sync(loop) -> None:
         ensure_platform_servers(arango_db)
     except Exception:
         logger.exception("Platform MCP servers setup failed at startup (non-fatal)")
+
+    try:
+        # Phase 7.5 — Runtime type discovery: connect to each first-party MCP
+        # server and load its type definitions via the standard MCP
+        # types://{name}/manifest resource.  This is how server-owned types
+        # (operations, UI metadata) become known to the backend without
+        # copying type.json files into the backend container.
+        _discover_server_types(arango_db)
+    except Exception:
+        logger.exception("Server type discovery failed at startup (non-fatal)")
 
     try:
         from services.llm_connections_content_service import ensure_llm_connections_collection

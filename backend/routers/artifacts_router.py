@@ -678,8 +678,8 @@ async def run_artifact_operation(
     declared handler (`dispatch.kind`), and emits every event in
     `operations.{op_name}.emits` around the call.
     """
-    if not auth.user_id and auth.principal_type not in ("server", "mcp_client", "api_key"):
-        raise HTTPException(status_code=401, detail="Authenticated principal required")
+    if not auth.user_id:
+        raise HTTPException(status_code=401, detail="Authenticated user principal required")
 
     reserved = {"create", "read", "update", "delete", "invoke", "add", "search"}
     if op_name in reserved:
@@ -1145,8 +1145,13 @@ async def content_url(
 
     from services.content_service import generate_signed_url
 
+    # When the caller is a server acting via delegation (actor field set),
+    # use the server-facing endpoint so the URL is reachable from the
+    # server's network context.
+    use_server_facing = bool(getattr(auth, "actor", None))
+
     try:
-        url = generate_signed_url(content_key, filename=filename, content_type=content_type)
+        url = generate_signed_url(content_key, filename=filename, content_type=content_type, server_facing=use_server_facing)
     except Exception as exc:
         logger.error("Content URL generation failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to generate content URL: {exc}")

@@ -122,6 +122,7 @@ import sys as _sys
 from pathlib import Path as _Path
 _sys.path.insert(0, str(_Path(__file__).parent.parent / "_shared"))
 from agience_server_auth import AgieceServerAuth as _AgieceServerAuth
+from artifact_helpers import parse_artifact_context, get_artifact_content_type
 
 _auth = _AgieceServerAuth(ASTRA_CLIENT_ID, AGIENCE_API_URI)
 
@@ -144,8 +145,8 @@ async def server_startup() -> None:
 async def _get_workspace_artifact(workspace_id: str, artifact_id: str) -> dict:
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            f"{AGIENCE_API_URI}/workspaces/{workspace_id}/artifacts/{artifact_id}",
-            headers=await _headers(),
+            f"{AGIENCE_API_URI}/artifacts/{artifact_id}",
+            headers=await _user_headers(),
             timeout=30,
         )
     resp.raise_for_status()
@@ -156,7 +157,7 @@ async def _get_workspace_artifact_content_url(workspace_id: str, artifact_id: st
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"{AGIENCE_API_URI}/artifacts/{artifact_id}/content-url",
-            headers=await _headers(),
+            headers=await _user_headers(),
             timeout=30,
         )
     resp.raise_for_status()
@@ -167,9 +168,14 @@ async def _get_workspace_artifact_content_url(workspace_id: str, artifact_id: st
 async def _create_workspace_artifact(workspace_id: str, context: dict, content: str) -> dict:
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{AGIENCE_API_URI}/workspaces/{workspace_id}/artifacts",
-            headers=await _headers(),
-            json={"context": context, "content": content},
+            f"{AGIENCE_API_URI}/artifacts",
+            headers=await _user_headers(),
+            json={
+                "container_id": workspace_id,
+                "context": json.dumps(context),
+                "content": content,
+                "content_type": context.get("content_type"),
+            },
             timeout=30,
         )
     resp.raise_for_status()
@@ -179,13 +185,13 @@ async def _create_workspace_artifact(workspace_id: str, context: dict, content: 
 async def _update_workspace_artifact(workspace_id: str, artifact_id: str, *, context: dict | None = None, content: str | None = None) -> dict:
     body: dict = {}
     if context is not None:
-        body["context"] = context
+        body["context"] = json.dumps(context)
     if content is not None:
         body["content"] = content
     async with httpx.AsyncClient() as client:
         resp = await client.patch(
-            f"{AGIENCE_API_URI}/workspaces/{workspace_id}/artifacts/{artifact_id}",
-            headers=await _headers(),
+            f"{AGIENCE_API_URI}/artifacts/{artifact_id}",
+            headers=await _user_headers(),
             json=body,
             timeout=30,
         )
@@ -262,10 +268,11 @@ async def ingest_file(
     if title:
         payload["title"] = title
 
+    payload["container_id"] = workspace_id
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{AGIENCE_API_URI}/workspaces/{workspace_id}/artifacts",
-            headers=await _headers(),
+            f"{AGIENCE_API_URI}/artifacts",
+            headers=await _user_headers(),
             json=payload,
             timeout=30,
         )
@@ -314,9 +321,9 @@ async def document_text_extract(
         return json.dumps({"status": "error", "reason": f"failed to load artifact {source_artifact_id}: {exc}"})
 
     context = _parse_artifact_context(artifact)
-    mime = str(context.get("mime") or "").split(";", 1)[0].strip().lower()
+    mime = get_artifact_content_type(artifact)
     if mime != "application/pdf":
-        return json.dumps({"status": "error", "reason": f"source artifact is not a PDF (mime={mime or 'unknown'})"})
+        return json.dumps({"status": "error", "reason": f"source artifact is not a PDF (content_type={mime or 'unknown'})"})
 
     try:
         download_url = await _get_workspace_artifact_content_url(workspace_id, source_artifact_id)
@@ -438,20 +445,14 @@ async def process_uploaded_content(
     except httpx.HTTPError as exc:
         return json.dumps({"status": "error", "reason": f"failed to fetch artifact: {exc}"})
 
-    raw_context = artifact.get("context") or {}
-    if isinstance(raw_context, str):
-        try:
-            raw_context = json.loads(raw_context)
-        except json.JSONDecodeError:
-            raw_context = {}
-    context = raw_context if isinstance(raw_context, dict) else {}
+    context = _parse_artifact_context(artifact)
 
     # Skip derived/handler artifacts
     ctx_type = context.get("type") or ""
     if ctx_type in _SKIP_CONTEXT_TYPES:
         return json.dumps({"status": "skipped", "reason": f"source is {ctx_type}"})
 
-    content_type = str(context.get("content_type") or "").split(";", 1)[0].strip().lower()
+    content_type = get_artifact_content_type(artifact)
     if not _is_text_extractable(content_type):
         return json.dumps({"status": "skipped", "reason": "not_text_extractable", "content_type": content_type})
 
@@ -835,12 +836,11 @@ async def deduplicate(
         async with httpx.AsyncClient() as client:
             search_resp = await client.post(
                 f"{AGIENCE_API_URI}/artifacts/search",
-                headers=await _headers(),
+                headers=await _user_headers(),
                 json={
-                    "query": content_hash,
+                    "query_text": content_hash,
                     "scope": [workspace_id],
-                    "filters": {"metadata.content_hash": content_hash},
-                    "limit": 5,
+                    "size": 5,
                 },
                 timeout=30,
             )
@@ -978,14 +978,8 @@ def _should_chunk(text: str) -> bool:
     return len(encoder.encode(text)) > _CHUNK_SIZE
 
 
-def _parse_artifact_context(artifact: dict) -> dict:
-    raw = artifact.get("context") or {}
-    if isinstance(raw, str):
-        try:
-            raw = json.loads(raw)
-        except json.JSONDecodeError:
-            raw = {}
-    return raw if isinstance(raw, dict) else {}
+# Alias shared helper — all servers use the same context parsing.
+_parse_artifact_context = parse_artifact_context
 
 
 # ---------------------------------------------------------------------------
@@ -1223,8 +1217,8 @@ async def rotate_stream_key(
     """
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{AGIENCE_API_URI}/workspaces/{workspace_id}/artifacts/{artifact_id}/key",
-            headers=await _headers(),
+            f"{AGIENCE_API_URI}/artifacts/{artifact_id}/key",
+            headers=await _user_headers(),
             params={"key_context": "stream"},
             timeout=15,
         )
@@ -1238,8 +1232,8 @@ async def rotate_stream_key(
         # it on future loads without knowing the platform's ingest URL.
         try:
             art_resp = await client.get(
-                f"{AGIENCE_API_URI}/workspaces/{workspace_id}/artifacts/{artifact_id}",
-                headers=await _headers(),
+                f"{AGIENCE_API_URI}/artifacts/{artifact_id}",
+                headers=await _user_headers(),
                 timeout=15,
             )
             if art_resp.status_code == 200:
@@ -1249,9 +1243,9 @@ async def rotate_stream_key(
                     ctx = json.loads(ctx)
                 stream_cfg = {**(ctx.get("stream") or {}), "server_url": STREAM_INGEST_URL}
                 await client.patch(
-                    f"{AGIENCE_API_URI}/workspaces/{workspace_id}/artifacts/{artifact_id}",
-                    headers=await _headers(),
-                    json={"context": {**ctx, "stream": stream_cfg}},
+                    f"{AGIENCE_API_URI}/artifacts/{artifact_id}",
+                    headers=await _user_headers(),
+                    json={"context": json.dumps({**ctx, "stream": stream_cfg})},
                     timeout=15,
                 )
         except Exception as exc:

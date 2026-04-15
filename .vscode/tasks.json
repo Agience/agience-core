@@ -38,15 +38,6 @@
       "problemMatcher": []
     },
     {
-      "label": "Agience: My — Deploy",
-      "type": "shell",
-      "command": "gh workflow run deploy-suite.yml --repo Agience/agience-core-private",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": []
-    },
-    {
       "label": "Agience: Hotfix — Create",
       "type": "shell",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .scripts\\hotfix.ps1 -Version '${input:hotfix_version}'",
@@ -67,7 +58,7 @@
   ],
   "inputs": [
     {
-      "id": "message",
+      "id": "message", 
       "type": "promptString",
       "description": "Commit message for the public publish",
       "default": "publish"

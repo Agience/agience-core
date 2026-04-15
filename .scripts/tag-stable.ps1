@@ -40,7 +40,7 @@ $Utf8NoBom     = New-Object System.Text.UTF8Encoding($false)
 $CurrentBranch = (git rev-parse --abbrev-ref HEAD 2>&1).Trim()
 if ($CurrentBranch -ne $ReleaseBranch) {
     Write-Host "  Switching to $ReleaseBranch..." -ForegroundColor Cyan
-    git checkout $ReleaseBranch 2>&1 | Out-Null
+    git checkout --quiet $ReleaseBranch
     if ($LASTEXITCODE -ne 0) {
         Write-Host "ERROR: Could not checkout '$ReleaseBranch'. Does it exist?" -ForegroundColor Red
         exit 1
@@ -100,7 +100,11 @@ if ($LASTEXITCODE -ne 0) {
 
 # Forward-port release branch into main
 Write-Host "  Merging $ReleaseBranch -> main..." -ForegroundColor Cyan
-git checkout main
+git checkout --quiet main
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: Failed to checkout main for forward-port." -ForegroundColor Red
+    exit 1
+}
 git pull origin main
 git merge --no-ff $ReleaseBranch -m "Forward-port $ReleaseBranch into main (post $Tag)"
 

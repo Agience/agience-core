@@ -893,11 +893,15 @@ async def handle_client_credentials_grant(
                 status_code=401,
                 content={"error": "invalid_client", "error_description": "Invalid client_secret"},
             )
+        from services.platform_topology import get_id_optional
+        from services.bootstrap_types import HOST_ARTIFACT_SLUG
+
         server_claims = {
             "sub": f"server/{client_id}",
             "aud": "agience",
             "principal_type": "server",
             "authority": config.AUTHORITY_ISSUER,
+            "host_id": get_id_optional(HOST_ARTIFACT_SLUG) or "",
             "server_id": client_id,
             "client_id": client_id,
             "scopes": ["tool:*:invoke", "resource:*:read", "resource:*:list", "resource:*:search"],

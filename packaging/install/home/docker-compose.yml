@@ -190,7 +190,7 @@ services:
   # the TLS cert from get.agience.ai on every container start.
 
   caddy:
-    image: ${REGISTRY:-agience}/agience-home:stable
+    image: ${REGISTRY:-agience}/agience-home:${VERSION:-stable}
     pull_policy: always
     container_name: caddy
     restart: unless-stopped

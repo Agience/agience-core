@@ -337,20 +337,12 @@ class TestOpAuthGuard:
         app.dependency_overrides.clear()
         assert resp.status_code == 401
 
-    def test_server_principal_without_user_id_is_allowed_past_auth_guard(self, app, mock_db):
-        """Servers (principal_type='server') have no user_id but are not anonymous —
-        they must pass the auth guard and only 404 if the artifact is absent."""
+    def test_server_principal_without_user_id_is_rejected(self, app, mock_db):
+        """Server-only principals (no user_id) must be rejected by the auth guard —
+        all custom operations require a user identity (via delegation token)."""
         ctx = AuthContext(user_id=None, principal_type="server", grants=[])
         app.dependency_overrides[get_auth] = lambda: ctx
         app.dependency_overrides[get_arango_db] = lambda: mock_db
-
-        workspace_coll = MagicMock()
-        workspace_coll.get.return_value = None
-        collection_coll = MagicMock()
-        collection_coll.get.return_value = None
-        mock_db.collection.side_effect = lambda name: (
-            workspace_coll if "workspace" in name else collection_coll
-        )
 
         client = TestClient(app)
         resp = client.post(
@@ -359,8 +351,7 @@ class TestOpAuthGuard:
         )
 
         app.dependency_overrides.clear()
-        # 404 because artifact not found, NOT 401
-        assert resp.status_code == 404
+        assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------

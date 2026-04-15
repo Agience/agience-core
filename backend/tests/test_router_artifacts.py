@@ -997,7 +997,7 @@ class TestContentUrl:
             app.dependency_overrides.pop(get_arango_db, None)
         assert r.status_code == 200
         assert r.json() == {"url": "https://signed.example/x"}
-        gen.assert_called_once_with("u-1/a-1.content", filename="f.pdf", content_type="application/pdf")
+        gen.assert_called_once_with("u-1/a-1.content", filename="f.pdf", content_type="application/pdf", server_facing=False)
 
 
 # ---------------------------------------------------------------------------

@@ -57,27 +57,6 @@ download() {
     fi
 }
 
-# ── Parse Arguments ──────────────────────────────────────────────────
-
-while [ $# -gt 0 ]; do
-    case "$1" in
-        --help|-h)
-            echo "Usage: install.sh"
-            echo ""
-            echo "Installs Agience at ~/.agience and starts it."
-            echo ""
-            echo "After install:"
-            echo "  agience up      start Agience"
-            echo "  agience down    stop Agience"
-            exit 0
-            ;;
-        *)
-            warn "Unknown argument: $1"
-            shift
-            ;;
-    esac
-done
-
 # ── Banner ───────────────────────────────────────────────────────────
 
 printf "\n"

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────
-# Agience — Plain Install Script (Linux / macOS)
+# Agience — Plain Install Script (Linux / macOS) — Edge Channel
 #
-# Stable images, no domain, no TLS. Runs at http://localhost:8080.
+# Edge images, no domain, no TLS. Runs at http://localhost:8080.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/plain/install.sh | sh
-#   bash install.sh
+#   curl -fsSL https://get.agience.ai/plain/install-edge.sh | sh
+#   bash install-edge.sh
 #
 # After install:
 #   agience up      # start
@@ -60,7 +60,7 @@ download() {
 
 printf "\n"
 printf "${BOLD}  +======================================+${NC}\n"
-printf "${BOLD}  |      Agience -- Local Install        |${NC}\n"
+printf "${BOLD}  |   Agience -- Local Install (edge)    |${NC}\n"
 printf "${BOLD}  |      http://localhost:8080           |${NC}\n"
 printf "${BOLD}  +======================================+${NC}\n"
 printf "\n"
@@ -209,6 +209,11 @@ fi
 
 ok "Compose file downloaded"
 
+# ── Step 5b: Set edge channel ───────────────────────────────────────
+
+printf "VERSION=edge\n" > "${INSTALL_DIR}/.env"
+ok "Channel set to edge"
+
 # ── Step 6: Pull Images ─────────────────────────────────────────────
 
 info "Pulling container images (this may take a few minutes)..."
@@ -292,7 +297,7 @@ fi
 
 printf "\n"
 printf "${BOLD}${GREEN}  +======================================+${NC}\n"
-printf "${BOLD}${GREEN}  |     Agience is running!              |${NC}\n"
+printf "${BOLD}${GREEN}  |     Agience is running! (edge)       |${NC}\n"
 printf "${BOLD}${GREEN}  +======================================+${NC}\n"
 printf "\n"
 printf "  Open:   ${OPEN_URL}\n"

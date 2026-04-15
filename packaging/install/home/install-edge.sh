@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────
-# Agience — Plain Install Script (Linux / macOS)
+# Agience — Home Install Script (Linux / macOS) — Edge Channel
 #
-# Stable images, no domain, no TLS. Runs at http://localhost:8080.
+# One shot: installs, starts Agience, and opens your browser.
+# Uses edge images (latest main branch builds).
+#
+# Source: https://github.com/Agience/agience-core/blob/main/packaging/install/home/install-edge.sh
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/plain/install.sh | sh
-#   bash install.sh
+#   curl -fsSL https://get.agience.ai/home/install-edge.sh | sh
+#   bash install-edge.sh
 #
 # After install:
 #   agience up      # start
@@ -19,10 +22,9 @@ set -euo pipefail
 INSTALL_DIR="${HOME}/.agience"
 BIN_DIR="${HOME}/.local/bin"
 COMPOSE_FILE="docker-compose.yml"
-COMPOSE_URL="https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/plain/docker-compose.yml"
+COMPOSE_URL="https://raw.githubusercontent.com/Agience/agience-core/main/packaging/install/home/docker-compose.yml"
 DOCKER_INSTALL_URL="https://get.docker.com"
 DOCKER_DESKTOP_MAC_URL="https://www.docker.com/products/docker-desktop/"
-OPEN_URL="http://localhost:8080"
 
 # Colors (disabled if not a terminal)
 if [ -t 1 ]; then
@@ -59,10 +61,10 @@ download() {
 # ── Banner ───────────────────────────────────────────────────────────
 
 printf "\n"
-printf "${BOLD}  +======================================+${NC}\n"
-printf "${BOLD}  |      Agience -- Local Install        |${NC}\n"
-printf "${BOLD}  |      http://localhost:8080           |${NC}\n"
-printf "${BOLD}  +======================================+${NC}\n"
+printf "${BOLD}  ╔══════════════════════════════════════╗${NC}\n"
+printf "${BOLD}  ║      Agience — Install (edge)        ║${NC}\n"
+printf "${BOLD}  ║         home.agience.ai              ║${NC}\n"
+printf "${BOLD}  ╚══════════════════════════════════════╝${NC}\n"
 printf "\n"
 
 # ── Step 1: Detect OS ───────────────────────────────────────────────
@@ -140,10 +142,10 @@ else
 
   Install Docker using one of these options:
 
-  Option 1 - Docker Desktop (recommended):
+  Option 1 — Docker Desktop (recommended):
     ${DOCKER_DESKTOP_MAC_URL}
 
-  Option 2 - Colima (free, lightweight):
+  Option 2 — Colima (free, lightweight):
     brew install colima docker docker-compose
     colima start
 
@@ -160,7 +162,7 @@ ok "Docker Compose available"
 
 # ── Step 3: Check Port Conflicts ────────────────────────────────────
 
-info "Checking for port conflicts on port 8080..."
+info "Checking for port conflicts..."
 
 check_port() {
     local port=$1
@@ -178,10 +180,20 @@ check_port() {
     return 1
 }
 
-if check_port 8080; then
-    warn "Port 8080 is already in use. Stop the service using this port before starting Agience."
+PORT_CONFLICT=false
+if check_port 80; then
+    warn "Port 80 is already in use"
+    PORT_CONFLICT=true
+fi
+if check_port 443; then
+    warn "Port 443 is already in use"
+    PORT_CONFLICT=true
+fi
+
+if $PORT_CONFLICT; then
+    warn "Stop the service using these ports before starting Agience."
 else
-    ok "Port 8080 is available"
+    ok "Ports 80 and 443 are available"
 fi
 
 # ── Step 4: Create Install Directory ────────────────────────────────
@@ -189,7 +201,7 @@ fi
 info "Install directory: $INSTALL_DIR"
 
 if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/$COMPOSE_FILE" ]; then
-    warn "Existing installation found - updating and restarting"
+    warn "Existing installation found — updating and restarting"
 else
     mkdir -p "$INSTALL_DIR"
     ok "Created $INSTALL_DIR"
@@ -208,6 +220,11 @@ if [ ! -s "$COMPOSE_FILE" ]; then
 fi
 
 ok "Compose file downloaded"
+
+# ── Step 5b: Set edge channel ───────────────────────────────────────
+
+printf "VERSION=edge\n" > "${INSTALL_DIR}/.env"
+ok "Channel set to edge"
 
 # ── Step 6: Pull Images ─────────────────────────────────────────────
 
@@ -233,7 +250,7 @@ case "\${1:-}" in
     up)
         docker compose up -d
         echo ""
-        echo "Agience is running. Open: http://localhost:8080"
+        echo "Agience is running. Open: https://home.agience.ai"
         ;;
     down)
         docker compose down
@@ -283,22 +300,22 @@ ok "Agience is running"
 # ── Step 9: Open browser ─────────────────────────────────────────────
 
 if command_exists xdg-open; then
-    xdg-open "$OPEN_URL" >/dev/null 2>&1 &
+    xdg-open https://home.agience.ai >/dev/null 2>&1 &
 elif command_exists open; then
-    open "$OPEN_URL"
+    open https://home.agience.ai
 fi
 
 # ── Done ─────────────────────────────────────────────────────────────
 
 printf "\n"
-printf "${BOLD}${GREEN}  +======================================+${NC}\n"
-printf "${BOLD}${GREEN}  |     Agience is running!              |${NC}\n"
-printf "${BOLD}${GREEN}  +======================================+${NC}\n"
+printf "${BOLD}${GREEN}  ╔══════════════════════════════════════╗${NC}\n"
+printf "${BOLD}${GREEN}  ║     Agience is running! (edge)       ║${NC}\n"
+printf "${BOLD}${GREEN}  ╚══════════════════════════════════════╝${NC}\n"
 printf "\n"
-printf "  Open:   ${OPEN_URL}\n"
-printf "  Data:   ${INSTALL_DIR}/.data/\n"
+printf "  Open:   ${BOLD}https://home.agience.ai${NC}\n"
+printf "  Data:   ${HOME}/.agience/.data/\n"
 printf "\n"
-printf "  Commands:\n"
+printf "  ${BOLD}Commands:${NC}\n"
 printf "    agience up        start\n"
 printf "    agience down      stop\n"
 printf "    agience logs      watch logs\n"
@@ -307,6 +324,6 @@ printf "    agience status    show running containers\n"
 printf "\n"
 
 if $PATH_UPDATED; then
-    printf "${YELLOW}  Note: Open a new terminal for 'agience' to be on your PATH.${NC}\n"
+    printf "  ${YELLOW}Note:${NC} Open a new terminal (or run ${BOLD}source ~/.bashrc${NC}) for 'agience' to be on your PATH.\n"
     printf "\n"
 fi

@@ -61,6 +61,8 @@ class AuthContext:
     api_key_entity: Optional[APIKeyEntity] = None       # full entity — needed by collection service
     server_id: Optional[str] = None                     # if auth was via server token
     actor: Optional[str] = None                         # delegation: acting server
+    authority: Optional[str] = None                     # issuer / authority identity
+    host_id: Optional[str] = None                       # host identity (platform instance)
     bearer_grant: Optional[GrantEntity] = None           # convenience: grant resolved from Bearer grant key
     target_artifact_id: Optional[str] = None             # artifact scoping from prefixed Bearer token ({id}:agc_xxx)
 
@@ -207,6 +209,8 @@ def resolve_auth(
                 principal_type="server",
                 user_id=None,
                 server_id=str(payload.get("server_id")) if payload.get("server_id") else None,
+                authority=str(payload.get("authority", "")) or None,
+                host_id=str(payload.get("host_id", "")) or None,
             )
 
         if jwt_principal_type == "mcp_client":
@@ -217,11 +221,24 @@ def resolve_auth(
             )
 
         if jwt_principal_type == "delegation":
+            # All four identity-chain entities are required:
+            # User (sub), Server (act.sub), Authority (iss), Host (host_id)
+            d_sub = payload.get("sub")
+            d_act_sub = (payload.get("act") or {}).get("sub")
+            d_host = payload.get("host_id")
+            if not d_sub:
+                raise HTTPException(status_code=401, detail="Delegation token missing sub (user)")
+            if not d_act_sub:
+                raise HTTPException(status_code=401, detail="Delegation token missing act.sub (server)")
+            if not d_host:
+                raise HTTPException(status_code=401, detail="Delegation token missing host_id")
             return AuthContext(
-                principal_id=str(payload.get("sub", "")),
+                principal_id=str(d_sub),
                 principal_type="user",
-                user_id=str(payload.get("sub")) if payload.get("sub") else None,
-                actor=str(payload.get("act", {}).get("sub", "")) if payload.get("act") else None,
+                user_id=str(d_sub),
+                actor=str(d_act_sub),
+                authority=str(payload.get("iss", "")) or None,
+                host_id=str(d_host),
             )
 
         # Default: user JWT

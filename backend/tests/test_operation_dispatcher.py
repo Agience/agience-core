@@ -478,22 +478,6 @@ async def test_dispatch_resolves_mcp_tool_refs_from_transform_artifact(monkeypat
 # Phase 4: custom operations on new artifact types
 # ---------------------------------------------------------------------------
 
-def test_api_key_type_declares_crud_operations():
-    types_service.invalidate_type_cache()
-    for op_name in ("create", "read", "update", "delete"):
-        op = types_service.resolve_operation(
-            "application/vnd.agience.api-key+json", op_name
-        )
-        assert op is not None, f"api-key type must declare {op_name}"
-        assert op.enabled is True
-    # create is native-dispatched so it can capture the plaintext key
-    create = types_service.resolve_operation(
-        "application/vnd.agience.api-key+json", "create"
-    )
-    assert create.dispatch["kind"] == "native"
-    assert "api_key_service.create_api_key" in create.dispatch["target"]
-
-
 def test_server_credential_type_declares_rotate_and_publish_jwk():
     types_service.invalidate_type_cache()
     rotate = types_service.resolve_operation(

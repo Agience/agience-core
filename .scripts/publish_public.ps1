@@ -43,8 +43,10 @@ param(
     [switch]$DryRun
 )
 
-# Note: Do NOT set $ErrorActionPreference = "Stop" globally — it causes
-# PowerShell to treat any stderr output from git as a terminating error.
+# Explicitly override any inherited ErrorActionPreference — git writes informational
+# messages to stderr which PowerShell treats as terminating errors under "Stop".
+# Real errors are detected via $LASTEXITCODE checks throughout this script.
+$ErrorActionPreference = "Continue"
 
 $PublicRemote = "public"
 $StagingBranch = "public-release-staging"

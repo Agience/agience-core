@@ -198,7 +198,28 @@ class McpToolHandler:
         from services import mcp_service
 
         workspace_id = body.get("workspace_id") if isinstance(body, dict) else None
-        arguments = body.get("arguments") if isinstance(body, dict) and "arguments" in body else body
+
+        # Resolve input_mapping from the artifact's context.run block.
+        # This maps invoke body fields (workspace_id, artifacts[0], etc.)
+        # to the tool's expected parameter names (e.g. artifact_id).
+        input_mapping = resolve_ref("$.context.run.input_mapping", artifact)
+        if isinstance(input_mapping, dict) and input_mapping:
+            from agents.transform_executor import _resolve_input_mapping
+            # Build a flat params dict from the invoke body for mapping resolution
+            mapping_source: Dict[str, Any] = {}
+            if isinstance(body, dict):
+                mapping_source.update(body.get("params") or {})
+                for k in ("workspace_id", "artifacts", "input"):
+                    if k in body and k not in mapping_source:
+                        mapping_source[k] = body[k]
+            arguments = _resolve_input_mapping(input_mapping, mapping_source)
+        else:
+            arguments = body.get("arguments") if isinstance(body, dict) and "arguments" in body else body
+
+        logger.info(
+            "mcp_tool dispatch: server=%s tool=%s arguments=%s",
+            server_id, tool_name, arguments,
+        )
 
         # `mcp_service.invoke_tool` is synchronous (uses httpx.Client). Run it
         # in a thread-pool executor so it does not block the asyncio event loop.
@@ -215,6 +236,8 @@ class McpToolHandler:
                 arguments=arguments or {},
             ),
         )
+
+        logger.info("mcp_tool result: server=%s tool=%s result=%s", server_id, tool_name, result)
         return result
 
 

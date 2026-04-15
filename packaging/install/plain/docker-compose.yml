@@ -136,6 +136,7 @@ services:
       - STREAM_INGEST_URL=rtmp://localhost:1936/live
     volumes:
       - ./.data/stream:/var/stream
+      - ./.data/keys:/run/secrets/keys:ro
     depends_on:
       backend:
         condition: service_started

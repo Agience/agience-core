@@ -35,14 +35,23 @@ from dotenv import load_dotenv as _load_dotenv
 #  Phase 0: Load .env into os.environ (before any os.getenv calls)
 # ---------------------------------------------------------------------------
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_load_dotenv(_REPO_ROOT / ".env", override=True)
+# In Docker the backend is copied to /app/ (core/config.py -> /app/core/config.py)
+# so two parents reach the backend root.  In local dev the .env lives one
+# level above (the repo root).  Walk upward until we find it.
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+_ENV_FILE: Optional[Path] = None
+for _candidate in (_BACKEND_ROOT / ".env", _BACKEND_ROOT.parent / ".env"):
+    if _candidate.is_file():
+        _ENV_FILE = _candidate
+        break
+if _ENV_FILE:
+    _load_dotenv(_ENV_FILE, override=True)
 
 # ---------------------------------------------------------------------------
 #  Phase 1: Static constants (safe at import time, never change)
 # ---------------------------------------------------------------------------
 
-BASE_DIR = _REPO_ROOT
+BASE_DIR = _BACKEND_ROOT.parent if (_BACKEND_ROOT.parent / "backend").is_dir() else _BACKEND_ROOT
 KEYS_DIR = Path(os.getenv("KEYS_DIR", str(BASE_DIR / ".data" / "keys")))
 
 # Platform identity — deterministic UUID, never changes.
@@ -95,11 +104,11 @@ PASSWORD_PBKDF2_ITERS: int = 200000
 JWT_KEY_ID: str = "s1"
 
 # URIs & identity
-FRONTEND_URI: str = "http://localhost:5173"
-BACKEND_URI: str = "http://localhost:8081"
-PLATFORM_CLIENT_ID: str = "agience-client"
-AUTHORITY_DOMAIN: str = "localhost"
-AUTHORITY_ISSUER: str = "http://localhost:8081"
+FRONTEND_URI: str = os.getenv("FRONTEND_URI", "http://localhost:5173")
+BACKEND_URI: str = os.getenv("BACKEND_URI", "http://localhost:8081")
+PLATFORM_CLIENT_ID: str = os.getenv("PLATFORM_CLIENT_ID", "agience-client")
+AUTHORITY_DOMAIN: str = _urlparse(os.getenv("BACKEND_URI", "http://localhost:8081")).hostname or "localhost"
+AUTHORITY_ISSUER: str = os.getenv("BACKEND_URI", "http://localhost:8081")
 
 # Features
 ALLOW_LOCAL_MCP_SERVERS: bool = False

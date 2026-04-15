@@ -29,12 +29,13 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse as _urlparse, urlunparse as _urlunparse
 
+from dotenv import load_dotenv as _load_dotenv
+
+
 def _origin_only(uri: str) -> str:
     """Return scheme+host+port (strip path, query, fragment)."""
     p = _urlparse(uri)
     return _urlunparse((p.scheme, p.netloc, "", "", "", ""))
-
-from dotenv import load_dotenv as _load_dotenv
 
 # ---------------------------------------------------------------------------
 #  Phase 0: Load .env into os.environ (before any os.getenv calls)

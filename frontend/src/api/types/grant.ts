@@ -5,14 +5,14 @@
 // Body you POST to /grants
 export interface GrantCreate {
   resource_id: string;
-  resource_type?: string;       // "artifact" | "collection"
   grantee_type?: string;        // "user" | "invite"
   grantee_id?: string;          // user_id for direct grant; omit for invite
-  // CRUDIASO permission flags
+  // CRUDEASIO permission flags
   can_create?: boolean;
   can_read?: boolean;
   can_update?: boolean;
   can_delete?: boolean;
+  can_evict?: boolean;
   can_invoke?: boolean;
   can_add?: boolean;
   can_share?: boolean;
@@ -39,6 +39,7 @@ export interface GrantUpdate {
   can_read?: boolean;
   can_update?: boolean;
   can_delete?: boolean;
+  can_evict?: boolean;
   can_invoke?: boolean;
   can_add?: boolean;
   can_share?: boolean;
@@ -48,7 +49,6 @@ export interface GrantUpdate {
 // What grant endpoints return
 export interface GrantResponse {
   id: string;
-  resource_type: string;
   resource_id: string;
   grantee_type: string;
   grantee_id: string;
@@ -57,6 +57,7 @@ export interface GrantResponse {
   can_read: boolean;
   can_update: boolean;
   can_delete: boolean;
+  can_evict: boolean;
   can_invoke: boolean;
   can_add: boolean;
   can_share: boolean;

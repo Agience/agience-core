@@ -40,7 +40,6 @@ def _prompt_artifact(content="You are a custom expert assistant."):
     return ArtifactEntity(
         id="prompt-1",
         root_id="prompt-1",
-        slug="ask-prompt",
         collection_id="col-prompts",
         context="{}",
         content=content,

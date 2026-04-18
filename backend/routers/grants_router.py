@@ -35,8 +35,7 @@ class ClaimInviteRequest(BaseModel):
 
 class CreateGrantRequest(BaseModel):
     resource_id: str
-    resource_type: str = "collection"
-    # CRUDIASO
+    # CRUDEASIO
     can_create: bool = False
     can_read: bool = True
     can_update: bool = False
@@ -56,7 +55,7 @@ class CreateGrantRequest(BaseModel):
     notes: Optional[str] = None
     expires_at: Optional[str] = None
     state: str = "active"
-    # Named role preset shortcut. When set, overrides individual CRUDIASO
+    # Named role preset shortcut. When set, overrides individual CRUDEASIO
     # flags (which become defaults). Grant-service is the source of truth
     # for what each role maps to.
     role: Optional[str] = None
@@ -82,7 +81,6 @@ def _grant_response(grant: GrantEntity) -> dict:
 def _require_admin(
     auth: AuthContext,
     resource_id: str,
-    resource_type: str,
     arango_db: StandardDatabase,
 ) -> None:
     """Raise 403 unless the caller can manage grants on the resource.
@@ -93,7 +91,7 @@ def _require_admin(
     from services import grant_service
     if not auth.user_id:
         raise HTTPException(status_code=401, detail="User identification required")
-    if not grant_service.can_admin(arango_db, auth.user_id, resource_id, resource_type):
+    if not grant_service.can_admin(arango_db, auth.user_id, resource_id):
         raise HTTPException(
             status_code=403,
             detail="Only the resource creator or an admin can manage grants",
@@ -103,20 +101,19 @@ def _require_admin(
 def _require_share_or_admin(
     auth: AuthContext,
     resource_id: str,
-    resource_type: str,
     arango_db: StandardDatabase,
 ) -> None:
     """Raise 403 unless the caller can create invites on the resource.
 
     Invite creation is a lower bar than full grant management ---
-    collaborators with ``can_share`` (S in CRUDIASO) can invite new
+    collaborators with ``can_share`` (S in CRUDEASIO) can invite new
     people without needing ``can_admin``. Delegates to
     ``grant_service.can_share``.
     """
     from services import grant_service
     if not auth.user_id:
         raise HTTPException(status_code=401, detail="User identification required")
-    if not grant_service.can_share(arango_db, auth.user_id, resource_id, resource_type):
+    if not grant_service.can_share(arango_db, auth.user_id, resource_id):
         raise HTTPException(
             status_code=403,
             detail="You need share or admin permission on this resource",
@@ -237,7 +234,6 @@ async def claim_invite_endpoint(
 @router.get("")
 async def list_grants_endpoint(
     resource_id: str = Query(..., description="Resource ID to list grants for"),
-    resource_type: str = Query("collection", description="Resource type"),
     auth: AuthContext = Depends(get_auth),
     arango_db: StandardDatabase = Depends(get_arango_db),
 ):
@@ -245,18 +241,10 @@ async def list_grants_endpoint(
     if not auth.user_id:
         raise HTTPException(status_code=401, detail="User identification required")
 
-    _require_admin(auth, resource_id, resource_type, arango_db)
+    _require_admin(auth, resource_id, arango_db)
 
-    from db.arango import get_grants_for_collection, query_documents, COLLECTION_GRANTS
-    from entities.grant import Grant as GrantEntity
-
-    if resource_type == "collection":
-        grants = get_grants_for_collection(arango_db, resource_id)
-    else:
-        grants = query_documents(
-            arango_db, GrantEntity, COLLECTION_GRANTS,
-            {"resource_type": resource_type, "resource_id": resource_id},
-        )
+    from db.arango import get_grants_for_collection
+    grants = get_grants_for_collection(arango_db, resource_id)
 
     return [_grant_response(g) for g in grants]
 
@@ -286,7 +274,7 @@ async def create_grant_endpoint(
     # role-preset resolution, email delivery, and event emission in one
     # place so the MCP share tool and this endpoint stay in lockstep.
     if body.grantee_type == GrantEntity.GRANTEE_INVITE:
-        _require_share_or_admin(auth, body.resource_id, body.resource_type, arango_db)
+        _require_share_or_admin(auth, body.resource_id, arango_db)
         from services import grant_service
 
         # Resolve the target email. Prefer explicit target_entity when the
@@ -296,7 +284,7 @@ async def create_grant_endpoint(
         if (body.target_entity_type or "").lower() == "email":
             target_email = body.target_entity
 
-        # If no role was given, synthesize one from the CRUDIASO bits on
+        # If no role was given, synthesize one from the CRUDEASIO bits on
         # the body by matching against known presets. Otherwise fall back
         # to "viewer". Keeps legacy callers working.
         role = body.role or _role_from_bits(body) or "viewer"
@@ -306,7 +294,6 @@ async def create_grant_endpoint(
                 arango_db,
                 user_id=auth.user_id,
                 resource_id=body.resource_id,
-                resource_type=body.resource_type,
                 role=role,
                 target_email=target_email,
                 max_claims=body.max_claims if body.max_claims is not None else 1,
@@ -324,14 +311,13 @@ async def create_grant_endpoint(
         return response
 
     # Direct user->user grant: still requires can_admin on the resource.
-    _require_admin(auth, body.resource_id, body.resource_type, arango_db)
+    _require_admin(auth, body.resource_id, arango_db)
 
     now = _now_iso()
     grantee_id = body.grantee_id or ""
 
     grant = GrantEntity(
         id=str(uuid.uuid4()),
-        resource_type=body.resource_type,
         resource_id=body.resource_id,
         grantee_type=body.grantee_type,
         grantee_id=grantee_id,
@@ -362,7 +348,7 @@ async def create_grant_endpoint(
 
 
 def _role_from_bits(body: CreateGrantRequest) -> Optional[str]:
-    """Best-effort reverse-map from CRUDIASO bits on the request to a role.
+    """Best-effort reverse-map from CRUDEASIO bits on the request to a role.
 
     Exact-match against ``Grant.ROLE_PRESETS`` so legacy callers that send
     individual flags (rather than a ``role`` string) still hit the same
@@ -408,7 +394,7 @@ async def read_grant(
     if not is_grantee and not is_granter:
         # Check can_admin on the resource.
         try:
-            _require_admin(auth, grant.resource_id, grant.resource_type, arango_db)
+            _require_admin(auth, grant.resource_id, arango_db)
         except HTTPException:
             raise HTTPException(status_code=404, detail="Grant not found")
 
@@ -437,10 +423,14 @@ async def revoke_grant(
     if not grant:
         raise HTTPException(status_code=404, detail="Grant not found")
 
-    # Only granter or resource owner can revoke.
-    is_granter = grant.granted_by == auth.user_id
-    if not is_granter:
-        _require_admin(auth, grant.resource_id, grant.resource_type, arango_db)
+    # Granters may only revoke their own *pending invites* (grantee_type == "invite").
+    # Revoking a claimed/accepted user grant requires can_admin (O).
+    is_revocable_invite = (
+        grant.granted_by == auth.user_id
+        and grant.grantee_type == GrantEntity.GRANTEE_INVITE
+    )
+    if not is_revocable_invite:
+        _require_admin(auth, grant.resource_id, arango_db)
 
     now = _now_iso()
     grant.state = GrantEntity.STATE_REVOKED

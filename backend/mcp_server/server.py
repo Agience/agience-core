@@ -1033,7 +1033,7 @@ def memory(
         if command == "write":
             if not key:
                 return {"error": "Provide 'key' for write command."}
-            existing = arango_db.find_artifact_by_slug_in_collection(
+            existing = arango_db.find_artifact_by_name_in_collection(
                 db, collection_id, key,
             )
             ctx = json.dumps(context or {})
@@ -1053,7 +1053,7 @@ def memory(
                     db, user_id, collection_id,
                     context=ctx,
                     content=content or "",
-                    slug=key,
+                    name=key,
                 )
                 return {
                     "action": "created",
@@ -1112,7 +1112,7 @@ def memory(
         if command == "delete":
             if not key:
                 return {"error": "Provide 'key' for delete command."}
-            artifact = arango_db.find_artifact_by_slug_in_collection(
+            artifact = arango_db.find_artifact_by_name_in_collection(
                 db, collection_id, key,
             )
             if not artifact:
@@ -1347,7 +1347,7 @@ def share(
         user_id = _user_id()
 
         # Enforce can_share permission on the workspace.
-        if not grant_service.can_share(db, user_id, workspace_id, "collection"):
+        if not grant_service.can_share(db, user_id, workspace_id):
             return {"error": "You need share or admin permission on this workspace."}
 
         try:
@@ -1355,7 +1355,6 @@ def share(
                 db,
                 user_id=user_id,
                 resource_id=workspace_id,
-                resource_type="collection",
                 role=role,
                 target_email=target_email,
                 max_claims=max_claims,
@@ -1419,7 +1418,6 @@ def accept_invite(
         return {
             "grant_id": grant.id,
             "resource_id": grant.resource_id,
-            "resource_type": grant.resource_type,
         }
     except Exception as exc:  # noqa: BLE001
         logger.warning("accept_invite failed: %s", exc)

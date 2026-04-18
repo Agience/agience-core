@@ -47,7 +47,6 @@ def _call(tool, *, user_id="u-1", auth=None, **kwargs):
 
 def _grant(**overrides):
     base = dict(
-        resource_type="collection",
         resource_id="ws-1",
         grantee_type=GrantEntity.GRANTEE_USER,
         grantee_id="u-1",
@@ -297,7 +296,6 @@ class TestAcceptInvite:
         assert result == {
             "grant_id": "g-claimed",
             "resource_id": "ws-1",
-            "resource_type": "collection",
         }
 
     def test_identity_mismatch_returns_error_not_crash(self):

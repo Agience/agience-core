@@ -95,7 +95,7 @@ class TestRegistryBootstrap:
         call = mock_create.call_args
         coll = call.args[1] if len(call.args) > 1 else call.kwargs.get("collection")
         assert coll is not None
-        assert coll.slug == PACKAGE_REGISTRY_COLLECTION_SLUG
+        assert coll.id == "col-pkg-registry"
 
     def test_ensure_registry_is_idempotent(self):
         from services.package_registry_content_service import ensure_package_registry

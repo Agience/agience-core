@@ -124,6 +124,12 @@ Write-Ok "Compose file downloaded"
 
 $envFile = Join-Path $InstallDir '.env'
 if (Test-Path $envFile) {
+    # Normalize: read raw bytes to detect missing trailing newline
+    $raw = [System.IO.File]::ReadAllText($envFile)
+    if ($raw.Length -gt 0 -and $raw[-1] -ne "`n") {
+        $raw += "`n"
+        [System.IO.File]::WriteAllText($envFile, $raw)
+    }
     $lines = Get-Content $envFile | Where-Object { $_ -notmatch '^VERSION=' }
     $lines += 'VERSION=edge'
     Set-Content -Path $envFile -Value $lines -Encoding ASCII

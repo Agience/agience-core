@@ -39,6 +39,7 @@ class TestSetBinding:
         ws = _ws()
         with (
             patch("services.workspace_service.arango.get_collection_by_id", return_value=ws),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[MagicMock(can_read=True)]),
             patch("services.workspace_service.arango.update_collection", return_value=None),
             patch("services.workspace_service.event_bus") as mock_bus,
         ):
@@ -53,6 +54,7 @@ class TestSetBinding:
         ws = _ws()
         with (
             patch("services.workspace_service.arango.get_collection_by_id", return_value=ws),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[MagicMock(can_read=True)]),
             patch("services.workspace_service.arango.update_collection", return_value=None),
             patch("services.workspace_service.event_bus"),
         ):
@@ -87,6 +89,7 @@ class TestClearBinding:
         ws = _ws_with_bindings({"memory": {"artifact_id": "col-1"}})
         with (
             patch("services.workspace_service.arango.get_collection_by_id", return_value=ws),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[MagicMock(can_read=True)]),
             patch("services.workspace_service.arango.update_collection") as mock_update,
             patch("services.workspace_service.event_bus") as mock_bus,
         ):
@@ -101,6 +104,7 @@ class TestClearBinding:
         ws = _ws()
         with (
             patch("services.workspace_service.arango.get_collection_by_id", return_value=ws),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[MagicMock(can_read=True)]),
             patch("services.workspace_service.arango.update_collection") as mock_update,
             patch("services.workspace_service.event_bus") as mock_bus,
         ):
@@ -124,7 +128,7 @@ class TestResolveBindingArtifactIdKey:
         col = _col(cid="col-new")
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=lambda _db, cid: ws if cid == "ws-1" else col),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[MagicMock(can_read=True)]),
         ):
             result = ws_svc.resolve_binding(db, "user-1", "ws-1", "memory")
         assert result == "col-new"
@@ -133,7 +137,10 @@ class TestResolveBindingArtifactIdKey:
         """collection_id is not a valid binding key — only artifact_id is canonical."""
         db = MagicMock()
         ws = _ws_with_bindings({"memory": {"collection_id": "col-legacy"}})
-        with patch("services.workspace_service.arango.get_collection_by_id", return_value=ws):
+        with (
+            patch("services.workspace_service.arango.get_collection_by_id", return_value=ws),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[MagicMock(can_read=True)]),
+        ):
             result = ws_svc.resolve_binding(db, "user-1", "ws-1", "memory")
         assert result is None
 
@@ -150,7 +157,7 @@ class TestResolveBindingMulti:
         ws = _ws_with_bindings({"target_collections": {"artifact_ids": ["c1", "c2"]}})
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=lambda _db, cid: ws if cid == "ws-1" else _col(cid=cid)),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[MagicMock(can_read=True)]),
         ):
             result = ws_svc.resolve_binding_multi(db, "user-1", "ws-1", "target_collections")
         assert result == ["c1", "c2"]
@@ -170,9 +177,12 @@ class TestResolveBindingMulti:
                 return c2
             return None
 
+        def _grants(_db, grantee_id, resource_id):
+            return [MagicMock(can_read=True)] if resource_id in {"ws-1", "c2"} else []
+
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=_get_col),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", side_effect=_grants),
         ):
             result = ws_svc.resolve_binding_multi(db, "user-1", "ws-1", "target_collections")
         assert result == ["c2"]
@@ -180,7 +190,10 @@ class TestResolveBindingMulti:
     def test_resolve_multi_missing_role_returns_empty(self):
         db = MagicMock()
         ws = _ws()
-        with patch("services.workspace_service.arango.get_collection_by_id", return_value=ws):
+        with (
+            patch("services.workspace_service.arango.get_collection_by_id", return_value=ws),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[MagicMock(can_read=True)]),
+        ):
             result = ws_svc.resolve_binding_multi(db, "user-1", "ws-1", "target_collections")
         assert result == []
 
@@ -196,7 +209,7 @@ class TestResolveBindingMulti:
 
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=_get_col),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[MagicMock(can_read=True)]),
         ):
             result = ws_svc.resolve_binding_multi(db, "user-1", "ws-1", "target_collections", step_context=step_ctx)
         assert result == ["step-c1"]

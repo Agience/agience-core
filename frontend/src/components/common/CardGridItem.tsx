@@ -63,7 +63,7 @@ interface CardGridItemProps {
   editable?: boolean;
   inPanel?: boolean;
   forceHover?: boolean;
-  activeSource?: { type?: 'workspace' | 'collection' | 'mcp-server'; id?: string };
+  activeSource?: { type?: string; id?: string };
   isShowingSearchResults?: boolean;
 }
 

@@ -33,6 +33,9 @@ services:
       dockerfile: docker/backend.Dockerfile
     ports:
       - "${BACKEND_PORT:-8081}:8081"
+    environment:
+      - FRONTEND_URI=${FRONTEND_URI:-http://localhost:5173}
+      - BACKEND_URI=${BACKEND_URI:-http://localhost:8081}
     volumes:
       - ${DATA_PATH:-./.data}/keys:/app/.data/keys:ro
 

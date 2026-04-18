@@ -1,4 +1,4 @@
-"""Tests for routers/grants_router.py — CRUDIASO grant management.
+"""Tests for routers/grants_router.py — CRUDEASIO grant management.
 
 Covers the public surface:
   - 401 when no user_id
@@ -17,6 +17,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient
 
 from entities.grant import Grant as GrantEntity
@@ -27,7 +28,6 @@ from main import app
 def _grant(**overrides) -> GrantEntity:
     base = dict(
         id=overrides.get("id", "g-1"),
-        resource_type="collection",
         resource_id="col-1",
         grantee_type=GrantEntity.GRANTEE_USER,
         grantee_id="user-2",
@@ -105,7 +105,7 @@ class TestCreateGrant:
                 try:
                     r = await client.post(
                         "/grants",
-                        json={"resource_id": "col-1", "resource_type": "collection"},
+                        json={"resource_id": "col-1"},
                     )
                 finally:
                     app.dependency_overrides.pop(get_arango_db, None)
@@ -132,7 +132,6 @@ class TestCreateGrant:
                     "/grants",
                     json={
                         "resource_id": "col-1",
-                        "resource_type": "collection",
                         "grantee_id": "bob",
                         "can_read": True,
                         "can_update": True,
@@ -162,7 +161,6 @@ class TestCreateGrant:
                     "/grants",
                     json={
                         "resource_id": "col-1",
-                        "resource_type": "collection",
                         "grantee_type": GrantEntity.GRANTEE_INVITE,
                         "can_read": True,
                     },
@@ -238,8 +236,13 @@ class TestRevokeGrant:
         assert r.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_granter_can_revoke(self, client: AsyncClient):
-        g = _grant(grantee_id="bob", granted_by="user-123")
+    async def test_granter_can_revoke_own_pending_invite(self, client: AsyncClient):
+        """S-holder who issued an invite can revoke it while it's still pending."""
+        g = _grant(
+            grantee_type=GrantEntity.GRANTEE_INVITE,
+            grantee_id="tok-hash-abc",
+            granted_by="user-123",
+        )
         captured = {}
 
         def fake_update(db, grant):
@@ -257,6 +260,25 @@ class TestRevokeGrant:
         assert captured["grant"].state == GrantEntity.STATE_REVOKED
         assert captured["grant"].revoked_by == "user-123"
         assert captured["grant"].revoked_at is not None
+
+    @pytest.mark.asyncio
+    async def test_granter_cannot_revoke_claimed_user_grant_without_admin(
+        self, client: AsyncClient
+    ):
+        """Once an invite is claimed, the resulting user grant requires O to revoke —
+        not just being the original granter (S is not enough)."""
+        g = _grant(
+            grantee_type=GrantEntity.GRANTEE_USER,
+            grantee_id="bob",
+            granted_by="user-123",  # caller is the original granter but has no O
+        )
+        with (
+            patch("routers.grants_router.get_grant_by_id", return_value=g),
+            patch("routers.grants_router._require_admin", side_effect=HTTPException(status_code=403, detail="Forbidden")),
+        ):
+            r = await client.delete("/grants/g-1")
+
+        assert r.status_code == 403
 
 
 # ---------------------------------------------------------------------------

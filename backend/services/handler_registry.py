@@ -31,8 +31,8 @@ def resolve_ref(
     body: Optional[Dict[str, Any]] = None,
     ctx: Any = None,
 ) -> Any:
-    """Resolve a JSONPath-lite reference against an artifact document, the
-    dispatch request body, or the dispatch context.
+    """Resolve a reference against an artifact document, the dispatch
+    request body, the dispatch context, or a graph relationship edge.
 
     Supported roots:
     - `$._key`, `$.context.foo.bar` → walks the artifact document. The
@@ -40,12 +40,17 @@ def resolve_ref(
     - `$.body.name`, `$.body.arguments.query` → walks the dispatch request body.
     - `$.ctx.user_id`, `$.ctx.actor_id` → reads named attributes off the
       `DispatchContext` object.
+    - `@relationship.<name>` → follows a relationship edge of the given
+      name from the artifact and returns the target's `root_id`. Requires
+      `ctx.arango_db` to be set (available during dispatch).
 
-    Literal strings (no leading `$.`) are returned as-is. Non-string refs
-    (numbers, dicts) are returned as-is. Missing paths return `None`.
+    Literal strings (no leading `$.` or `@`) are returned as-is. Non-string
+    refs (numbers, dicts) are returned as-is. Missing paths return `None`.
     """
     if not isinstance(ref, str):
         return ref
+    if ref.startswith("@relationship."):
+        return _resolve_relationship_edge(ref, artifact, ctx)
     if not ref.startswith("$."):
         return ref
 
@@ -67,6 +72,30 @@ def resolve_ref(
 
     # Default root: the artifact document itself. Reinclude `first` in the walk.
     return _walk_dict(artifact, parts)
+
+
+def _resolve_relationship_edge(ref: str, artifact: Dict[str, Any], ctx: Any) -> Optional[str]:
+    """Follow a ``@relationship.<name>`` ref to find the target root_id.
+
+    Looks up the artifact's `root_id` (stable identity) and queries
+    `collection_artifacts` edges with the matching `relationship` label.
+    Returns the target `root_id` or ``None``.
+    """
+    relationship_name = ref[len("@relationship."):]
+    if not relationship_name:
+        return None
+
+    db = getattr(ctx, "arango_db", None) if ctx is not None else None
+    if db is None:
+        logger.warning("@relationship ref '%s' requires DB context but ctx.arango_db is None", ref)
+        return None
+
+    from_root_id = artifact.get("root_id") or artifact.get("_key")
+    if not from_root_id:
+        return None
+
+    from db.arango import get_relationship_target
+    return get_relationship_target(db, from_root_id, relationship_name)
 
 
 def _resolve_input_mapping(mapping: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
@@ -203,17 +232,15 @@ class McpToolHandler:
 
     ``op_spec.dispatch`` provides:
 
-    - ``server_ref`` + ``tool_ref`` — literals or ``$.path`` refs into the
-      artifact. Used for per-artifact routing: e.g. a transform carries
-      its own server/tool in ``context.run``, so two artifacts of the same
-      type can route to two different servers.
+    - ``server_ref`` + ``tool_ref`` — ``$.path`` refs or ``@relationship``
+      refs resolved from the artifact. Used for per-artifact routing: e.g.
+      a transform has a ``server`` relationship edge to the MCP server that
+      handles it.
 
-    - ``orchestrator_server`` + ``orchestrator_tool`` (optional) — used
+    - ``orchestrator_server_ref`` + ``orchestrator_tool`` (optional) — used
       when the primary refs resolve to null. Lets a type declare a default
-      orchestrator for its invoke op. Example: a transform with
-      ``run.type == "workflow"`` has no direct ``run.server``, so the
-      transform type declares ``orchestrator_server: verso`` +
-      ``orchestrator_tool: execute_transform``.
+      orchestrator for its invoke op. ``orchestrator_server_ref`` is resolved
+      through ``resolve_ref`` (supports ``@relationship`` edges).
 
     If neither primary nor orchestrator refs resolve, the handler raises
     ``ValueError``.
@@ -235,19 +262,19 @@ class McpToolHandler:
         server_id = resolve_ref(dispatch.get("server_ref"), artifact, body=body, ctx=ctx)
         tool_name = resolve_ref(dispatch.get("tool_ref"), artifact, body=body, ctx=ctx)
 
-        # Orchestrator: used for run types that don't declare a direct
-        # server/tool (e.g. workflow, llm, transform-ref). These still
-        # flow through an MCP tool call — just a different one owned by
-        # the orchestrating server.
+        # Orchestrator fallback: used for run types that don't declare a
+        # direct server/tool (e.g. workflow, llm, transform-ref).
         if not server_id or not tool_name:
-            server_id = dispatch.get("orchestrator_server") or server_id
+            orch_server_ref = dispatch.get("orchestrator_server_ref")
+            if orch_server_ref:
+                server_id = resolve_ref(orch_server_ref, artifact, body=body, ctx=ctx) or server_id
             tool_name = dispatch.get("orchestrator_tool") or tool_name
 
         if not server_id or not tool_name:
             raise ValueError(
                 f"mcp_tool dispatch could not resolve server "
-                f"({dispatch.get('server_ref')!r} / orchestrator_server="
-                f"{dispatch.get('orchestrator_server')!r}) or tool "
+                f"({dispatch.get('server_ref')!r} / orchestrator_server_ref="
+                f"{dispatch.get('orchestrator_server_ref')!r}) or tool "
                 f"({dispatch.get('tool_ref')!r} / orchestrator_tool="
                 f"{dispatch.get('orchestrator_tool')!r}) from artifact/body/ctx"
             )
@@ -348,8 +375,8 @@ class ArtifactCrudHandler:
     ) -> Any:
         # When the dispatcher is invoked with kind=artifact_crud, the caller
         # supplies a `ctx.inner_result` (already-computed service result) or
-        # a `ctx.inner_callable` to run. This keeps back-compat with existing
-        # router code that calls services directly.
+        # a `ctx.inner_callable` to run so the dispatcher wraps the call in
+        # its emit envelope without re-implementing the service call.
         inner = getattr(ctx, "inner_callable", None)
         if inner is not None:
             result = inner()

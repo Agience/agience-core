@@ -225,6 +225,8 @@ ok "Compose file downloaded"
 
 env_file="${INSTALL_DIR}/.env"
 if [ -f "$env_file" ]; then
+    # Ensure trailing newline before parsing
+    [ -n "$(tail -c1 "$env_file")" ] && printf '\n' >> "$env_file"
     grep -v '^VERSION=' "$env_file" > "${env_file}.tmp" || true
     printf "VERSION=edge\n" >> "${env_file}.tmp"
     mv "${env_file}.tmp" "$env_file"

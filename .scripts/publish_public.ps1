@@ -113,6 +113,7 @@ Write-Host ""
 $ExcludePaths = @(
     ".dev"
     ".claude"
+    ".vscode"
     ".github/agents"
     ".github/instructions"
     ".github/prompts"

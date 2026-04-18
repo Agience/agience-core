@@ -50,6 +50,27 @@ def _patch_s3_put():
         yield mock_put
 
 
+@pytest.fixture(autouse=True)
+def _patch_grants():
+    """Default: return a full-CRUDEASIO grant so get_workspace() passes.
+
+    Tests that need to verify "no grant" behaviour should override this
+    by patching get_active_grants_for_principal_resource themselves.
+    """
+    grant = GrantEntity(
+        resource_id="ws-1",
+        grantee_type="user", grantee_id="user-1", granted_by="user-1",
+        can_create=True, can_read=True, can_update=True, can_delete=True,
+        can_invoke=True, can_add=True, can_share=True, can_admin=True,
+        state="active",
+    )
+    with patch(
+        "services.workspace_service.arango.get_active_grants_for_principal_resource",
+        return_value=[grant],
+    ):
+        yield
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -61,6 +82,25 @@ def _ws(owner: str = "user-1", wid: str = "ws-1") -> CollectionEntity:
         created_by=owner,
         content_type=WORKSPACE_CONTENT_TYPE,
         context="",
+    )
+
+
+def _full_grant() -> GrantEntity:
+    """A full-CRUDEASIO grant — what a creator gets at creation time."""
+    return GrantEntity(
+        resource_id="ws-1",
+        grantee_type="user",
+        grantee_id="user-1",
+        granted_by="user-1",
+        can_create=True,
+        can_read=True,
+        can_update=True,
+        can_delete=True,
+        can_invoke=True,
+        can_add=True,
+        can_share=True,
+        can_admin=True,
+        state="active",
     )
 
 
@@ -174,6 +214,7 @@ class TestWorkspaceCrud:
         with (
             patch("services.workspace_service.arango.create_collection") as create,
             patch("services.collection_service.ensure_collection_descriptor") as ensure,
+            patch("services.workspace_service.arango.upsert_user_collection_grant"),
         ):
             ws = ws_svc.create_workspace(db, "user-1", "Inbox", is_inbox=True)
         assert ws.id == "user-1"
@@ -186,15 +227,19 @@ class TestWorkspaceCrud:
         with (
             patch("services.workspace_service.arango.create_collection"),
             patch("services.collection_service.ensure_collection_descriptor") as ensure,
+            patch("services.workspace_service.arango.upsert_user_collection_grant"),
         ):
             ws = ws_svc.create_workspace(db, "user-1", "Project")
         assert ws.id != "user-1"
         assert ws.created_by == "user-1"
         ensure.assert_called_once_with(db, ws)
 
-    def test_get_workspace_owner_mismatch_404(self):
+    def test_get_workspace_no_grant_404(self):
         db = MagicMock()
-        with patch("services.workspace_service.arango.get_collection_by_id", return_value=_ws(owner="someone-else")):
+        with (
+            patch("services.workspace_service.arango.get_collection_by_id", return_value=_ws(owner="someone-else")),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+        ):
             with pytest.raises(HTTPException) as ei:
                 ws_svc.get_workspace(db, "user-1", "ws-1")
         assert ei.value.status_code == 404
@@ -366,6 +411,49 @@ class TestUpdateArtifactStateMachine:
                 db, "user-1", "ws-1", "committed-id", content="x", reindex=False
             )
         create_new.assert_not_called()
+
+    def test_root_id_update_prefers_existing_draft_in_workspace(self):
+        db = MagicMock()
+        draft = _artifact(aid="draft-id", root_id="root-1", content="old")
+        with (
+            patch("services.workspace_service.arango.get_collection_by_id", return_value=_ws()),
+            patch("services.workspace_service.arango.get_artifact", return_value=None),
+            patch("services.workspace_service.arango.get_draft_artifact", return_value=draft) as get_draft,
+            patch("services.workspace_service.arango.get_latest_committed_artifact") as get_committed,
+            patch("services.workspace_service.arango.update_artifact") as upd,
+        ):
+            out = ws_svc.update_artifact(
+                db, "user-1", "ws-1", "root-1", content="new", reindex=False
+            )
+        get_draft.assert_called_once_with(db, "root-1", "ws-1")
+        get_committed.assert_not_called()
+        upd.assert_called_once()
+        assert out.id == "draft-id"
+        assert out.content == "new"
+
+    def test_root_id_update_falls_back_to_latest_committed(self):
+        db = MagicMock()
+        committed = _artifact(aid="committed-id", root_id="root-1", state=ArtifactEntity.STATE_COMMITTED)
+        with (
+            patch("services.workspace_service.arango.get_collection_by_id", return_value=_ws()),
+            patch("services.workspace_service.arango.get_artifact", return_value=None),
+            patch("services.workspace_service.arango.get_draft_artifact", return_value=None) as get_draft,
+            patch(
+                "services.workspace_service.arango.get_latest_committed_artifact",
+                return_value=committed,
+            ) as get_committed,
+            patch("services.workspace_service.arango.create_artifact") as create_new,
+            patch("services.workspace_service.arango.update_artifact"),
+        ):
+            out = ws_svc.update_artifact(
+                db, "user-1", "ws-1", "root-1", content="edited", reindex=False
+            )
+        assert get_draft.call_args_list[0].args == (db, "root-1", "ws-1")
+        get_committed.assert_called_once_with(db, "root-1", "ws-1")
+        create_new.assert_called_once()
+        assert out.root_id == "root-1"
+        assert out.state == ArtifactEntity.STATE_DRAFT
+        assert out.content == "edited"
 
     def test_noop_when_nothing_dirty(self):
         db = MagicMock()
@@ -736,7 +824,6 @@ def _col(owner: str = "user-1", cid: str = "col-1") -> CollectionEntity:
 
 def _grant(grantee: str = "user-1", resource_id: str = "col-1", can_read: bool = True) -> GrantEntity:
     return GrantEntity(
-        resource_type="collection",
         resource_id=resource_id,
         grantee_type="user",
         grantee_id=grantee,
@@ -754,13 +841,43 @@ def _ws_with_bindings(bindings: dict, owner: str = "user-1", wid: str = "ws-1") 
 class TestBindingResolution:
     """Tests for resolve_binding() and resolve_all_bindings()."""
 
+    @staticmethod
+    def _grants_for_ws_only(ws_id: str = "ws-1"):
+        """Return a side_effect that gives a full grant for the workspace
+        and an empty list for any other resource (binding targets)."""
+        full = GrantEntity(
+            resource_id=ws_id,
+            grantee_type="user", grantee_id="user-1", granted_by="user-1",
+            can_create=True, can_read=True, can_update=True, can_delete=True,
+            can_invoke=True, can_add=True, can_share=True, can_admin=True,
+            state="active",
+        )
+        def _side_effect(_db, *, grantee_id, resource_id):
+            if resource_id == ws_id:
+                return [full]
+            return []
+        return _side_effect
+
+    @staticmethod
+    def _grants_for_all():
+        """Return a side_effect that gives a full grant for any resource."""
+        def _side_effect(_db, *, grantee_id, resource_id):
+            return [GrantEntity(
+                resource_id=resource_id,
+                grantee_type="user", grantee_id=grantee_id, granted_by=grantee_id,
+                can_create=True, can_read=True, can_update=True, can_delete=True,
+                can_invoke=True, can_add=True, can_share=True, can_admin=True,
+                state="active",
+            )]
+        return _side_effect
+
     def test_resolve_workspace_level(self):
         db = MagicMock()
         ws = _ws_with_bindings({"memory": {"artifact_id": "col-1"}})
         col = _col()
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=lambda _db, cid: ws if cid == "ws-1" else col),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", side_effect=self._grants_for_all()),
         ):
             result = ws_svc.resolve_binding(db, "user-1", "ws-1", "memory")
         assert result == "col-1"
@@ -785,7 +902,7 @@ class TestBindingResolution:
         col = _col(owner="other-user")
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=lambda _db, cid: ws if cid == "ws-1" else col),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", side_effect=self._grants_for_ws_only()),
         ):
             result = ws_svc.resolve_binding(db, "user-1", "ws-1", "memory")
         assert result is None
@@ -804,7 +921,7 @@ class TestBindingResolution:
         transform_ctx = {"bindings": {"tools": {"artifact_id": "col-transform"}}}
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=lambda _db, cid: ws if cid == "ws-1" else col_t),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", side_effect=self._grants_for_all()),
         ):
             result = ws_svc.resolve_binding(db, "user-1", "ws-1", "tools", transform_context=transform_ctx)
         assert result == "col-transform"
@@ -817,7 +934,7 @@ class TestBindingResolution:
         step_ctx = {"bindings": {"tools": {"artifact_id": "col-step"}}}
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=lambda _db, cid: ws if cid == "ws-1" else col_s),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", side_effect=self._grants_for_all()),
         ):
             result = ws_svc.resolve_binding(db, "user-1", "ws-1", "tools", transform_context=transform_ctx, step_context=step_ctx)
         assert result == "col-step"
@@ -830,7 +947,7 @@ class TestBindingResolution:
         transform_ctx = {"bindings": {}}
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=lambda _db, cid: ws if cid == "ws-1" else col),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", side_effect=self._grants_for_all()),
         ):
             result = ws_svc.resolve_binding(db, "user-1", "ws-1", "memory", transform_context=transform_ctx, step_context=step_ctx)
         assert result == "col-1"
@@ -848,7 +965,7 @@ class TestBindingResolution:
             return _col(cid=cid)
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=_get_col),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", side_effect=self._grants_for_all()),
         ):
             result = ws_svc.resolve_all_bindings(db, "user-1", "ws-1")
         assert result == {"memory": "col-m", "tools": "col-t", "data": "col-d"}
@@ -869,9 +986,18 @@ class TestBindingResolution:
             if cid == "col-t":
                 return col_t
             return None
+        # Grant for ws-1 and col-m, but NOT col-t
+        def _grants(_db, *, grantee_id, resource_id):
+            if resource_id in ("ws-1", "col-m"):
+                return [GrantEntity(
+                    resource_id=resource_id,
+                    grantee_type="user", grantee_id=grantee_id, granted_by=grantee_id,
+                    can_read=True, state="active",
+                )]
+            return []
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=_get_col),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", side_effect=_grants),
         ):
             result = ws_svc.resolve_all_bindings(db, "user-1", "ws-1")
         assert result == {"memory": "col-m"}
@@ -886,7 +1012,7 @@ class TestBindingResolution:
             return _col(cid=cid)
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=_get_col),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", side_effect=self._grants_for_all()),
         ):
             result = ws_svc.resolve_all_bindings(db, "user-1", "ws-1", transform_context=transform_ctx)
         assert result == {"memory": "col-m", "tools": "col-t"}
@@ -896,9 +1022,20 @@ class TestBindingResolution:
         ws = _ws_with_bindings({"memory": {"artifact_id": "col-1"}})
         col = _col(owner="other-user")
         grant = _grant(grantee="user-1", resource_id="col-1", can_read=True)
+        # Grant for ws-1 (autouse provides it) and the specific binding target.
+        def _grants(_db, *, grantee_id, resource_id):
+            if resource_id == "col-1":
+                return [grant]
+            if resource_id == "ws-1":
+                return [GrantEntity(
+                    resource_id="ws-1",
+                    grantee_type="user", grantee_id="user-1", granted_by="user-1",
+                    can_read=True, state="active",
+                )]
+            return []
         with (
             patch("services.workspace_service.arango.get_collection_by_id", side_effect=lambda _db, cid: ws if cid == "ws-1" else col),
-            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", return_value=[grant]),
+            patch("services.workspace_service.arango.get_active_grants_for_principal_resource", side_effect=_grants),
         ):
             result = ws_svc.resolve_binding(db, "user-1", "ws-1", "memory")
         assert result == "col-1"

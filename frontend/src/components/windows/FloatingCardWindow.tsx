@@ -1,6 +1,6 @@
 // "Artifact Floating" – full-size movable window for a single artifact on the desktop.
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { X, FolderOpen, Info, Pencil, Tag, Calendar, Folder } from 'lucide-react';
+import { X, FolderOpen, Info, Pencil, Tag, Calendar, Folder, Layers } from 'lucide-react';
 import { IconButton } from '@/components/ui/icon-button';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
@@ -20,13 +20,14 @@ import { CollectionPicker } from '@/components/modals/CollectionPicker';
 import { BindingPicker } from '@/components/modals/BindingPicker';
 import { useDebouncedSave } from '@/hooks/useDebouncedSave';
 import { addArtifactToCollection, removeArtifactFromCollection } from '@/api/collections';
+import { getChildren } from '@/api/artifacts';
 import { readUiResource } from '@/api/mcp';
 import { toast } from 'sonner';
-import { COLLECTION_CONTENT_TYPE } from '@/utils/content-type';
+import { COLLECTION_CONTENT_TYPE, WORKSPACE_CONTENT_TYPE } from '@/utils/content-type';
 import { buildCollectionLabelMap, resolveCollectionLabel } from '@/utils/collectionLabels';
 
 /** Which panel is active in the floating window body */
-type ActivePanel = 'content' | 'context' | 'collections';
+type ActivePanel = 'content' | 'context' | 'collections' | 'children';
 
 type Rect = { x: number; y: number; w: number; h: number };
 
@@ -350,6 +351,91 @@ function CollectionsPanel({ artifact }: { artifact: Artifact }) {
 				title="Manage Collections"
 			/>
 		</>
+	);
+}
+
+// ─── Children Panel ─────────────────────────────────────────────────────────
+
+function ChildrenPanel({
+	artifactId,
+	onOpenArtifact,
+}: {
+	artifactId: string;
+	onOpenArtifact?: (artifact: Artifact) => void;
+}) {
+	const [children, setChildren] = useState<Artifact[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		let cancelled = false;
+		setLoading(true);
+		setError(null);
+		(async () => {
+			try {
+				const result = await getChildren(artifactId);
+				if (!cancelled) setChildren(result);
+			} catch (e) {
+				if (!cancelled) {
+					console.warn('Failed to fetch children:', e);
+					setError(e instanceof Error ? e.message : 'Failed to load children');
+				}
+			} finally {
+				if (!cancelled) setLoading(false);
+			}
+		})();
+		return () => { cancelled = true; };
+	}, [artifactId]);
+
+	if (loading) {
+		return (
+			<div className="flex items-center justify-center h-full text-sm text-gray-400">
+				Loading...
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="flex items-center justify-center h-full text-sm text-red-400">
+				{error}
+			</div>
+		);
+	}
+
+	if (children.length === 0) {
+		return (
+			<div className="flex items-center justify-center h-full text-sm text-gray-400">
+				No children
+			</div>
+		);
+	}
+
+	return (
+		<div className="h-full overflow-y-auto p-4 space-y-2">
+			{children.map((child) => {
+				const ctx = safeParseArtifactContext(child.context);
+				const childTitle = ctx.title || ctx.filename || child.name || 'Untitled';
+				const childType = child.content_type || '';
+				return (
+					<button
+						key={child.id}
+						className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 border border-gray-100 transition-colors flex items-center gap-3"
+						onClick={() => onOpenArtifact?.(child)}
+					>
+						<div className="min-w-0 flex-1">
+							<div className="text-sm font-medium text-gray-900 truncate">{childTitle}</div>
+							{childType && (
+								<div className="text-xs text-gray-400 truncate">{childType}</div>
+							)}
+						</div>
+						{child.state && (
+							<span className="text-[10px] text-gray-400 flex-shrink-0">{child.state}</span>
+						)}
+					</button>
+				);
+			})}
+		</div>
 	);
 }
 
@@ -769,7 +855,7 @@ export default function FloatingCardWindow(props: {
 			}
 		}
 
-		if (contentType?.content_type === COLLECTION_CONTENT_TYPE) {
+		if (contentType?.content_type === COLLECTION_CONTENT_TYPE || contentType?.content_type === WORKSPACE_CONTENT_TYPE) {
 			return (
 				<CollectionArtifactViewer
 					artifact={artifact}
@@ -877,6 +963,24 @@ export default function FloatingCardWindow(props: {
 						<FolderOpen />
 					</IconButton>
 
+					{/* Children — only if artifact has children */}
+					{artifact?.has_children && (
+						<IconButton
+							size="sm"
+							variant="ghost"
+							active={activePanel === 'children'}
+							onPointerDown={(e) => e.stopPropagation()}
+							onClick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								togglePanel('children');
+							}}
+							title={`Children${artifact.child_count ? ` (${artifact.child_count})` : ''}`}
+						>
+							<Layers />
+						</IconButton>
+					)}
+
 					{/* Context */}
 					<IconButton
 						size="sm"
@@ -934,6 +1038,8 @@ export default function FloatingCardWindow(props: {
 					<ContextPanel artifact={artifact} />
 				) : activePanel === 'collections' && artifact ? (
 					<CollectionsPanel artifact={artifact} />
+				) : activePanel === 'children' && artifact ? (
+					<ChildrenPanel artifactId={String(artifact.id)} onOpenArtifact={onOpenArtifact} />
 				) : (
 					renderContentViewer()
 				)}

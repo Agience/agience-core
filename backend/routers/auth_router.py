@@ -123,7 +123,6 @@ def _compute_roles(collection_db: StandardDatabase, user_id: str) -> list[str]:
         grants = db_get_active_grants(
             collection_db,
             grantee_id=user_id,
-            resource_type="collection",
             resource_id=get_id(AUTHORITY_COLLECTION_SLUG),
         )
         if any(g.can_update and g.is_active() for g in grants):

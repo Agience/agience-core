@@ -30,7 +30,6 @@ from services.grant_service import (
 
 def _invite(**overrides) -> GrantEntity:
     base = dict(
-        resource_type="collection",
         resource_id="ws-1",
         grantee_type=GrantEntity.GRANTEE_INVITE,
         grantee_id="hash-of-token",

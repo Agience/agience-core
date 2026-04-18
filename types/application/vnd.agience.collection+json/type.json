@@ -7,7 +7,7 @@
     "create": {
       "enabled": true,
       "requires_grant": "create",
-      "dispatch": { "kind": "artifact_crud" },
+      "dispatch": { "kind": "native", "target": "collection_service.dispatch_create_collection" },
       "emits": [
         { "event": "artifact.created", "phase": "after" }
       ],

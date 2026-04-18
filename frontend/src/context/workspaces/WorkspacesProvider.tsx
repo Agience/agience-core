@@ -13,15 +13,15 @@ import { useAuth } from '../../hooks/useAuth';
 import { usePreferences } from '../../hooks/usePreferences';
 
 export function WorkspacesProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, loading } = useAuth();
-  const { preferences, isLoading: preferencesLoading } = usePreferences();
+  const { isAuthenticated, loading, user } = useAuth();
+  const { preferences, isLoading: preferencesLoading, updatePreferences } = usePreferences();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
 
-  const hiddenWorkspaceTabIds = useMemo(() => {
-    const raw = preferences.browser?.hiddenWorkspaceTabIds;
-    return Array.isArray(raw) ? raw.map(String).filter(Boolean) : [];
-  }, [preferences.browser?.hiddenWorkspaceTabIds]);
+  const dockedWorkspaceTabIds = useMemo(() => {
+    const raw = preferences.browser?.dockedWorkspaceCardIds;
+    return Array.isArray(raw) ? raw.map(String).filter(Boolean) : undefined;
+  }, [preferences.browser?.dockedWorkspaceCardIds]);
 
   // Deep link: read artifactId from URL path and workspace from query param.
   const { artifactId: urlArtifactId } = useParams<{ artifactId?: string }>();
@@ -50,9 +50,12 @@ export function WorkspacesProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const visibleWorkspaces = workspaces.filter((workspace) => !hiddenWorkspaceTabIds.includes(workspace.id));
+    const visibleWorkspaces = dockedWorkspaceTabIds
+      ? workspaces.filter((workspace) => dockedWorkspaceTabIds.includes(workspace.id))
+      : workspaces;
 
     if (visibleWorkspaces.length === 0) {
+      // No workspaces are visible - show empty dock state
       setActiveWorkspaceId(null);
       return;
     }
@@ -61,9 +64,11 @@ export function WorkspacesProvider({ children }: { children: ReactNode }) {
       if (current && visibleWorkspaces.some((workspace) => workspace.id === current)) {
         return current;
       }
-      return visibleWorkspaces[0].id;
+      // Prefer inbox (id === user.id) if visible
+      const inbox = user?.id ? visibleWorkspaces.find((workspace) => workspace.id === user.id) : undefined;
+      return inbox?.id || visibleWorkspaces[0]?.id || null;
     });
-  }, [hiddenWorkspaceTabIds, isAuthenticated, loading, preferencesLoading, workspaces]);
+  }, [dockedWorkspaceTabIds, isAuthenticated, loading, preferencesLoading, workspaces, user?.id, updatePreferences, preferences.browser]);
 
   // Deep link: if URL has /:artifactId (or ?workspace=xyz) matching a
   // known workspace, activate it on first load.
@@ -87,11 +92,16 @@ export function WorkspacesProvider({ children }: { children: ReactNode }) {
   ): Promise<Workspace> => {
     const created = await apiCreateWorkspace({ name, description });
     setWorkspaces(prev => [...prev, created]);
+    if (dockedWorkspaceTabIds) {
+      void updatePreferences({
+        browser: { ...preferences.browser, dockedWorkspaceCardIds: [...dockedWorkspaceTabIds, created.id] },
+      });
+    }
     if (options?.activate !== false) {
       setActiveWorkspaceId(created.id);
     }
     return created;
-  }, []);
+  }, [dockedWorkspaceTabIds, preferences.browser, updatePreferences]);
 
   // Update
   const updateWorkspace = useCallback(
@@ -116,13 +126,15 @@ export function WorkspacesProvider({ children }: { children: ReactNode }) {
       setWorkspaces(prev => {
         const remaining = prev.filter(w => w.id !== id);
         if (activeWorkspaceId === id) {
-          const nextVisible = remaining.find((workspace) => !hiddenWorkspaceTabIds.includes(workspace.id));
+          const nextVisible = dockedWorkspaceTabIds
+            ? remaining.find((workspace) => dockedWorkspaceTabIds.includes(workspace.id))
+            : remaining[0];
           setActiveWorkspaceId(nextVisible?.id || null);
         }
         return remaining;
       });
     },
-    [activeWorkspaceId, hiddenWorkspaceTabIds]
+    [activeWorkspaceId, dockedWorkspaceTabIds]
   );
 
   // Active workspace

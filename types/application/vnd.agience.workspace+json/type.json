@@ -52,7 +52,7 @@
     "create": {
       "enabled": true,
       "requires_grant": "create",
-      "dispatch": { "kind": "artifact_crud" },
+      "dispatch": { "kind": "native", "target": "workspace_service.dispatch_create_workspace" },
       "emits": [
         { "event": "artifact.created", "phase": "after" }
       ],
@@ -80,6 +80,29 @@
         { "event": "artifact.deleted", "phase": "after" }
       ],
       "observe": { "enabled": true, "transports": ["sse", "websocket"] }
+    },
+    "commit": {
+      "enabled": true,
+      "requires_grant": "update",
+      "dispatch": { "kind": "native", "target": "workspace_service.dispatch_commit" },
+      "emits": [
+        { "event": "workspace.commit.started", "phase": "before" },
+        { "event": "workspace.commit.completed", "phase": "after" },
+        { "event": "workspace.commit.failed", "phase": "error" }
+      ]
+    },
+    "commit_preview": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "native", "target": "workspace_service.dispatch_commit_preview" }
+    },
+    "revert": {
+      "enabled": true,
+      "requires_grant": "update",
+      "dispatch": { "kind": "native", "target": "workspace_service.dispatch_revert" },
+      "emits": [
+        { "event": "artifact.reverted", "phase": "after" }
+      ]
     }
   },
   "ui": {

@@ -70,7 +70,7 @@ services:
         condition: service_completed_successfully
 
   search:
-    image: opensearchproject/opensearch:latest
+    image: opensearchproject/opensearch:2.19.5
     container_name: ${COMPOSE_PROJECT_NAME:-agience}-search
     restart: unless-stopped
     user: "1000:1000"

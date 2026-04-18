@@ -151,14 +151,14 @@ def _parse_filter(raw: Any) -> event_bus.EventFilter:
 def _event_visible_to(
     auth: AuthContext,
     event: event_bus.Event,
-    owned_containers: Optional[set] = None,
+    accessible_containers: Optional[set] = None,
 ) -> bool:
     """ACL check: does the caller hold a `read` grant that reaches this event?
 
     Rules:
     - If the event was produced by the authenticated user (actor_id match),
       always visible.
-    - If the event targets a container the user owns (cached lookup), visible.
+    - If the event targets a container the user has read access to, visible.
     - If the user has pre-loaded grants, check grant permissions.
     - Server / mcp-client principals see events they produced.
     """
@@ -168,9 +168,9 @@ def _event_visible_to(
     if user_id and event.actor_id and str(user_id) == str(event.actor_id):
         return True
 
-    # Ownership match: the event targets a container the user owns.
-    if user_id and event.container_id and owned_containers is not None:
-        if event.container_id in owned_containers:
+    # Access match: the event targets a container the user can read.
+    if user_id and event.container_id and accessible_containers is not None:
+        if event.container_id in accessible_containers:
             return True
 
     # Server / mcp-client principals without grants: match by principal_id.
@@ -213,21 +213,25 @@ async def _pump_subscription(
     Applies the per-user ACL check before sending. Exits cleanly when the
     socket closes or the task is cancelled.
 
-    Container ownership is cached per WebSocket session so each container_id
+    Container access is cached per WebSocket session so each container_id
     only requires one DB lookup.
     """
-    owned_containers: set = set()
+    accessible_containers: set = set()
 
-    def _check_ownership(container_id: str) -> bool:
-        """Cache-through ownership check for a container."""
-        if container_id in owned_containers:
+    def _check_access(container_id: str) -> bool:
+        """Cache-through grant check for a container."""
+        if container_id in accessible_containers:
             return True
         if not arango_db or not auth.user_id:
             return False
         try:
-            doc = arango_db.collection("artifacts").get(container_id)
-            if doc and doc.get("created_by") == auth.user_id:
-                owned_containers.add(container_id)
+            from db.arango import get_active_grants_for_principal_resource
+            grants = get_active_grants_for_principal_resource(
+                arango_db, grantee_id=auth.user_id,
+                resource_id=container_id,
+            )
+            if any(getattr(g, "can_read", False) for g in grants):
+                accessible_containers.add(container_id)
                 return True
         except Exception:
             pass
@@ -238,10 +242,10 @@ async def _pump_subscription(
             event = await sub.queue.get()
             if ws.client_state != WebSocketState.CONNECTED:
                 return
-            # Pre-populate ownership cache for this event's container.
-            if event.container_id and event.container_id not in owned_containers:
-                _check_ownership(event.container_id)
-            if not _event_visible_to(auth, event, owned_containers):
+            # Pre-populate access cache for this event's container.
+            if event.container_id and event.container_id not in accessible_containers:
+                _check_access(event.container_id)
+            if not _event_visible_to(auth, event, accessible_containers):
                 continue
             msg = {
                 "event": event.name,

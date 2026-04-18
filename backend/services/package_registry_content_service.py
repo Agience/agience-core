@@ -58,7 +58,6 @@ def ensure_package_registry(arango_db: StandardDatabase) -> Optional[str]:
             created_by=AGIENCE_PLATFORM_USER_ID,
             content_type=COLLECTION_CONTENT_TYPE,
             state=CollectionEntity.STATE_COMMITTED,
-            slug=PACKAGE_REGISTRY_COLLECTION_SLUG,
             created_time=now,
             modified_time=now,
         )

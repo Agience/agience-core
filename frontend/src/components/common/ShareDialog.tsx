@@ -23,7 +23,7 @@ const ROLES = [
   { value: 'admin', label: 'Admin' },
 ];
 
-// Role -> CRUDIASO bit bundle. Must match backend Grant.ROLE_PRESETS.
+// Role -> CRUDEASIO bit bundle. Must match backend Grant.ROLE_PRESETS.
 const ROLE_BITS: Record<string, Record<string, boolean>> = {
   viewer: { can_read: true },
   editor: { can_create: true, can_read: true, can_update: true, can_delete: true },
@@ -32,6 +32,7 @@ const ROLE_BITS: Record<string, Record<string, boolean>> = {
     can_read: true,
     can_update: true,
     can_delete: true,
+    can_evict: true,
     can_invoke: true,
     can_add: true,
     can_share: true,
@@ -41,6 +42,7 @@ const ROLE_BITS: Record<string, Record<string, boolean>> = {
     can_read: true,
     can_update: true,
     can_delete: true,
+    can_evict: true,
     can_invoke: true,
     can_add: true,
     can_share: true,
@@ -72,16 +74,15 @@ export function ShareDialog({ open, onOpenChange, workspaceId, workspaceName }: 
     try {
       await post('/grants', {
         resource_id: workspaceId,
-        resource_type: 'collection',
         grantee_type: 'invite',
         target_entity: email.trim().toLowerCase(),
         target_entity_type: 'email',
         max_claims: 1,
-        // Named role is the source of truth; the backend derives CRUDIASO
+        // Named role is the source of truth; the backend derives CRUDEASIO
         // bits from Grant.ROLE_PRESETS.
         role,
         message: message.trim() || null,
-        // CRUDIASO bits kept for any legacy server that doesn't support
+        // CRUDEASIO bits kept for any legacy server that doesn't support
         // the `role` parameter yet.
         ...ROLE_BITS[role],
       });

@@ -60,7 +60,6 @@ def test_resolve_auth_accepts_direct_api_key():
 
     mock_grants = [
         GrantEntity(
-            resource_type="collection",
             resource_id="col-1",
             grantee_type="api_key",
             grantee_id="key-123",
@@ -98,7 +97,6 @@ def test_resolve_auth_accepts_grant_key_in_bearer():
     """Grant keys in the Bearer slot return principal_type=grant_key."""
     grant = GrantEntity(
         id="grant-1",
-        resource_type="collection",
         resource_id="col-1",
         grantee_type="grant_key",
         grantee_id="hash-1",

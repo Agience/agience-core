@@ -242,6 +242,7 @@ def _load_folder_definition(folder: Path) -> Tuple[Dict[str, Any], List[str]]:
     # Eventing refactor). Promote it so resolve_operation() can find it at
     # `definition["operations"]` without digging through `definition["type"]`.
     operations_json = type_json.pop("operations", None)
+    relationships_json = type_json.pop("relationships", None)
 
     definition: Dict[str, Any] = {
         "type": type_json,
@@ -253,6 +254,8 @@ def _load_folder_definition(folder: Path) -> Tuple[Dict[str, Any], List[str]]:
         definition["ui"] = ui_json
     if operations_json is not None:
         definition["operations"] = operations_json
+    if relationships_json is not None:
+        definition["relationships"] = relationships_json
     if preview_json is not None:
         definition["preview"] = preview_json
     if behaviors_json is not None:
@@ -524,12 +527,15 @@ def _parse_raw_type_definition(raw: Dict[str, Any]) -> Dict[str, Any]:
     type_json = dict(raw)  # don't mutate the caller's dict
     ui_json = type_json.pop("ui", None)
     operations_json = type_json.pop("operations", None)
+    relationships_json = type_json.pop("relationships", None)
 
     definition: Dict[str, Any] = {"type": type_json, "handlers": {}}
     if ui_json is not None:
         definition["ui"] = ui_json
     if operations_json is not None:
         definition["operations"] = operations_json
+    if relationships_json is not None:
+        definition["relationships"] = relationships_json
     return definition
 
 

@@ -612,7 +612,29 @@ async def execute_transform(
 
     # --- mcp-tool: call an MCP tool on a named server ---
     if run_type == "mcp-tool":
-        server = run.get("server_artifact_id") or run.get("server") or "agience-core"
+        # Resolve server via relationship edge
+        server = None
+        async with httpx.AsyncClient() as client:
+            try:
+                rel_resp = await client.get(
+                    f"{AGIENCE_API_URI}/artifacts/{transform_id}/relationships",
+                    headers=await _headers(),
+                    params={"relationship": "server"},
+                    timeout=30,
+                )
+                rel_resp.raise_for_status()
+                rels = rel_resp.json()
+                if rels:
+                    server = rels[0].get("target_id")
+            except httpx.HTTPStatusError:
+                pass
+
+        # Legacy fallback for pre-migration artifacts
+        if not server:
+            server = run.get("server_artifact_id")
+        if not server:
+            return json.dumps({"error": "Transform has no server relationship edge"})
+
         tool = run.get("tool")
         if not tool:
             return json.dumps({"error": "Transform run block is missing 'tool'"})
@@ -1733,7 +1755,7 @@ async def export_package(
 
     Only inspects draft + committed artifacts in the workspace; archived
     artifacts are skipped. Server dependencies are inferred from each
-    transform artifact's ``context.run.server``.
+    transform artifact's ``server`` relationship edge.
     """
     ws = workspace_id
     if not ws:
@@ -1785,22 +1807,32 @@ async def export_package(
                 "slug": slug,
             })
 
-            # Harvest server dependencies from transform run blocks.
+            # Harvest server dependencies via relationship edges.
             if ctype == "application/vnd.agience.transform+json":
-                run = ctx.get("run") or {}
-                server = run.get("server")
-                if isinstance(server, str) and server:
-                    server_names.add(server)
+                try:
+                    rel_resp = await client.get(
+                        f"{AGIENCE_API_URI}/artifacts/{aid}/relationships",
+                        headers=await _headers(),
+                        params={"relationship": "server"},
+                        timeout=30,
+                    )
+                    rel_resp.raise_for_status()
+                    for rel in rel_resp.json():
+                        tid = rel.get("target_id")
+                        if tid:
+                            server_names.add(tid)
+                except httpx.HTTPStatusError:
+                    pass
 
         # 4. Merge into the existing package context (preserve publisher,
         #    version, etc. that the author set manually).
         pkg_block["contents"] = contents
         deps = pkg_block.setdefault("dependencies", {})
         existing_deps = deps.get("servers") or []
-        existing_names = {d.get("name") for d in existing_deps if d.get("name")}
-        for name in sorted(server_names):
-            if name not in existing_names:
-                existing_deps.append({"name": name, "transport": "builtin"})
+        existing_ids = {d.get("artifact_id") for d in existing_deps if d.get("artifact_id")}
+        for server_id in sorted(server_names):
+            if server_id not in existing_ids:
+                existing_deps.append({"artifact_id": server_id})
         deps["servers"] = existing_deps
 
         pkg_ctx["package"] = pkg_block

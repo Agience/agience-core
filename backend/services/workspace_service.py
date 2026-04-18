@@ -204,6 +204,23 @@ def create_workspace(
     from services.collection_service import ensure_collection_descriptor
     ensure_collection_descriptor(db, entity)
 
+    # Issue explicit full-CRUDEASIO grant to the creator.
+    arango.upsert_user_collection_grant(
+        db,
+        user_id=user_id,
+        collection_id=workspace_id,
+        granted_by=user_id,
+        can_create=True,
+        can_read=True,
+        can_update=True,
+        can_delete=True,
+        can_evict=True,
+        can_invoke=True,
+        can_add=True,
+        can_share=True,
+        can_admin=True,
+    )
+
     return entity
 
 
@@ -213,7 +230,12 @@ def list_workspaces(db: StandardDatabase, user_id: str) -> List[CollectionEntity
 
 def get_workspace(db: StandardDatabase, user_id: str, workspace_id: str) -> CollectionEntity:
     entity = arango.get_collection_by_id(db, workspace_id)
-    if not entity or entity.created_by != user_id:
+    if not entity:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Workspace not found")
+    grants = arango.get_active_grants_for_principal_resource(
+        db, grantee_id=user_id, resource_id=workspace_id,
+    )
+    if not any(getattr(g, "can_read", False) for g in grants):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Workspace not found")
     return entity
 
@@ -341,10 +363,8 @@ def _user_can_read_collection(
     col = arango.get_collection_by_id(db, collection_id)
     if not col:
         return False
-    if getattr(col, "created_by", None) == user_id:
-        return True
     grants = arango.get_active_grants_for_principal_resource(
-        db, grantee_id=user_id, resource_type="collection", resource_id=collection_id,
+        db, grantee_id=user_id, resource_id=collection_id,
     )
     return any(getattr(g, "can_read", False) for g in grants)
 
@@ -686,7 +706,7 @@ def create_workspace_artifact(
     order_key: Optional[str] = None,
     enqueue_index: bool = True,
     dispatch_handlers: bool = True,
-    slug: Optional[str] = None,
+    name: Optional[str] = None,
     content_type: Optional[str] = None,
 ) -> ArtifactEntity:
     get_workspace(db, user_id, workspace_id)
@@ -718,7 +738,7 @@ def create_workspace_artifact(
         modified_by=user_id,
         created_time=now,
         modified_time=now,
-        slug=slug,
+        name=name,
         content_type=content_type,
     )
     arango.create_artifact(db, artifact)
@@ -831,7 +851,13 @@ def update_artifact(
     get_workspace(db, user_id, workspace_id)
 
     target = arango.get_artifact(db, artifact_id)
-    if not target or target.collection_id != workspace_id:
+    if target is not None and target.collection_id != workspace_id:
+        target = None
+    if target is None:
+        target = arango.get_draft_artifact(db, artifact_id, workspace_id)
+    if target is None:
+        target = arango.get_latest_committed_artifact(db, artifact_id, workspace_id)
+    if target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Artifact not found")
 
     # Archive toggle.
@@ -1549,7 +1575,13 @@ def resolve_card_api_key(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
 
     ws = arango.get_collection_by_id(db, workspace_id)
-    if not ws or ws.created_by != api_key.user_id:
+    if not ws:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+
+    grants = arango.get_active_grants_for_principal_resource(
+        db, grantee_id=api_key.user_id, resource_id=workspace_id,
+    )
+    if not any(getattr(g, "can_read", False) for g in grants):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
 
     if not api_key.can_access_resource("collections", workspace_id):
@@ -1595,3 +1627,61 @@ def receive_card_inbound_message(
         context=_ensure_json_str(card_ctx), content=text or "",
     )
     return msg.id or "", ws.id
+
+
+# ---------------------------------------------------------------------------
+# Native dispatch handlers — called by operation_dispatcher for type.json
+# ``dispatch: { kind: "native", target: "workspace_service.<fn>" }``
+# ---------------------------------------------------------------------------
+
+async def dispatch_create_workspace(artifact: dict, body: dict, ctx: Any) -> dict:
+    """Create a workspace via the ``create`` operation on workspace type."""
+    name = (body or {}).get("name", "New Workspace")
+    ws = create_workspace(ctx.arango_db, ctx.user_id, name)
+    return ws.to_dict()
+
+
+async def dispatch_commit(artifact: dict, body: dict, ctx: Any) -> dict:
+    """Commit workspace drafts via the ``commit`` operation."""
+    workspace_id = artifact.get("_key") or artifact.get("id")
+    artifact_ids = (body or {}).get("artifact_ids")
+    result = commit_workspace_to_collections(
+        workspace_db=ctx.arango_db,
+        collection_db=ctx.arango_db,
+        user_id=ctx.user_id,
+        workspace_id=workspace_id,
+        artifact_ids=artifact_ids,
+        dry_run=False,
+    )
+    return result.to_dict() if hasattr(result, "to_dict") else {"status": "committed"}
+
+
+async def dispatch_commit_preview(artifact: dict, body: dict, ctx: Any) -> dict:
+    """Dry-run commit preview via the ``commit_preview`` operation."""
+    workspace_id = artifact.get("_key") or artifact.get("id")
+    artifact_ids = (body or {}).get("artifact_ids")
+    result = commit_workspace_to_collections(
+        workspace_db=ctx.arango_db,
+        collection_db=ctx.arango_db,
+        user_id=ctx.user_id,
+        workspace_id=workspace_id,
+        artifact_ids=artifact_ids,
+        dry_run=True,
+    )
+    return result.to_dict() if hasattr(result, "to_dict") else {"status": "preview"}
+
+
+async def dispatch_revert(artifact: dict, body: dict, ctx: Any) -> dict:
+    """Revert an artifact via the ``revert`` operation."""
+    workspace_id = artifact.get("collection_id") or artifact.get("_key") or ""
+    artifact_id = (body or {}).get("artifact_id") or artifact.get("_key") or ""
+    result = revert_artifact(
+        workspace_db=ctx.arango_db,
+        collection_db=ctx.arango_db,
+        user_id=ctx.user_id,
+        workspace_id=workspace_id,
+        artifact_id=artifact_id,
+    )
+    if result:
+        return result.to_dict()
+    return {"status": "reverted"}

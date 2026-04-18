@@ -2,8 +2,10 @@
 """
 Grant entity -- unified authorization record.
 
-CRUDIASO permission model: Create, Read, Update, Delete, Invoke, Add, Share, Admin.
+CRUDEASIO permission model: Create, Read, Update, Delete, Evict, Add, Share, Invoke, Admin.
 
+E (Evict) = remove item from container (delete edge, not the artifact).
+A (Add) = fire-and-forget intake into a container (add edge).
 S (Share) = ability to create invites / share the resource.
 O (Admin) = meta-permission to manage grants on the resource.
 
@@ -17,7 +19,7 @@ from entities.base import BaseEntity
 class Grant(BaseEntity):
     """
     A grant links a principal (user, api_key, invite, group, grant_key) to a
-    resource (artifact) with CRUDIASO permissions.
+    resource (artifact) with CRUDEASIO permissions.
     """
 
     PREFIX = "Grant"
@@ -52,12 +54,14 @@ class Grant(BaseEntity):
             "can_read": True,
             "can_update": True,
             "can_delete": True,
+            "can_evict": True,
         },
         "collaborator": {
             "can_create": True,
             "can_read": True,
             "can_update": True,
             "can_delete": True,
+            "can_evict": True,
             "can_invoke": True,
             "can_add": True,
             "can_share": True,
@@ -67,6 +71,7 @@ class Grant(BaseEntity):
             "can_read": True,
             "can_update": True,
             "can_delete": True,
+            "can_evict": True,
             "can_invoke": True,
             "can_add": True,
             "can_share": True,
@@ -76,7 +81,7 @@ class Grant(BaseEntity):
 
     @classmethod
     def permissions_for_role(cls, role: str) -> Dict[str, bool]:
-        """Return the CRUDIASO bit pattern for a named role.
+        """Return the CRUDEASIO bit pattern for a named role.
 
         Raises :class:`ValueError` if *role* is not a known preset.
         """
@@ -89,17 +94,17 @@ class Grant(BaseEntity):
 
     def __init__(
         self,
-        resource_type: str,           # "artifact" or "collection"
         resource_id: str,             # artifact_id
         grantee_type: str,            # "user" | "api_key" | "invite" | "group" | "grant_key"
         grantee_id: str,              # user_id | api_key.id | claim_token_hash | group_artifact_id
         granted_by: str,              # user_id of the issuer
         effect: str = "allow",        # "allow" | "deny"
-        # CRUDIASO permission flags
+        # CRUDEASIO permission flags
         can_create: bool = False,
         can_read: bool = True,
         can_update: bool = False,
         can_delete: bool = False,
+        can_evict: bool = False,
         can_invoke: bool = False,
         can_add: bool = False,
         can_share: bool = False,
@@ -129,17 +134,17 @@ class Grant(BaseEntity):
         modified_time: Optional[str] = None,
     ):
         super().__init__(id=id, created_time=created_time, modified_time=modified_time)
-        self.resource_type = resource_type
         self.resource_id = resource_id
         self.grantee_type = grantee_type
         self.grantee_id = grantee_id
         self.granted_by = granted_by
         self.effect = effect
-        # CRUDIASO
+        # CRUDEASIO
         self.can_create = can_create
         self.can_read = can_read
         self.can_update = can_update
         self.can_delete = can_delete
+        self.can_evict = can_evict
         self.can_invoke = can_invoke
         self.can_add = can_add
         self.can_share = can_share
@@ -171,17 +176,17 @@ class Grant(BaseEntity):
     def to_dict(self) -> Dict[str, Any]:
         base = self.to_dict_base()
         base.update({
-            "resource_type": self.resource_type,
             "resource_id": self.resource_id,
             "grantee_type": self.grantee_type,
             "grantee_id": self.grantee_id,
             "granted_by": self.granted_by,
             "effect": self.effect,
-            # CRUDIASO
+            # CRUDEASIO
             "can_create": self.can_create,
             "can_read": self.can_read,
             "can_update": self.can_update,
             "can_delete": self.can_delete,
+            "can_evict": self.can_evict,
             "can_invoke": self.can_invoke,
             "can_add": self.can_add,
             "can_share": self.can_share,
@@ -215,24 +220,21 @@ class Grant(BaseEntity):
         can_update = data.get("can_update", False)
         return cls(
             id=base["id"],
-            resource_type=data.get("resource_type", ""),
             resource_id=data.get("resource_id", ""),
             grantee_type=data.get("grantee_type", ""),
             grantee_id=data.get("grantee_id", ""),
             granted_by=data.get("granted_by", ""),
             effect=data.get("effect", "allow"),
-            # CRUDIASO
+            # CRUDEASIO
             can_create=data.get("can_create", False),
             can_read=data.get("can_read", True),
             can_update=can_update,
             can_delete=data.get("can_delete", False),
+            can_evict=data.get("can_evict", False),
             can_invoke=data.get("can_invoke", False),
             can_add=data.get("can_add", False),
-            # Legacy fallbacks for DB docs written before the CRUDIASO rename:
-            # ``can_search`` → ``can_share`` (S repurposed from Search to Share)
-            # ``can_own``    → ``can_admin`` (O renamed for clarity)
-            can_share=data.get("can_share", data.get("can_search", data.get("can_read", False))),
-            can_admin=data.get("can_admin", data.get("can_own", False)),
+            can_share=data.get("can_share", False),
+            can_admin=data.get("can_admin", False),
             # Identity
             requires_identity=data.get("requires_identity", False),
             read_requires_identity=data.get("read_requires_identity"),

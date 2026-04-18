@@ -72,7 +72,7 @@ def is_creator(
 
     Collections (workspaces included) are stored in the ``artifacts``
     table under the unified artifact store. Creators implicitly hold all
-    CRUDIASO permissions on what they create without needing a grant row.
+    CRUDEASIO permissions on what they create without needing a grant row.
     """
     if not user_id:
         return False
@@ -90,7 +90,6 @@ def user_has_any_flag(
     db: StandardDatabase,
     user_id: str,
     resource_id: str,
-    resource_type: str,
     *flags: str,
 ) -> bool:
     """True when *user_id* holds any of the named ``can_*`` flags on the resource.
@@ -103,7 +102,6 @@ def user_has_any_flag(
     grants = get_active_grants_for_principal_resource(
         db,
         grantee_id=user_id,
-        resource_type=resource_type,
         resource_id=resource_id,
     )
     for g in grants:
@@ -119,7 +117,6 @@ def can_share(
     db: StandardDatabase,
     user_id: str,
     resource_id: str,
-    resource_type: str = "collection",
 ) -> bool:
     """Can *user_id* create invites on this resource?
 
@@ -130,7 +127,7 @@ def can_share(
     if is_creator(db, user_id, resource_id):
         return True
     return user_has_any_flag(
-        db, user_id, resource_id, resource_type, "can_share", "can_admin",
+        db, user_id, resource_id, "can_share", "can_admin",
     )
 
 
@@ -138,7 +135,6 @@ def can_admin(
     db: StandardDatabase,
     user_id: str,
     resource_id: str,
-    resource_type: str = "collection",
 ) -> bool:
     """Can *user_id* manage grants on this resource?
 
@@ -148,7 +144,7 @@ def can_admin(
     if is_creator(db, user_id, resource_id):
         return True
     return user_has_any_flag(
-        db, user_id, resource_id, resource_type, "can_admin",
+        db, user_id, resource_id, "can_admin",
     )
 
 
@@ -161,7 +157,6 @@ def create_invite(
     *,
     user_id: str,
     resource_id: str,
-    resource_type: str = "collection",
     role: str = "viewer",
     target_email: Optional[str] = None,
     max_claims: Optional[int] = 1,
@@ -190,7 +185,6 @@ def create_invite(
 
     grant = GrantEntity(
         id=str(uuid.uuid4()),
-        resource_type=resource_type,
         resource_id=resource_id,
         grantee_type=GrantEntity.GRANTEE_INVITE,
         grantee_id=token_hash,
@@ -380,7 +374,6 @@ def claim_invite(
     now = _now_iso()
     new_grant = GrantEntity(
         id=str(uuid.uuid4()),
-        resource_type=invite.resource_type,
         resource_id=invite.resource_id,
         grantee_type=GrantEntity.GRANTEE_USER,
         grantee_id=user_id,
@@ -389,6 +382,7 @@ def claim_invite(
         can_read=invite.can_read,
         can_update=invite.can_update,
         can_delete=invite.can_delete,
+        can_evict=invite.can_evict,
         can_invoke=invite.can_invoke,
         can_add=invite.can_add,
         can_share=invite.can_share,
@@ -501,7 +495,6 @@ def get_invite_details(
     return {
         "valid": True,
         "resource_id": invite.resource_id,
-        "resource_type": invite.resource_type,
         "granted_by": invite.granted_by,
         "name": invite.name,
     }

@@ -68,6 +68,10 @@ HOST_ARTIFACT_SLUG = "agience-host-current-instance"
 AGENCY_ARTIFACT_SLUG = "agience-agency-platform"
 AGENT_ARTIFACT_SLUG_PREFIX = "agience-agent-"
 LLM_CONNECTION_SLUG_PREFIX = "agience-llm-"
+# The kernel MCP server (backend/mcp_server/) is always available.
+# It gets a stable UUID via platform_topology like every other platform entity.
+AGIENCE_CORE_SLUG = "agience-core"
+
 # Phase 7 — Server Artifact Proxy. First-party MCP servers are seeded as
 # vnd.agience.mcp-server+json artifacts at bootstrap. Slug format: agience-server-{name}
 # (matching the client_id used by kernel server credentials).

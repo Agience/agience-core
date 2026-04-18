@@ -115,11 +115,11 @@ PASSWORD_PBKDF2_ITERS: int = 200000
 JWT_KEY_ID: str = "s1"
 
 # URIs & identity
-FRONTEND_URI: str = os.getenv("FRONTEND_URI", "http://localhost:5173")
-BACKEND_URI: str = os.getenv("BACKEND_URI", "http://localhost:8081")
+FRONTEND_URI: str = os.getenv("FRONTEND_URI", "http://localhost:8080")
+BACKEND_URI: str = os.getenv("BACKEND_URI", "http://localhost:8080/api")
 PLATFORM_CLIENT_ID: str = os.getenv("PLATFORM_CLIENT_ID", "agience-client")
-AUTHORITY_DOMAIN: str = _urlparse(os.getenv("BACKEND_URI", "http://localhost:8081")).hostname or "localhost"
-AUTHORITY_ISSUER: str = _origin_only(os.getenv("BACKEND_URI", "http://localhost:8081"))
+AUTHORITY_DOMAIN: str = _urlparse(os.getenv("BACKEND_URI", "http://localhost:8080/api")).hostname or "localhost"
+AUTHORITY_ISSUER: str = _origin_only(os.getenv("BACKEND_URI", "http://localhost:8080/api"))
 
 # Features
 ALLOW_LOCAL_MCP_SERVERS: bool = False

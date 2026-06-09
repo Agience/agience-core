@@ -1,0 +1,7 @@
+type: grant
+namespace: agience
+slug: user-reads-platform-artifacts
+principal: "{{user.id}}"
+resource: agience/agience-seeds-platform-artifacts
+actions: [read]
+name: Platform seed collection (auto-granted on first login)

@@ -80,9 +80,9 @@ If the type lives on a first-party server, place these files under `servers/<nam
 
 ### Step 2: Create the viewer component
 
-> **Note:** The bundled viewer path (`frontend/src/content-types/`) is transitional. New content types should provide viewers as `ui://` resources on MCP servers.
+> **Note:** The bundled viewer path (`src/facet/src/content-types/`) is transitional. New content types should provide viewers as `ui://` resources on MCP servers.
 
-For bundled delivery, add `frontend/src/content-types/<category>/<subtype>/viewer.tsx`:
+For bundled delivery, add `src/facet/src/content-types/<category>/<subtype>/viewer.tsx`:
 
 ```tsx
 import type { ViewerProps } from '../../viewer-context';
@@ -101,7 +101,7 @@ export { RecipeViewer as default } from './viewer';
 
 ### Step 3: Register the viewer
 
-Add an entry to `frontend/src/registry/viewer-map.ts`:
+Add an entry to `src/facet/src/registry/viewer-map.ts`:
 
 ```ts
 recipe: () => import('../content-types/application/vnd.acme.recipe+json/viewer'),
@@ -109,7 +109,7 @@ recipe: () => import('../content-types/application/vnd.acme.recipe+json/viewer')
 
 ### Step 4: Register an icon (optional)
 
-Add an entry to `frontend/src/registry/icon-map.ts`:
+Add an entry to `src/facet/src/registry/icon-map.ts`:
 
 ```ts
 'vnd.acme.recipe+json': 'chef-hat',

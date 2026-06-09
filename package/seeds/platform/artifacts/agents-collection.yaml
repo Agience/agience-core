@@ -1,0 +1,12 @@
+namespace: agience
+slug: agience-seeds-agents
+content_type: application/vnd.agience.collection+json
+name: Agience Agents
+description: >-
+  Platform agent personas. Each agent has a domain specialty and delegates to
+  MCP servers.
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-platform-artifacts
+    origin: false
+    order_key: a2

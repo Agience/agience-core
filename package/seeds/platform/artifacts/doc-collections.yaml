@@ -1,0 +1,55 @@
+namespace: agience
+slug: agience-doc-collections
+content_type: text/markdown
+name: Collections and Commits
+context:
+  content_type: text/markdown
+  title: Collections and Commits
+content: |
+  # Collections and Commits
+
+  Collections are your permanent knowledge store. When you commit a workspace artifact to a
+  collection it becomes **versioned, searchable, and shareable**.
+
+  ## What Is a Collection?
+
+  A collection is a named, versioned set of committed artifacts -- like a repository or knowledge base
+  that holds the curated, trusted version of your work.
+
+  Collections have:
+
+  - A **name** and optional **description**
+  - An **owner** (you, or the platform)
+  - **Version history** -- every commit is recorded
+  - **Access control** -- share with others (read-only or read-write)
+
+  ## The Commit Flow
+
+  1. **Draft** your cards in a workspace
+  2. **Review** your changes
+  3. **Commit** -- select cards and commit them to a collection
+
+  Once committed, that version of an artifact is locked. Future edits create a new version.
+
+  ## Browsing Collections
+
+  Use the left sidebar to find collections:
+
+  - **My Collections** -- collections you own or have write access to
+  - **Shared With Me** -- collections others have granted you access to
+  - **Platform** -- system-managed collections (like this one)
+
+  ## Search
+
+  Use the search bar (⌘K / Ctrl+K) to search across **all** your collections and workspaces at once.
+  Agience uses hybrid search (semantic + keyword) so natural-language queries work well.
+
+  ## Sharing
+
+  From a collection's settings you can generate a share link with read (or read-write) access.
+  Shares use time-limited tokens backed by the grant system.
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-start-here
+    origin: true
+    order_key: a2

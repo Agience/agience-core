@@ -1,0 +1,7 @@
+type: grant
+namespace: agience
+slug: user-reads-hosts
+principal: "{{user.id}}"
+resource: agience/agience-hosts
+actions: [read]
+name: Platform host collection (auto-granted on first login)

@@ -1,0 +1,25 @@
+namespace: agience
+slug: agience-agent-sage
+content_type: application/vnd.agience.agent+json
+name: Sage
+context:
+  type: agent
+  content_type: application/vnd.agience.agent+json
+  title: Sage
+  agent:
+    version: 1
+    kind: platform-server
+    role: Research and retrieval
+    server_id: agience/agience-server-sage
+    host_artifact_id: agience/agience-host-current-instance
+    authority_artifact_id: agience/agience-authority-current-instance
+content: "Sage is a platform agent. Domain: Research and retrieval. Performs grounded retrieval and evidence synthesis."
+edges:
+  - rel: contained_by
+    to: agience/agience-resources
+    origin: true
+    order_key: a2
+  - rel: contained_by
+    to: agience/agience-seeds-agents
+    origin: false
+    order_key: a2

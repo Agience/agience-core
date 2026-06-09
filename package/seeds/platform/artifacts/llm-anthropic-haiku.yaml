@@ -1,0 +1,32 @@
+namespace: agience
+slug: agience-llm-anthropic-haiku
+content_type: application/vnd.agience.llm-connection+json
+name: Claude Haiku 4.5
+context:
+  content_type: application/vnd.agience.llm-connection+json
+  title: Claude Haiku 4.5
+  description: Fast, cheap model for quick work and lightweight tasks.
+  provider: anthropic
+  model: claude-haiku-4-5-20251001
+  tier: free
+  rate_limits:
+    requests_per_minute: 120
+    tokens_per_minute: 200000
+    tokens_per_day: 4000000
+  capabilities:
+    chat: true
+    reasoning: true
+    vision: true
+    function_calling: true
+    max_context_tokens: 200000
+  credentials_ref:
+    secret_type: llm_key
+    provider: anthropic
+    resolution: platform_default
+  is_platform_default: true
+content: "Claude Haiku 4.5 — Fast, cheap model for quick work and lightweight tasks. Provider: anthropic, Model: claude-haiku-4-5-20251001, Tier: free."
+edges:
+  - rel: contained_by
+    to: agience/agience-llm-connections
+    origin: true
+    order_key: a1

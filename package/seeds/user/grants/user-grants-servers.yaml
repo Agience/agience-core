@@ -1,0 +1,7 @@
+type: grant
+namespace: agience
+slug: user-grants-servers
+principal: "{{user.id}}"
+resource: agience/agience-seeds-all-servers
+actions: [read, invoke]
+name: Platform MCP servers (auto-granted on first login)

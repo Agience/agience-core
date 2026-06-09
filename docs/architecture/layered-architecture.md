@@ -1,4 +1,4 @@
-# Layered Architecture — Core / Handlers / Presentation
+﻿# Layered Architecture — Core / Handlers / Presentation
 
 Status: **Reference**
 Date: 2026-04-01
@@ -359,64 +359,59 @@ Before placing any code, ask these questions:
 
 ## File-to-Layer Mapping
 
-### Backend
+### Services (Origin / Mantle / Chorus)
 
 | Directory / File | Layer | Notes |
 |---|---|---|
-| `backend/core/` | **Core** | Config, dependencies, embeddings, key manager |
-| `backend/db/` | **Core** | Database adapters (arango, arango_identity, opensearch) |
-| `backend/entities/` | **Core** | Entity models (type-agnostic) |
-| `backend/schemas/` | **Core** | DB schema initialization |
-| `backend/search/` | **Core** | Search infrastructure |
-| `backend/routers/` | **Core** | API route handlers (must stay type-agnostic) |
-| `backend/api/` | **Core** | Domain API modules (called by routers) |
-| `backend/mcp_server/` | **Core** | MCP server tool surface |
-| `backend/mcp_client/` | **Core** | MCP client infrastructure |
-| `backend/services/workspace_service.py` | **Core** | Artifact/workspace CRUD (strip type-specific functions) |
-| `backend/services/collection_service.py` | **Core** | Collection CRUD and commit |
-| `backend/services/content_service.py` | **Core** | S3 storage infrastructure |
-| `backend/services/auth_service.py` | **Core** | JWT and auth |
-| `backend/services/secrets_service.py` | **Core** | Credential storage |
-| `backend/services/person_service.py` | **Core** | User lifecycle |
-| `backend/services/types_service.py` | **Core** | Type resolution from `types/` directory |
-| `backend/services/llm_service.py` | **Core** | LLM config resolution |
-| `backend/services/agent_service.py` | **Core** | Agent invocation dispatch |
-| `backend/services/openai_helpers.py` | **Core** | OpenAI API abstraction |
-| `backend/services/seed_content_service.py` | **Core** | First-login provisioning |
-| `backend/agents/` | **Handler** | Function-based task agents |
-| `types/` (root directory) | **Handler** | Canonical type definitions. Includes first-party Agience `vnd.agience.*` types and mirrored server-owned types for registry resolution. |
-| `backend/services/ingest_runner_service.py` | **Handler** | MIME classification logic — belongs in type definitions, not Core services |
-| `backend/services/mcp_service.py` | **Mixed** | Infrastructure belongs in Core; `_artifact_to_mcp_config` (artifact parsing) belongs in Handler |
+| `src/kernel/` | **Shared** | Config, key_manager, scopes, embeddings, service identity, authority trust |
+| `src/origin/` | **Service** | Identity tier (FastAPI + Postgres) — OIDC, grants, passkeys, OTP, API keys, server credentials, platform settings |
+| `src/mantle/db/` | **Core** | Database adapters (arango, arango_identity) |
+| `src/mantle/entities/` | **Core** | Entity models (Artifact, Collection, Grant — type-agnostic) |
+| `src/mantle/schemas/` | **Core** | DB schema initialization |
+| `src/mantle/search/` | **Core** | Encrypted MANTLE (vector) + MANTLE-SSE (lexical) search; light-cone resolver; commit-path indexer |
+| `src/mantle/routers/` | **Core** | API route handlers (must stay type-agnostic) |
+| `src/mantle/api/` | **Core** | Domain API modules (called by routers) |
+| `src/mantle/services/workspace_service.py` | **Core** | Artifact / workspace CRUD + commit |
+| `src/mantle/services/collection_service.py` | **Core** | Collection CRUD |
+| `src/mantle/services/content_service.py` | **Core** | S3 storage infrastructure |
+| `src/mantle/services/auth_service.py` | **Core** | JWT verification (issuance lives in Origin) |
+| `src/mantle/services/secrets_service.py` | **Core** | Encrypted credential storage |
+| `src/mantle/services/types_service.py` | **Core** | Type resolution from `package/types/` + `src/chorus/<name>/ui/` |
+| `src/mantle/services/chorus_client.py` | **Core** | Outbound MCP — JSON-RPC over HTTP to Chorus's universal gateway |
+| `src/mantle/services/mcp_resource_importer.py` | **Core** | Operation-dispatcher hooks for the `vnd.agience.mcp-server+json` type |
+| `src/mantle/services/seed_provisioning/` | **Core** | First-login + platform-collection seeding |
+| `package/types/` | **Handler** | Canonical builtin type definitions (`type.json` + optional `schema.json`) |
+| `src/mantle/services/ingest_runner_service.py` | **Handler** | Per-type text extraction (driven by the resolved `extract_text` capability) |
 
-### Frontend
+### Facet (UI)
 
 | Directory / File | Layer | Notes |
 |---|---|---|
-| `frontend/src/api/` | **Core** | Typed API client layer |
-| `frontend/src/auth/` | **Core** | AuthProvider, OAuth flow |
-| `frontend/src/context/workspace/` | **Core** | WorkspaceProvider (type-agnostic state) |
-| `frontend/src/context/auth/` | **Core** | Auth context |
-| `frontend/src/registry/` | **Core** | Type registry (viewer-map, icon-map, content-types) |
-| `frontend/src/isolation/` | **Core** | MCP Apps host infrastructure — `McpAppHost.tsx` renders server-owned `ui://` resources in sandboxed iframes with MCP Apps JSON-RPC `postMessage` protocol. |
-| `frontend/src/hooks/` | **Core** | Custom React hooks |
-| `frontend/src/lib/` | **Core** | Utility libraries |
-| `frontend/src/utils/` | **Core** | Utility functions |
-| `frontend/src/types/` | **Core** | Global TypeScript types |
-| `frontend/src/config/` | **Core** | Feature flags, app config |
-| `frontend/src/constants/` | **Core** | Application-wide constants |
-| `frontend/src/content-types/` | **Partial** | Contains platform-native MIME renderers (json, pdf, text, markdown, image, audio, video) which are legitimate per P12. Two empty `vnd.*` skeleton directories (`agency`, `agent`) remain. No new `vnd.*` entries may be added here. |
-| `frontend/src/content-types/_shared/` | **Core** | Shared MIME renderer utilities for platform-native viewers. |
-| `frontend/src/context/palette/` | **Presentation** | Type-agnostic palette UI state management, not a handler provider pattern. |
-| `frontend/src/components/main/` | **Presentation** | MainLayout, MainHeader, MainFooter |
-| `frontend/src/components/windows/` | **Presentation** | FloatingCardWindow (card chrome + window management) |
-| `frontend/src/components/common/` | **Presentation** | CardGrid, CardGridItem, CardContextItems |
-| `frontend/src/components/browser/` | **Presentation** | Artifact browser |
-| `frontend/src/components/containers/` | **Presentation** | ContainerCardViewer |
-| `frontend/src/components/search/` | **Presentation** | SearchPanel |
-| `frontend/src/components/command-palette/` | **Presentation** | CommandPalette |
-| `frontend/src/components/layout/` | **Presentation** | Layout components |
-| `frontend/src/pages/` | **Presentation** | Top-level page components |
-| `frontend/src/routes/` | **Presentation** | Route definitions |
+| `src/facet/src/api/` | **Core** | Typed API client layer (calls Origin + Mantle) |
+| `src/facet/src/auth/` | **Core** | AuthProvider, OAuth flow |
+| `src/facet/src/context/workspace/` | **Core** | WorkspaceProvider (type-agnostic state) |
+| `src/facet/src/context/auth/` | **Core** | Auth context |
+| `src/facet/src/registry/` | **Core** | Type registry (viewer-map, icon-map, content-types) |
+| `src/facet/src/isolation/` | **Core** | MCP Apps host infrastructure — `McpAppHost.tsx` renders server-owned `ui://` resources in sandboxed iframes with MCP Apps JSON-RPC `postMessage` protocol. |
+| `src/facet/src/hooks/` | **Core** | Custom React hooks |
+| `src/facet/src/lib/` | **Core** | Utility libraries |
+| `src/facet/src/utils/` | **Core** | Utility functions |
+| `src/facet/src/types/` | **Core** | Global TypeScript types |
+| `src/facet/src/config/` | **Core** | Feature flags, app config |
+| `src/facet/src/constants/` | **Core** | Application-wide constants |
+| `src/facet/src/content-types/` | **Partial** | Contains platform-native MIME renderers (json, pdf, text, markdown, image, audio, video) — legitimate per P12. No new `vnd.*` entries may be added here. |
+| `src/facet/src/content-types/_shared/` | **Core** | Shared MIME renderer utilities for platform-native viewers. |
+| `src/facet/src/context/palette/` | **Presentation** | Type-agnostic palette UI state management, not a handler provider pattern. |
+| `src/facet/src/components/main/` | **Presentation** | MainLayout, MainHeader, MainFooter |
+| `src/facet/src/components/windows/` | **Presentation** | FloatingCardWindow (card chrome + window management) |
+| `src/facet/src/components/common/` | **Presentation** | CardGrid, CardGridItem, CardContextItems |
+| `src/facet/src/components/browser/` | **Presentation** | Artifact browser |
+| `src/facet/src/components/containers/` | **Presentation** | ContainerCardViewer |
+| `src/facet/src/components/search/` | **Presentation** | SearchPanel |
+| `src/facet/src/components/command-palette/` | **Presentation** | CommandPalette |
+| `src/facet/src/components/layout/` | **Presentation** | Layout components |
+| `src/facet/src/pages/` | **Presentation** | Top-level page components |
+| `src/facet/src/routes/` | **Presentation** | Route definitions |
 
 ---
 
@@ -440,7 +435,7 @@ Location: `types/<category>/<subtype>/` (in the server's codebase, mirrored to p
 
 ### View — MCP App (required if type has a custom viewer)
 
-Location: Server's codebase (e.g., `agience-server-template/frontend/content-types/<mime>/`)
+Location: Server's codebase (e.g., `agience-server-template/ui/<mime>/`)
 
 The View is an HTML document served by the MCP server as a `ui://` resource. It renders inside a sandboxed iframe on the host. The View communicates with the host and server via MCP JSON-RPC over `postMessage`.
 

@@ -1,4 +1,4 @@
-# MCP Server Development
+﻿# MCP Server Development
 
 Status: **Reference**
 Date: 2026-04-01
@@ -11,7 +11,7 @@ This guide is for developers building MCP servers that connect to Agience. It co
 
 An **MCP server developer** builds tools, resources, and viewers that extend Agience beyond what the platform ships. Their server runs independently and is registered in a workspace. The platform calls their tools; their server calls the platform back.
 
-This is the Agience community extensibility model. Everything in this guide is the same contract that the first-party Agience servers (Aria, Sage, Atlas, etc.) follow.
+This is the Agience community extensibility model. Everything in this guide is the same contract that the first-party Agience servers (Aria, Sage, Mantle, etc.) follow.
 
 ---
 

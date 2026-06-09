@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   push:
@@ -27,15 +27,17 @@ jobs:
     name: Detect changed areas
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
+      mantle: ${{ steps.filter.outputs.mantle }}
+      facet: ${{ steps.filter.outputs.facet }}
       docs: ${{ steps.filter.outputs.docs }}
       publish: ${{ steps.filter.outputs.publish }}
-      build_backend: ${{ steps.filter.outputs.build_backend }}
-      build_frontend: ${{ steps.filter.outputs.build_frontend }}
-      build_servers: ${{ steps.filter.outputs.build_servers }}
+      build_origin: ${{ steps.filter.outputs.build_origin }}
+      build_mantle: ${{ steps.filter.outputs.build_mantle }}
+      build_facet: ${{ steps.filter.outputs.build_facet }}
+      build_chorus: ${{ steps.filter.outputs.build_chorus }}
       build_stream: ${{ steps.filter.outputs.build_stream }}
       build_init: ${{ steps.filter.outputs.build_init }}
+      build_home: ${{ steps.filter.outputs.build_home }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,102 +47,118 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            backend:
-              - 'backend/**'
-            frontend:
-              - 'frontend/**'
-              - 'types/**'
+            mantle:
+              - 'src/mantle/**'
+            facet:
+              - 'src/facet/**'
+              - 'package/types/**'
             docs:
               - 'docs/**'
               - '.dev/**'
             publish:
-              - 'backend/**'
-              - 'frontend/**'
-              - 'types/**'
-              - 'docker/**'
-              - 'servers/**'
+              - 'src/origin/**'
+              - 'src/mantle/**'
+              - 'src/facet/**'
+              - 'src/chorus/**'
+              - 'src/kernel/**'
+              - 'package/types/**'
+              - 'package/docker/**'
+              - 'package/install/**'
               - 'build_info.json'
               - 'package.json'
               - '.github/workflows/build-and-push.yml'
-            build_backend:
-              - 'backend/**'
-              - 'docker/backend.Dockerfile'
+            build_origin:
+              - 'src/origin/**'
+              - 'src/kernel/**'
+              - 'package/docker/origin.Dockerfile'
+              - 'src/mantle/requirements.txt'
+              - 'src/chorus/manifest.json'
               - 'build_info.json'
               - '.github/workflows/build-and-push.yml'
-            build_frontend:
-              - 'frontend/**'
-              - 'types/**'
-              - 'docker/frontend.Dockerfile'
+            build_mantle:
+              - 'src/mantle/**'
+              - 'src/kernel/**'
+              - 'package/docker/mantle.Dockerfile'
               - 'build_info.json'
               - '.github/workflows/build-and-push.yml'
-            build_servers:
-              - 'servers/**'
-              - '!servers/astra/stream/**'
+            build_facet:
+              - 'src/facet/**'
+              - 'package/types/**'
+              - 'package/docker/facet.Dockerfile'
+              - 'build_info.json'
+              - '.github/workflows/build-and-push.yml'
+            build_chorus:
+              - 'src/chorus/**'
+              - '!src/chorus/astra/stream/**'
+              - 'package/docker/chorus.Dockerfile'
               - 'build_info.json'
               - '.github/workflows/build-and-push.yml'
             build_stream:
-              - 'servers/astra/stream/**'
+              - 'src/chorus/astra/stream/**'
               - 'build_info.json'
               - '.github/workflows/build-and-push.yml'
             build_init:
-              - 'docker/init.py'
-              - 'docker/Dockerfile.init'
+              - 'package/docker/init.py'
+              - 'package/docker/Dockerfile.init'
+              - '.github/workflows/build-and-push.yml'
+            build_home:
+              - 'package/install/home/**'
               - '.github/workflows/build-and-push.yml'
 
-  backend:
-    name: Backend lint & tests
+  mantle:
+    name: mantle lint & tests
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
       run:
         shell: bash
-        working-directory: backend
+        working-directory: src/mantle
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: No backend changes
-        if: needs.changes.outputs.backend != 'true'
-        run: echo "No backend changes detected; skipping backend lint/test steps."
+      - name: No mantle changes
+        if: needs.changes.outputs.mantle != 'true'
+        run: echo "No mantle changes detected; skipping mantle lint/test steps."
 
       - name: Install system dependencies
-        if: needs.changes.outputs.backend == 'true'
-        run: sudo apt-get update && sudo apt-get install -y libpq-dev build-essential
+        if: needs.changes.outputs.mantle == 'true'
+        run: sudo apt-get update && sudo apt-get install -y build-essential
 
       - name: Setup Python
-        if: needs.changes.outputs.backend == 'true'
+        if: needs.changes.outputs.mantle == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: src/mantle/requirements.txt
 
       - name: Upgrade pip
-        if: needs.changes.outputs.backend == 'true'
+        if: needs.changes.outputs.mantle == 'true'
         run: python -m pip install --upgrade pip
 
       - name: Install dependencies
-        if: needs.changes.outputs.backend == 'true'
+        if: needs.changes.outputs.mantle == 'true'
         run: pip install -r requirements.txt
 
       - name: Install lint tooling
-        if: needs.changes.outputs.backend == 'true'
+        if: needs.changes.outputs.mantle == 'true'
         run: pip install ruff
 
       - name: Lint (ruff)
-        if: needs.changes.outputs.backend == 'true'
+        if: needs.changes.outputs.mantle == 'true'
         run: ruff check .
 
       - name: Run pytest suite
-        if: needs.changes.outputs.backend == 'true'
+        if: needs.changes.outputs.mantle == 'true'
         env:
           OPENAI_API_KEY: placeholder
           JWT_SECRET_KEY: placeholder
         run: pytest tests -n auto --dist=loadfile --timeout=120
 
-  frontend:
-    name: Frontend lint & tests
+  facet:
+    name: Facet lint & tests
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -149,37 +167,37 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: frontend
+        working-directory: src/facet
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: No frontend changes
-        if: needs.changes.outputs.frontend != 'true'
-        run: echo "No frontend changes detected; skipping frontend lint/test steps."
+      - name: No facet changes
+        if: needs.changes.outputs.facet != 'true'
+        run: echo "No facet changes detected; skipping facet lint/test steps."
 
       - name: Setup Node.js
-        if: needs.changes.outputs.frontend == 'true'
+        if: needs.changes.outputs.facet == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: src/facet/package-lock.json
 
       - name: Install dependencies
-        if: needs.changes.outputs.frontend == 'true'
+        if: needs.changes.outputs.facet == 'true'
         run: npm ci
 
       - name: Lint (eslint)
-        if: needs.changes.outputs.frontend == 'true'
+        if: needs.changes.outputs.facet == 'true'
         run: npm run lint
 
       - name: Build (type-check + bundle)
-        if: needs.changes.outputs.frontend == 'true'
+        if: needs.changes.outputs.facet == 'true'
         run: npm run build
 
       - name: Run vitest suite
-        if: needs.changes.outputs.frontend == 'true'
+        if: needs.changes.outputs.facet == 'true'
         run: npm run test
 
   docs-links:
@@ -228,8 +246,8 @@ jobs:
     name: Publish images
     needs:
       - changes
-      - backend
-      - frontend
+      - mantle
+      - facet
       - docs-links
     if: >-
       github.repository != 'Agience/agience-core-private' &&
@@ -241,11 +259,13 @@ jobs:
       ref_name: ${{ github.ref_name }}
       ref_type: ${{ github.ref_type }}
       sha: ${{ github.sha }}
-      backend_changed: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_backend == 'true' }}
-      frontend_changed: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_frontend == 'true' }}
-      servers_changed: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_servers == 'true' }}
+      origin_changed: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_origin == 'true' }}
+      mantle_changed: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_mantle == 'true' }}
+      facet_changed: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_facet == 'true' }}
+      chorus_changed: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_chorus == 'true' }}
       stream: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_stream == 'true' }}
       init_changed: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_init == 'true' }}
+      home_changed: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.build_home == 'true' }}
     secrets:
       DOCKERHUB_NAMESPACE: ${{ secrets.DOCKERHUB_NAMESPACE }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

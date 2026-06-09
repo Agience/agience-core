@@ -1,0 +1,44 @@
+{
+  "content_type": "application/vnd.agience.anchor+json",
+  "version": 1,
+  "inherits": ["application/json"],
+  "description": "A MANTLE anchor — a fully-disclosed reference point in meaning space. Anchors coordinatize the encrypted search manifold (they are the routing centroids) and ground Anchored reasoning. The AnchorSet is a collection of these artifacts.",
+  "context_schema": {
+    "label":        { "type": "string",  "description": "The grounded concept this anchor names", "mutable": false },
+    "embedding":    { "type": "array",   "description": "Dense unit-norm reference vector in model_id's space", "mutable": false },
+    "model_id":     { "type": "string",  "description": "Embedder this position is in (ns:path@ver)", "mutable": false },
+    "content_hash": { "type": "string",  "description": "sha256 content-address (label+model_id+embedding) — dedup / commons", "mutable": false },
+    "type_id":      { "type": "string",  "description": "MIME of the source the anchor was placed from", "mutable": false },
+    "tier":         { "type": "string",  "description": "Lifecycle tier: candidate | working | canonical (RG-flow)", "mutable": true },
+    "status":       { "type": "string",  "description": "Governance status (active, expired, …)", "mutable": true },
+    "placed_frame": { "type": "number",  "description": "Age stamp for decay / RG-flow migration", "mutable": true }
+  },
+  "operations": {
+    "read": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "artifact_crud" }
+    },
+    "update": {
+      "enabled": true,
+      "requires_grant": "update",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [
+        { "event": "artifact.updated", "phase": "after" }
+      ]
+    }
+  },
+  "ui": {
+    "label": "Anchor",
+    "icon": "anchor",
+    "color": "#6366f1",
+    "badge_class": "bg-indigo-100 text-indigo-800",
+    "tile_class": "",
+    "modes": ["floating", "preview"],
+    "states": ["view"],
+    "default_mode": "preview",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false
+  }
+}

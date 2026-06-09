@@ -1,4 +1,4 @@
-# Agience Vocabulary Reference
+﻿# Agience Vocabulary Reference
 
 Status: **Reference**
 Date: 2026-04-01
@@ -46,7 +46,7 @@ reusable across operations. Core services treat context as opaque JSON — only 
 handler that owns a content type may parse its internal structure.
 Code usage: `artifact.context` field. Key sub-fields: `content_type`, `semantic.kind`,
 `semantic.sources`, `semantic.evidence`, `transform`, `upload`.
-See also: Content type, Receipt / Provenance.
+See also: Content type, Provenance.
 
 **Transform** — One vertex of the Information Triangle. Describes *how* information is
 produced, used, or transformed. Transform is always represented as a UUID reference to
@@ -62,7 +62,7 @@ frontend React layer — they are not a data entity name, API parameter, or data
 identifier. A CardGrid lays out multiple artifacts as cards. A FloatingCardWindow opens
 a single artifact for detailed viewing or editing.
 Code usage: `<Card>`, `CardGrid`, `CardGridItem`, `CardBrowser`, `CardListItem`,
-`FloatingCardWindow` (React components only — `frontend/src/components/`).
+`FloatingCardWindow` (React components only — `src/facet/src/components/`).
 See also: Artifact (the underlying data entity).
 
 **Collection** — A named, durable, versioned set of committed artifacts, stored in
@@ -84,12 +84,15 @@ A workspace is a container artifact with `content_type = WORKSPACE_CONTENT_TYPE`
 API: `/artifacts` (same unified API). ArangoDB: `artifacts` collection.
 See also: Collection, Artifact, Card.
 
-**Receipt / Provenance** — A durable record of an execution, embedded in an output
-artifact's context. Links inputs → tools invoked → outputs produced with enough detail
-to audit and (ideally) reproduce. Three postures: Layer A (always-on: origin, timestamps,
-actor, run IDs), Layer B (best-effort: source and evidence pointers), Layer C (validated
-under policy with an explicit receipt). The output artifact *is* the audit record — no
-separate run artifact is required.
+**Provenance** — Built-in metadata that every artifact carries in its `context` —
+origin, timestamps, actor, sources, evidence pointers, transform reference, and version
+lineage. Links inputs → tools invoked → outputs produced with enough detail to audit
+and (where applicable) reproduce. The output artifact *is* the audit record. Agience
+does not create separate "receipt" or "run report" objects for tool calls or
+side-effects — the artifacts produced carry their own provenance, and that is
+sufficient. Two postures: baseline (always-on: origin, timestamps, actor) and
+best-effort (sources and evidence pointers attached when available). A third posture,
+Validation Mode, is opt-in and binds an artifact to a stated policy via the chain.
 Code usage: `artifact.context.semantic.sources`, `artifact.context.semantic.evidence`.
 See also: Context, Tool call.
 
@@ -151,7 +154,7 @@ canonical treatment.
 Identity (who or what is running it). An Agent's knowledge should be represented as
 artifacts or collections so it is inspectable and shareable. Recommended decomposition:
 Identity + Allowed Tools/Resources + Knowledge/Memory + Allowed Hosts.
-Code usage: `vnd.agience.agent+json` content type, `backend/agents/` (function-based
+Code usage: `vnd.agience.agent+json` content type, `src/mantle/agents/` (function-based
 task agents in the Handler layer).
 See also: Agency, Host.
 
@@ -173,7 +176,7 @@ See also: Step, Constraint.
 **Constraint** — A rule that must hold, attached to or referenced by artifacts.
 Deterministic constraints are repeatable checks (tests, linting, schema validation).
 Non-deterministic constraints are interpretive audits (LLM drift, duplication, or
-conflict detection). Typically enforced by Atlas (governance server).
+conflict detection). Typically enforced by Mantle (governance server).
 
 ---
 
@@ -186,7 +189,7 @@ etc.) are handled by platform-native renderers (Core). Agience-owned vendor type
 types are handled by the MCP server that defines them.
 Code usage: `artifact.context.content_type`, `types/` directory for builtin skeletons,
 `servers/*/ui/` for server-owned viewers and type definitions,
-`frontend/src/registry/` for frontend resolution maps.
+`src/facet/src/registry/` for frontend resolution maps.
 
 **Artifact taxonomy** — Four categories of artifact by structural role:
 - **Container artifact** — represents a browsable universe; opening triggers a live query
@@ -212,8 +215,8 @@ transformation surface exposed from a Host. Servers expose Tools (callable funct
 and Resources (readable inputs) following the MCP protocol. Servers extend the platform
 with domain-specific artifact types, handlers, and operators. The distinction: the Host
 is *where* computation lives; the Server is *how* that computation is made callable.
-First-party Agience servers: Aria (output), Sage (research), Atlas (governance),
-Nexus (routing), Astra (ingestion), Verso (reasoning), Seraph (security), Ophan
+First-party Agience servers: Aria (output), Sage (research), Mantle (governance),
+Iris (routing), Astra (ingestion), Verso (reasoning), Seraph (security), Ophan
 (licensing).
 Code usage: `servers/` directory, `vnd.agience.mcp-server+json` content type.
 See also: Host, Tool, Resource.
@@ -222,7 +225,7 @@ See also: Host, Tool, Resource.
 arguments, produces output values, and may create or update artifacts as a side-effect.
 Side-effect outputs must carry provenance and invocation links in their context. Never
 build Agience-specific tools that duplicate what an official vendor MCP server provides.
-Code usage: MCP `tools/list` / `tools/call` protocol, `backend/mcp_server/server.py`
+Code usage: MCP `tools/list` / `tools/call` protocol, `src/chorus/server.py`
 for platform-native tools, `servers/*/server.py` for persona tools.
 
 **Resource** — A readable thing: values, references, or sources. Resources arrive via
@@ -263,7 +266,7 @@ Linear) and are mirrored as reference artifacts for governance and provenance.
 
 **Authority** — The root of trust for identities and policy claims. Issues and verifies
 Person and Agent identities (or accepts an upstream IdP via OAuth/OIDC), mints JWT
-tokens and claims, and optionally certifies validation receipts under policy.
+tokens and claims, and optionally certifies validation records under policy.
 Code usage: `AUTHORITY_ISSUER` config key, `vnd.agience.authority+json` content type,
 `auth_service.py`, `key_manager.py`.
 
@@ -305,7 +308,7 @@ Code usage: `ServerCredentialEntity`, `server_credentials_router.py`.
 
 **Sharing / privacy boundary** — The access-control line that determines who can see
 or act on an artifact. Enforced via Grants on Collections. Demonstrable through
-share/access tooling and audit-friendly provenance receipts in artifact context.
+share/access tooling and the built-in provenance carried in artifact context.
 
 ---
 

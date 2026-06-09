@@ -1,0 +1,8 @@
+namespace: agience
+slug: agience-package-registry
+content_type: application/vnd.agience.collection+json
+name: Agience Package Registry
+description: >-
+  Published package manifests. Users browse this collection to discover
+  installable packages; publish by committing a vnd.agience.package+json
+  artifact here.

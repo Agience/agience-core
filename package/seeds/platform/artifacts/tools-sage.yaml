@@ -1,0 +1,54 @@
+namespace: agience
+slug: agience-tools-sage
+content_type: text/markdown
+name: Sage Tools
+context:
+  content_type: text/markdown
+  title: Sage Tools
+  server: sage
+content: |
+  # Sage — Tool Catalog
+
+  **Role:** Research & Retrieval
+
+  Discovers sources, gathers evidence, and synthesizes evidence-backed answers.
+
+  ## Available Tools
+
+  ### `search`
+  Hybrid semantic + keyword search across workspaces and collections.
+
+  ### `get_artifact`
+  Fetch a card by ID. Returns full card content and context.
+
+  ### `browse_collections`
+  List committed collections accessible to the current user.
+
+  ### `search_azure`
+  Search cards via an Azure AI Search index.
+
+  ### `index_to_azure`
+  Project workspace cards into an Azure AI Search index.
+
+  ### `research`
+  Multi-step retrieval + LLM synthesis constrained by evidence.
+
+  ### `cite_sources`
+  Produce a provenance receipt citing the cards used in a synthesised answer.
+
+  ### `ask`
+  Ask a question with optional card context -- search + synthesise an answer.
+
+  ### `extract_information`
+  Extract structured fields from a card's content using a JSON schema.
+
+  ### `generate_meeting_insights`
+  Derive summary, action items, and coaching from a transcript card.
+
+  ---
+  *10 tools available in Sage.*
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-tools
+    origin: true
+    order_key: a2

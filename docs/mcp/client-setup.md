@@ -18,7 +18,7 @@ Windows (recommended):
 
 - Run `./launch-local.bat`
 
-This starts Docker services (ArangoDB/OpenSearch) plus the backend (`http://localhost:8081`) and frontend (`http://localhost:5173`).
+This starts the support services (ArangoDB / Postgres / MinIO) plus the backend (`http://localhost:8081`) and frontend (`http://localhost:5173`).
 
 ## Auth for MCP clients
 

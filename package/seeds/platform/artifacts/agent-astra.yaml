@@ -1,0 +1,25 @@
+namespace: agience
+slug: agience-agent-astra
+content_type: application/vnd.agience.agent+json
+name: Astra
+context:
+  type: agent
+  content_type: application/vnd.agience.agent+json
+  title: Astra
+  agent:
+    version: 1
+    kind: platform-server
+    role: Ingestion and indexing
+    server_id: agience/agience-server-astra
+    host_artifact_id: agience/agience-host-current-instance
+    authority_artifact_id: agience/agience-authority-current-instance
+content: "Astra is a platform agent. Domain: Ingestion and indexing. Handles ingestion, extraction, and indexing workflows."
+edges:
+  - rel: contained_by
+    to: agience/agience-resources
+    origin: true
+    order_key: a1
+  - rel: contained_by
+    to: agience/agience-seeds-agents
+    origin: false
+    order_key: a1

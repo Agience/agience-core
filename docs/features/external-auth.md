@@ -53,7 +53,7 @@ This keeps authorization semantics consistent (shares, grants, internal scopes) 
 
 The `client_id` claim answers *which application requested this token* — distinguishing browser sessions, Desktop Host sessions, VS Code extension sessions, and exchanged agent tokens even when they all belong to the same user. Use stable, application-level identifiers:
 
-- `agience-frontend`
+- `agience-facet`
 - `vscode-mcp`
 - `desktop-host`
 

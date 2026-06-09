@@ -1,4 +1,4 @@
-# Contributing to Agience
+﻿# Contributing to Agience
 
 Status: **Reference**
 Date: 2026-04-01
@@ -46,7 +46,7 @@ For local environment setup including Docker prerequisites, env configuration, a
 
 1. **Fork the repository** (external contributors) or create a branch from `main` (maintainers).
 2. **Sign the CLA** — the bot will prompt you on your first PR if you have not already signed.
-3. **Read the architecture instructions** in `CLAUDE.md` and `backend/CLAUDE.md` (or `frontend/CLAUDE.md`) before making structural changes. The layered architecture and decision tests are non-negotiable.
+3. **Read the architecture instructions** in `CLAUDE.md` and the per-service `CLAUDE.md` files (`src/origin/CLAUDE.md`, `src/mantle/CLAUDE.md`, `src/chorus/CLAUDE.md`, `src/facet/CLAUDE.md`) before making structural changes. The layered architecture and decision tests are non-negotiable.
 4. **Make your changes** — follow the conventions in [Best Practices](guides/best-practices.md).
 5. **Write tests** — see the testing expectations below. New endpoints and non-trivial logic require tests.
 6. **Run checks locally** before pushing:
@@ -118,7 +118,7 @@ Every PR should include:
 - Vocabulary consistency (Artifact not Card in data models; see the vocabulary table in `CLAUDE.md`)
 - No type-specific logic in Core or Presentation layers
 - No DB calls bypassing the service layer
-- No new `vnd.*` entries in `frontend/src/content-types/` — new viewers go on MCP servers
+- No new `vnd.*` entries in `src/facet/src/content-types/` — new viewers go on MCP servers
 
 ---
 
@@ -128,24 +128,24 @@ Full conventions are in [Best Practices](guides/best-practices.md). Key rules:
 
 **Backend (Python)**
 
-- Python 3.11+. Follow existing patterns in `backend/`.
-- Run `ruff check .` from `backend/` and fix all issues before pushing.
+- Python 3.11+. Follow existing patterns in `src/origin/` and `src/mantle/`.
+- Run `ruff check .` from `src/mantle/` (or `src/origin/`) and fix all issues before pushing.
 - Never call DB adapters directly from routers — all DB access goes through services.
 - Use `to_dict()` on all entities. `Collection` is an alias for `Artifact` — there are no separate entity classes or serialization methods.
 - Use `agent_service.invoke()` for all agent calls. Never call agents directly.
 
 **Frontend (TypeScript / React)**
 
-- Run `npm run lint` from `frontend/` and fix all issues.
-- Always use typed API functions from `frontend/src/api/` — never `fetch()` directly.
+- Run `npm run lint` from `src/facet/` and fix all issues.
+- Always use typed API functions from `src/facet/src/api/` — never `fetch()` directly.
 - Presentation components must not import from `content-types/` packages or check `contentType.id`.
-- All type-specific wiring flows through `frontend/src/registry/`.
+- All type-specific wiring flows through `src/facet/src/registry/`.
 
 **Tests**
 
 - Backend: router tests required for every new or changed endpoint; unit tests for non-trivial service/agent/search logic.
 - Frontend: Vitest + RTL tests required for UI/UX behavior changes.
-- Never hit real ArangoDB, OpenSearch, or S3 in tests. Mock at the service layer.
+- Never hit real ArangoDB, Postgres, or S3 in tests. Mock at the service layer.
 - Mock all external HTTP calls.
 
 ---
@@ -196,14 +196,14 @@ Agience uses [Conventional Commits](https://www.conventionalcommits.org/):
 
 **Types**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `style`
 
-**Scope** (optional): the area of the codebase — e.g., `backend`, `frontend`, `aria`, `astra`, `atlas`, `nexus`, `search`, `auth`
+**Scope** (optional): the area of the codebase — e.g., `backend`, `frontend`, `aria`, `astra`, `mantle`, `iris`, `search`, `auth`
 
 **Examples:**
 
 ```
 feat(astra): add document_text_extract tool to Astra MCP server
 fix(search): correct RRF fusion weight when aperture filter is active
-docs(atlas): add governance content types to Atlas solution page
+docs(mantle): add governance content types to Mantle solution page
 test(backend): add router tests for inbound webhook endpoint
 chore(deps): update FastMCP to 1.4.0
 ```

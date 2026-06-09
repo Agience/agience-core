@@ -98,6 +98,10 @@ dist/
 frontend/dist/
 dist-ssr/
 .vite/
+# Per-developer .npmrc (e.g. an `os=` override for local installs). Must stay
+# local: a committed `os=win32` forces npm to install only win32 optional
+# binaries on every host, breaking `npm ci` on the Linux CI runner / Mac devs.
+src/facet/.npmrc
 *.local
 npm-debug.log*
 yarn-debug.log*

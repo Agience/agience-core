@@ -1,4 +1,4 @@
-name: Create GitHub Release
+﻿name: Create GitHub Release
 
 on:
   push:
@@ -47,16 +47,16 @@ jobs:
 
             ```bash
             # Docker Hub
-            docker pull agience/agience-backend:${{ steps.build-info.outputs.version }}
-            docker pull agience/agience-frontend:${{ steps.build-info.outputs.version }}
-            docker pull agience/agience-servers:${{ steps.build-info.outputs.version }}
+            docker pull agience/agience-mantle:${{ steps.build-info.outputs.version }}
+            docker pull agience/agience-facet:${{ steps.build-info.outputs.version }}
+            docker pull agience/agience-chorus:${{ steps.build-info.outputs.version }}
             docker pull agience/agience-stream:${{ steps.build-info.outputs.version }}
             docker pull agience/agience-init:${{ steps.build-info.outputs.version }}
 
             # GitHub Container Registry
-            docker pull ghcr.io/agience/agience-backend:${{ steps.build-info.outputs.version }}
-            docker pull ghcr.io/agience/agience-frontend:${{ steps.build-info.outputs.version }}
-            docker pull ghcr.io/agience/agience-servers:${{ steps.build-info.outputs.version }}
+            docker pull ghcr.io/agience/agience-mantle:${{ steps.build-info.outputs.version }}
+            docker pull ghcr.io/agience/agience-facet:${{ steps.build-info.outputs.version }}
+            docker pull ghcr.io/agience/agience-chorus:${{ steps.build-info.outputs.version }}
             docker pull ghcr.io/agience/agience-stream:${{ steps.build-info.outputs.version }}
             docker pull ghcr.io/agience/agience-init:${{ steps.build-info.outputs.version }}
             ```

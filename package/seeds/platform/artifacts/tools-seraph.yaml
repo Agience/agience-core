@@ -1,0 +1,63 @@
+namespace: agience
+slug: agience-tools-seraph
+content_type: text/markdown
+name: Seraph Tools
+context:
+  content_type: text/markdown
+  title: Seraph Tools
+  server: seraph
+content: |
+  # Seraph — Tool Catalog
+
+  **Role:** Security & Trust
+
+  Access control, audit trails, identity verification, and cryptographic signing.
+
+  ## Available Tools
+
+  ### `provide_access_token`
+  Exchange an Authorizer's stored refresh token for a fresh access token.
+
+  ### `complete_authorizer_oauth`
+  Complete the OAuth authorization code exchange for an Authorizer artifact.
+
+  ### `audit_access`
+  Query the access audit log for a resource, collection, or user.
+
+  ### `check_permissions`
+  Check what a person or API key can access.
+
+  ### `grant_access`
+  Grant access to a collection for a person or team.
+
+  ### `revoke_access`
+  Revoke access to a collection.
+
+  ### `rotate_api_key`
+  Rotate a scoped API key and return the new key details.
+
+  ### `verify_token`
+  Verify a JWT or API key and return its decoded claims.
+
+  ### `list_audit_events`
+  List recent security events (logins, grants, revocations, key usage).
+
+  ### `sign_card`
+  Create a tamper-evident cryptographic signature card for a card.
+
+  ### `enforce_policy`
+  Evaluate a request or card against active system policies.
+
+  ### `list_policies`
+  List active governance policies.
+
+  ### `check_compliance`
+  Check compliance of a resource or workflow against governance rules.
+
+  ---
+  *13 tools available in Seraph.*
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-tools
+    origin: true
+    order_key: a5

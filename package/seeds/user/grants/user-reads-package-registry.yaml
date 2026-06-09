@@ -1,0 +1,7 @@
+type: grant
+namespace: agience
+slug: user-reads-package-registry
+principal: "{{user.id}}"
+resource: agience/agience-package-registry
+actions: [read]
+name: Platform seed collection (auto-granted on first login)

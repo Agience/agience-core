@@ -1,0 +1,7 @@
+type: grant
+namespace: agience
+slug: user-reads-start-here
+principal: "{{user.id}}"
+resource: agience/agience-seeds-start-here
+actions: [read]
+name: Platform seed collection (auto-granted on first login)

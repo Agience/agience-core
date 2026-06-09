@@ -1,0 +1,12 @@
+namespace: agience
+slug: agience-seeds-platform-artifacts
+content_type: application/vnd.agience.collection+json
+name: Platform Artifacts
+description: >-
+  Authority, Host, Servers, and Tools created when this instance was
+  initialized. Browse these to understand what resources are available.
+edges:
+  - rel: contained_by
+    to: agience/agience-inbox-seeds
+    origin: false
+    order_key: a1

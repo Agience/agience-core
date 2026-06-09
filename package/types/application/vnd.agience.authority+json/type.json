@@ -1,0 +1,105 @@
+{
+  "content_type": "application/vnd.agience.authority+json",
+  "version": 1,
+  "inherits": [
+    "application/json"
+  ],
+  "description": "Platform identity + trust root. Singleton per deployment. Carries the platform issuer, per-service trust anchors (inline JWKS for origin/mantle/chorus), and the single-use bootstrap token hash. Created by Mantle on first boot from the init-container manifest at `${KEYS_DIR}/authority.manifest.json`. Mutable only by holders of the platform-admin grant on this artifact.",
+  "context_schema": {
+    "title": {
+      "type": "string",
+      "description": "Display title for the authority artifact."
+    },
+    "authority": {
+      "type": "object",
+      "description": "Platform identity envelope. Public; readable by all authenticated users.",
+      "properties": {
+        "domain":                    { "type": "string" },
+        "issuer":                    { "type": "string", "description": "Platform issuer URL (the `iss` claim in all Origin-issued JWTs)." },
+        "trust_model":               { "type": "string", "description": "Free-form label, e.g. 'platform-default'." },
+        "current_host_artifact_id":  { "type": "string" },
+        "host_artifact_ids":         { "type": "array", "items": { "type": "string" } },
+        "facet_uri":                 { "type": "string", "description": "Where users access the SPA." },
+        "origin_uri":                { "type": "string", "description": "Identity / OIDC issuer service URL." },
+        "mantle_uri":                 { "type": "string", "description": "Artifact API service URL." },
+        "chorus_uri":                { "type": "string", "description": "Universal MCP gateway service URL." }
+      }
+    },
+    "trust_anchors": {
+      "type": "object",
+      "description": "Per-service trust anchor: URI + inline JWKS. Each entry corresponds to a service identity (origin, mantle, chorus). Inline JWKS is the canonical source — services do not need to fetch each other's /.well-known/jwks.json. Public; readable by all authenticated users (JWKS is public-key material).",
+      "properties": {
+        "origin": {
+          "type": "object",
+          "properties": {
+            "uri":  { "type": "string" },
+            "jwks": { "type": "object", "description": "RFC 7517 JSON Web Key Set: { keys: [ {kty, kid, n, e, alg, use} ] }" }
+          }
+        },
+        "mantle": {
+          "type": "object",
+          "properties": {
+            "uri":  { "type": "string" },
+            "jwks": { "type": "object" }
+          }
+        },
+        "chorus": {
+          "type": "object",
+          "properties": {
+            "uri":  { "type": "string" },
+            "jwks": { "type": "object" }
+          }
+        }
+      }
+    },
+    "bootstrap_token_hash": {
+      "type": "string",
+      "description": "SHA-256 hex digest of the single-use bootstrap token. Cleared (set to null) after the first operator claims it via POST /auth/bootstrap/claim. Token has 256 bits of entropy and lives only in operator memory until claim, so a fast hash is sufficient — no bcrypt cost factor needed."
+    }
+  },
+  "operations": {
+    "create": {
+      "enabled": false,
+      "comment": "The authority artifact is not creatable via the API. It is seeded by Mantle on first boot from the init-container manifest."
+    },
+    "read": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "artifact_crud" }
+    },
+    "update": {
+      "enabled": true,
+      "requires_grant": "admin",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [
+        { "event": "authority.updated", "phase": "after" }
+      ],
+      "comment": "Mutating the authority artifact (rotating JWKS, changing service URIs, clearing bootstrap_token_hash) requires the platform-admin grant (can_admin on the authority artifact itself). Services watch this event and refresh their cached trust map."
+    },
+    "delete": {
+      "enabled": false,
+      "comment": "The authority artifact is the singleton trust root. It cannot be deleted."
+    }
+  },
+  "ui": {
+    "id": "authority",
+    "label": "Platform Authority",
+    "icon": "shield-check",
+    "color": "#6366f1",
+    "badge_class": "bg-indigo-100 text-indigo-800",
+    "tile_class": "",
+    "modes": [
+      "view",
+      "edit"
+    ],
+    "states": [
+      "view",
+      "edit"
+    ],
+    "default_mode": "view",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false,
+    "viewer": "authority"
+  }
+}

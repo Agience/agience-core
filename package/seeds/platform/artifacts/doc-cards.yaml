@@ -1,0 +1,53 @@
+namespace: agience
+slug: agience-doc-cards
+content_type: text/markdown
+name: Working with Cards
+context:
+  content_type: text/markdown
+  title: Working with Cards
+content: |
+  # Working with Cards
+
+  Cards are the primary way you interact with information in Agience. Every card represents an
+  **Artifact** -- a unit of knowledge with content and context.
+
+  ## Card States
+
+  Every card has a state that tells you what's happening with it:
+
+  | State | Meaning |
+  |-------|---------|
+  | **Draft** | Work in progress, not yet committed to any collection |
+  | **Committed** | Committed to a collection -- versioned and searchable |
+  | **Archived** | No longer active, but preserved in history |
+
+  ## Creating Cards
+
+  Click the **+** button in any workspace to create a new card. You can also:
+
+  - Drag and drop files to create cards from documents, audio, video, or images
+  - Use an agent to generate and create cards for you via chat
+
+  ## Editing Cards
+
+  Click any card to open it. Edit the content directly -- changes are saved automatically to the workspace.
+
+  ## Card Actions
+
+  When you hover over a card you'll see action buttons:
+
+  - **Delete** (draft cards) -- remove from workspace entirely
+  - **Commit** -- commit this card to a collection
+  - **Revert** -- undo changes since last commit
+  - **Archive** -- archive the card
+
+  ## Content Types
+
+  Cards can hold many types of content: plain text, markdown, PDFs, images, audio, video, and
+  custom structured types for things like agents, servers, and transforms. The card viewer
+  automatically renders the correct format.
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-start-here
+    origin: true
+    order_key: a1

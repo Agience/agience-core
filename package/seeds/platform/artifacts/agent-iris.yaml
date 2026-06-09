@@ -1,0 +1,25 @@
+namespace: agience
+slug: agience-agent-iris
+content_type: application/vnd.agience.agent+json
+name: Iris
+context:
+  type: agent
+  content_type: application/vnd.agience.agent+json
+  title: Iris
+  agent:
+    version: 1
+    kind: platform-server
+    role: Routing and communication
+    server_id: agience/agience-server-iris
+    host_artifact_id: agience/agience-host-current-instance
+    authority_artifact_id: agience/agience-authority-current-instance
+content: "Iris is a platform agent. Domain: Routing and communication. Coordinates routing and communication planes."
+edges:
+  - rel: contained_by
+    to: agience/agience-resources
+    origin: true
+    order_key: a3
+  - rel: contained_by
+    to: agience/agience-seeds-agents
+    origin: false
+    order_key: a3

@@ -1,4 +1,4 @@
-# Architecture Overview
+﻿# Architecture Overview
 
 Status: **Reference**
 Date: 2026-04-01
@@ -19,7 +19,7 @@ Agience applies the same separation to knowledge work. **Artifacts** are the ino
 
 ### Core (the kernel)
 
-Core provides the platform's type-agnostic infrastructure: artifact CRUD, workspace lifecycle, collection lifecycle, commit orchestration, hybrid search (OpenSearch), S3 media storage, authentication, MCP plumbing, the event bus, and the type registry. Core is deliberately **type-blind** — it stores artifact content and context as opaque payloads and routes them to whoever owns that type. It never contains MIME type strings for vendor types, never parses `artifact.context` for specific fields, and never branches on content type. Its MCP server surface (`/mcp`) exposes roughly twelve generic tools to external clients such as VS Code and Claude Desktop. None of those tools are type-specific.
+Core provides the platform's type-agnostic infrastructure: artifact CRUD, workspace lifecycle, collection lifecycle, commit orchestration, encrypted hybrid search (MANTLE+SSE), S3 media storage, authentication, MCP plumbing, the event bus, and the type registry. Core is deliberately **type-blind** — it stores artifact content and context as opaque payloads and routes them to whoever owns that type. It never contains MIME type strings for vendor types, never parses `artifact.context` for specific fields, and never branches on content type. Its MCP server surface (`/mcp`) exposes roughly twelve generic tools to external clients such as VS Code and Claude Desktop. None of those tools are type-specific.
 
 ### Handlers (the drivers)
 
@@ -35,13 +35,15 @@ For the full layer spec including decision tests, violation inventory, and build
 
 ## Database Architecture
 
-Agience uses **ArangoDB** as its sole database for artifact storage.
+Agience uses **ArangoDB** for artifact storage (Mantle) and **Postgres** for identity (Origin).
 
-**ArangoDB** holds both workspaces and collections. Workspace artifacts (the ephemeral, high-churn staging layer) can be freely edited, reordered, and discarded. This is where AI-produced content lands, where humans review and refine it, and where operators produce their drafts. Collection artifacts (the durable, versioned, immutable system of record) preserve history permanently once committed. ArangoDB's graph model supports the rich relationship structure that committed knowledge needs — cross-references, provenance links, grants, commit items. It also stores API keys, grants, and server credentials.
+**ArangoDB** (in Mantle) holds both workspaces and collections in a unified `artifacts` table, distinguished by `state` (`draft` / `committed` / `archived`). Workspace artifacts (the ephemeral, high-churn staging layer) can be freely edited, reordered, and discarded. This is where AI-produced content lands, where humans review and refine it, and where operators produce their drafts. Collection artifacts (the durable, versioned, immutable system of record) preserve history permanently once committed. ArangoDB's graph model supports the rich relationship structure that committed knowledge needs — cross-references, provenance links, grants, commit items.
 
-The **commit boundary** is the architectural key. Moving content from a workspace to a collection requires an explicit commit: a deliberate act that acknowledges human review and assigns provenance. If an LLM was involved anywhere in producing an artifact, that artifact is blocked from reaching a collection until a human has reviewed and approved it. The commit gate is enforced at the infrastructure level in Core's commit orchestration — it is not a convention that servers or clients can work around. This keeps AI-produced content in the draft layer until a human has signed off.
+**Postgres** (in Origin) holds the identity tier: persons, OIDC clients, scoped API keys, server credentials, OAuth grants, OTP / passkey state, and platform settings.
 
-**OpenSearch** sits alongside both stores as the search projection: hybrid BM25 (lexical) and kNN (semantic, via OpenAI embeddings) with RRF fusion. Search results always route back to canonical artifacts — OpenSearch is an indexer, not a source of truth.
+The **commit boundary** is the architectural key. Moving content from a workspace to a collection requires an explicit commit: a deliberate act that acknowledges human review and assigns provenance. If an LLM was involved anywhere in producing an artifact, that artifact is blocked from reaching a collection until a human has reviewed and approved it. The commit gate is enforced at the infrastructure level in Mantle's commit orchestration — it is not a convention that servers or clients can work around. This keeps AI-produced content in the draft layer until a human has signed off.
+
+**Encrypted search** sits alongside the stores as a derived projection. After Step 2.6.9 (OpenSearch retirement), search runs entirely in-process inside Mantle on encrypted MANTLE+SSE blobs in MinIO/S3 — MANTLE-SSE blind-token BM25 (lexical) plus MANTLE encrypted IVF (vector), fused via RRF. The storage layer never sees plaintext. Search results always route back to canonical artifacts — the search index is a derived projection, not a source of truth.
 
 ---
 
@@ -61,7 +63,7 @@ As an **MCP server**, Agience exposes its platform capabilities to external clie
 
 Resources are exposed as `agience://` URIs covering collections and workspaces. All tools are generic — none are type-specific.
 
-As an **MCP client**, Agience calls out to external MCP servers — both the first-party personas bundled with the platform and external vendor servers registered as artifacts. The client infrastructure lives in `backend/mcp_client/`. Browsers never call MCP servers directly; all server communication is proxied through Core.
+As an **MCP client**, Agience calls out to external MCP servers — both the first-party personas bundled with the platform and external vendor servers registered as artifacts. The client infrastructure lives in `src/mantle/services/chorus_client.py`. Browsers never call MCP servers directly; all server communication is proxied through Core.
 
 The product rule for external integrations is **official-first**: if a vendor publishes an MCP server, Agience registers it as an artifact and proxies through it rather than rebuilding the vendor API. Agience-owned tools are reserved for platform-contextualized operations.
 
@@ -76,8 +78,8 @@ Eight purpose-built MCP servers ship with the platform. Each is a standalone Fas
 | **seraph** | Kernel | Security, trust, secret decryption |
 | **verso** | Kernel | Reasoning and transforms |
 | **astra** | Platform | Ingestion, extraction, streaming |
-| **atlas** | Platform | Governance and coherence |
-| **nexus** | Platform | Routing and communication |
+| **mantle** | Platform | Governance and coherence |
+| **iris** | Platform | Routing and communication |
 | **aria** | Application | Output, presentation, formatting |
 | **sage** | Application | Research, retrieval, synthesis |
 | **ophan** | Application | Finance and licensing |
@@ -135,6 +137,6 @@ The following principles are non-negotiable. Every new line of code is tested ag
 - [content-types.md](content-types.md) — type definition format, registry, handler lifecycle
 - [artifact-model.md](artifact-model.md) — artifact schema, state machine, reference model
 - [security-model.md](security-model.md) — authentication, JWT shapes, API keys, grants, server credentials
-- [Solution Taxonomy](../overview/solution-taxonomy.md) — agent persona designs (Aria, Astra, Atlas, Sage, Nexus, Ophan, Seraph, Verso)
+- [Solution Taxonomy](../overview/solution-taxonomy.md) — agent persona designs (Aria, Astra, Mantle, Sage, Iris, Ophan, Seraph, Verso)
 - [Platform Overview](../overview/platform-overview.md) — product-level overview with implementation status markers
 - [Information OS Analogy](../overview/information-os-analogy.md) — deeper treatment of the OS analogy for communicating Agience to stakeholders

@@ -1,4 +1,4 @@
-name: Build and push images
+﻿name: Build and push images
 
 on:
   workflow_call:
@@ -12,15 +12,19 @@ on:
       sha:
         required: true
         type: string
-      backend_changed:
+      origin_changed:
         required: false
         type: boolean
         default: true
-      frontend_changed:
+      mantle_changed:
         required: false
         type: boolean
         default: true
-      servers_changed:
+      facet_changed:
+        required: false
+        type: boolean
+        default: true
+      chorus_changed:
         required: false
         type: boolean
         default: true
@@ -36,11 +40,22 @@ on:
         required: false
         type: boolean
         default: true
+      verso_package:
+        required: false
+        type: string
+        default: ''
+        description: >-
+          Optional pip-install spec for the Verso runtime package. Empty
+          (default) builds the public Verso from chorus/verso/. Set to
+          a wheel URL or pinned package name (e.g. "verso-premium==1.2.0")
+          to build the premium variant — wired by the private CI repo.
     secrets:
       DOCKERHUB_NAMESPACE:
         required: true
       DOCKERHUB_TOKEN:
         required: true
+      VERSO_INDEX_URL:
+        required: false
 
 concurrency:
   group: build-and-push-${{ inputs.ref_name || github.ref }}
@@ -156,8 +171,8 @@ jobs:
           fi
 
           # Emit multi-line tag lists for each image (Docker Hub only)
-          IMAGES=(agience-backend agience-frontend agience-servers agience-stream agience-init agience-home)
-          OUTPUT_NAMES=(backend frontend servers stream init home)
+          IMAGES=(agience-origin agience-mantle agience-facet agience-chorus agience-stream agience-init agience-home)
+          OUTPUT_NAMES=(origin mantle facet chorus stream init home)
 
           for i in "${!IMAGES[@]}"; do
             IMG="${IMAGES[$i]}"
@@ -174,37 +189,53 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push backend
-        if: inputs.backend_changed != false
+      - name: Build and push origin
+        if: inputs.origin_changed != false
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/backend.Dockerfile
+          file: package/docker/origin.Dockerfile
           push: true
-          tags: ${{ steps.tags.outputs.backend }}
+          tags: ${{ steps.tags.outputs.origin }}
+          build-args: APP_VERSION=${{ steps.build-info.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and push frontend
-        if: inputs.frontend_changed != false
+      - name: Build and push mantle
+        if: inputs.mantle_changed != false
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/frontend.Dockerfile
+          file: package/docker/mantle.Dockerfile
           push: true
-          tags: ${{ steps.tags.outputs.frontend }}
+          tags: ${{ steps.tags.outputs.mantle }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push facet
+        if: inputs.facet_changed != false
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: package/docker/facet.Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.facet }}
           build-args: GIT_SHA=${{ inputs.sha || github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and push servers (unified MCP host)
-        if: inputs.servers_changed != false
+      - name: Build and push chorus (unified MCP host)
+        if: inputs.chorus_changed != false
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: servers/_host/Dockerfile
+          file: package/docker/chorus.Dockerfile
           push: true
-          tags: ${{ steps.tags.outputs.servers }}
+          tags: ${{ steps.tags.outputs.chorus }}
+          build-args: |
+            VERSO_PACKAGE=${{ inputs.verso_package || '' }}
+          secrets: |
+            verso_index_url=${{ secrets.VERSO_INDEX_URL || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -212,8 +243,8 @@ jobs:
         if: inputs.stream != false
         uses: docker/build-push-action@v5
         with:
-          context: servers/astra
-          file: servers/astra/stream/Dockerfile
+          context: src/chorus/astra
+          file: src/chorus/astra/stream/Dockerfile
           push: true
           tags: ${{ steps.tags.outputs.stream }}
           cache-from: type=gha
@@ -224,7 +255,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/Dockerfile.init
+          file: package/docker/Dockerfile.init
           push: true
           tags: ${{ steps.tags.outputs.init }}
           cache-from: type=gha
@@ -235,7 +266,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: packaging/install/home/Dockerfile.caddy
+          file: package/install/home/Dockerfile.caddy
           push: true
           tags: ${{ steps.tags.outputs.home }}
           cache-from: type=gha

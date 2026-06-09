@@ -1,0 +1,57 @@
+namespace: agience
+slug: agience-tools-iris
+content_type: text/markdown
+name: Iris Tools
+context:
+  content_type: text/markdown
+  title: Iris Tools
+  server: iris
+content: |
+  # Iris — Tool Catalog
+
+  **Role:** Networking & Routing
+
+  Connects agents, services, and external systems via messaging, webhooks, and tunnels.
+
+  ## Available Tools
+
+  ### `send_email`
+  Send an email via the platform's configured email Authorizer (Gmail API).
+
+  ### `send_message`
+  Send a message via a registered channel adapter (Telegram, Slack, email).
+
+  ### `get_messages`
+  Poll a channel adapter for new messages since a given cursor.
+
+  ### `list_channels`
+  List registered channel adapters for the current user.
+
+  ### `create_webhook`
+  Register an inbound webhook and return its endpoint URL.
+
+  ### `health_check`
+  Check the health and availability of a service endpoint.
+
+  ### `list_connections`
+  List registered service connections and their current status.
+
+  ### `register_endpoint`
+  Register a service endpoint for routing.
+
+  ### `route_request`
+  Route a request to a registered service endpoint.
+
+  ### `exec_shell`
+  Execute a shell command in a sandboxed directory.
+
+  ### `proxy_tool`
+  Proxy an MCP tool call through a registered endpoint.
+
+  ---
+  *11 tools available in Iris.*
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-tools
+    origin: true
+    order_key: a3

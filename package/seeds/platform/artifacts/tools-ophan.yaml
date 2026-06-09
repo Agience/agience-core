@@ -1,0 +1,96 @@
+namespace: agience
+slug: agience-tools-ophan
+content_type: text/markdown
+name: Ophan Tools
+context:
+  content_type: text/markdown
+  title: Ophan Tools
+  server: ophan
+content: |
+  # Ophan — Tool Catalog
+
+  **Role:** Finance & Licensing
+
+  Economic operations: value transfers, double-entry ledger, invoicing, licensing, and metrics.
+
+  ## Available Tools
+
+  ### `send_payment`
+  Initiate a value transfer (crypto or fiat).
+
+  ### `record_transaction`
+  Record an external transaction as a double-entry ledger card.
+
+  ### `get_transaction`
+  Fetch a transaction by ID or on-chain hash.
+
+  ### `list_transactions`
+  List transactions for an account over a date range.
+
+  ### `fetch_statement`
+  Import a bank/exchange/payroll statement as workspace cards.
+
+  ### `get_balance`
+  Get current balance for a wallet, bank account, or ledger account.
+
+  ### `reconcile_account`
+  Match transactions against a statement and flag discrepancies.
+
+  ### `create_invoice`
+  Generate an invoice card (accounts receivable).
+
+  ### `apply_payment`
+  Mark an invoice as paid and update the ledger.
+
+  ### `run_report`
+  Produce a P&L, balance sheet, or cash-flow report card.
+
+  ### `get_price`
+  Get current or historical price for a crypto or equity ticker.
+
+  ### `get_market_data`
+  Fetch OHLCV data for a symbol over a date range.
+
+  ### `track_wallet`
+  Monitor a blockchain wallet address for incoming activity.
+
+  ### `get_portfolio`
+  Retrieve holdings from a connected brokerage or exchange.
+
+  ### `calculate_pnl`
+  Calculate realised/unrealised P&L.
+
+  ### `track_resource_usage`
+  Track resource consumption and resource allocation.
+
+  ### `get_metrics`
+  Get system performance and efficiency metrics.
+
+  ### `calculate_budget`
+  Calculate or project a budget for a workspace or project.
+
+  ### `issue_license`
+  Create and sign a license artifact from entitlement inputs.
+
+  ### `renew_license`
+  Extend or replace an existing license artifact.
+
+  ### `revoke_license`
+  Revoke a license and record the compliance event.
+
+  ### `review_installation`
+  Inspect installation and activation state.
+
+  ### `record_usage_snapshot`
+  Ingest aggregate metering or usage snapshots.
+
+  ### `run_licensing_report`
+  Produce licensing or entitlement report cards.
+
+  ---
+  *24 tools available in Ophan.*
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-tools
+    origin: true
+    order_key: a4

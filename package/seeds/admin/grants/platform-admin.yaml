@@ -1,0 +1,23 @@
+# Admin grant set — applied ONLY to the designated platform admin user
+# (`platform.operator_id`, created during setup). These are plain grants: same
+# format as the per-user grants, just a different (fuller) set for the one
+# designated admin. No conditions, no operator grant type — grants are grants.
+type: grant
+namespace: agience
+slug: platform-admin-collections
+principal: "{{user.id}}"
+actions: [read, update, invoke, admin]
+resources:
+  - agience/agience-authorities
+  - agience/agience-hosts
+  - agience/agience-resources
+  - agience/agience-llm-connections
+  - agience/agience-inbox-seeds
+  - agience/agience-seeds-start-here
+  - agience/agience-seeds-platform-artifacts
+  - agience/agience-seeds-all-tools
+  - agience/agience-seeds-agents
+  - agience/agience-package-registry
+  - agience/agience-seeds-all-servers
+  - agience/agience-anchorset
+name: Platform admin (full management access)

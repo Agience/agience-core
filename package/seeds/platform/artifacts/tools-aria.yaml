@@ -1,0 +1,42 @@
+namespace: agience
+slug: agience-tools-aria
+content_type: text/markdown
+name: Aria Tools
+context:
+  content_type: text/markdown
+  title: Aria Tools
+  server: aria
+content: |
+  # Aria — Tool Catalog
+
+  **Role:** Output & Presentation
+
+  Formats and presents final responses for humans. Last-mile communication and visualization layer.
+
+  ## Available Tools
+
+  ### `format_response`
+  Format content for human consumption with appropriate markup and layout.
+
+  ### `render_visualization`
+  Create charts, diagrams, or visual representations of structured data.
+
+  ### `adapt_tone`
+  Adjust language tone and style for a target audience.
+
+  ### `present_card`
+  Present a card's content with appropriate formatting for human review.
+
+  ### `narrate`
+  Generate a natural-language narrative from structured data.
+
+  ### `run_chat_turn`
+  Run one agentic chat turn with tool calling. Returns the assistant reply and tool call log.
+
+  ---
+  *6 tools available in Aria.*
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-tools
+    origin: true
+    order_key: a0

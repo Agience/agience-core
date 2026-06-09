@@ -1,0 +1,22 @@
+namespace: agience
+slug: agience-server-seraph
+content_type: application/vnd.agience.mcp-server+json
+name: Seraph
+context:
+  type: mcp-server
+  content_type: application/vnd.agience.mcp-server+json
+  title: Seraph
+  description: "Platform-native MCP server for guardrails, policy enforcement, credentials, and trust."
+  mcp_server:
+    version: 1
+    kind: platform-builtin
+    name: seraph
+    role: "Security & trust"
+    client_id: agience-server-seraph
+    transport: builtin
+content: "Seraph — Security & trust. Platform-native MCP server for guardrails, policy enforcement, credentials, and trust."
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-servers
+    origin: true
+    order_key: a6

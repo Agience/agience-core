@@ -1,0 +1,53 @@
+namespace: agience
+slug: agience-doc-welcome
+content_type: text/markdown
+name: Welcome to Agience
+context:
+  content_type: text/markdown
+  title: Welcome to Agience
+content: |
+  # Welcome to Agience
+
+  Agience is a human-in-the-loop knowledge curation platform -- built like an OS for AI-powered work.
+
+  Think of it as a personal knowledge environment where **humans curate** and **agents assist**.
+
+  ## The Core Idea
+
+  Information in Agience lives as **Artifacts** -- addressable, versioned, committable units of knowledge.
+  You interact with them as **Cards** in your workspace.
+
+  There are two surfaces:
+
+  - **Workspaces** -- Draft staging areas. Create, edit, and organise cards before committing.
+  - **Collections** -- Committed, versioned knowledge. Once you commit artifacts to a collection they're
+    part of your permanent knowledge graph.
+
+  ## How It Fits Together
+
+  ```
+  Workspace (draft)  ->  Commit  ->  Collection (permanent)
+       ↓                                  ↓
+    Cards (UI)                       Artifacts (agents)
+  ```
+
+  Agents see **Artifacts**. You see **Cards**. Same content, different surfaces.
+
+  ## What's in Your Inbox
+
+  Your **Inbox** workspace is pre-populated with onboarding cards -- including this one.
+  Browse the other cards here to learn the basics before you start creating your own.
+
+  You can also explore the **Start Here** and **Platform Artifacts** collections in the left sidebar.
+
+  ## Next Steps
+
+  1. Browse the other cards here to learn the basics.
+  2. Open a workspace and start creating cards.
+  3. Commit your work to a collection when you're ready.
+  4. Use search (⌘K / Ctrl+K) to find anything across all your knowledge.
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-start-here
+    origin: true
+    order_key: a0

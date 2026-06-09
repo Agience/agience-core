@@ -1,0 +1,22 @@
+namespace: agience
+slug: agience-server-aria
+content_type: application/vnd.agience.mcp-server+json
+name: Aria
+context:
+  type: mcp-server
+  content_type: application/vnd.agience.mcp-server+json
+  title: Aria
+  description: "Platform-native MCP server for response formatting, chat turns, and UI resource serving."
+  mcp_server:
+    version: 1
+    kind: platform-builtin
+    name: aria
+    role: "Output & presentation"
+    client_id: agience-server-aria
+    transport: builtin
+content: "Aria — Output & presentation. Platform-native MCP server for response formatting, chat turns, and UI resource serving."
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-servers
+    origin: true
+    order_key: a1

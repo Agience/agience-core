@@ -3,6 +3,8 @@ setlocal enabledelayedexpansion
 
 REM Always resolve relative paths from this script's directory.
 set "SCRIPT_DIR=%~dp0"
+if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR_SAFE=%SCRIPT_DIR:~0,-1%"
+if not defined SCRIPT_DIR_SAFE set "SCRIPT_DIR_SAFE=%SCRIPT_DIR%"
 cd /d "%~dp0"
 
 REM Parse command line arguments
@@ -17,14 +19,14 @@ REM REGISTRY is only relevant for deploy mode (remote pull). Local builds tag
 REM images as agience/* but never pull from Docker Hub or GHCR.
 if not defined REGISTRY set REGISTRY=agience
 
-REM Venv location for backend dependencies (dev mode)
-set "VENV_DIR=%SCRIPT_DIR%backend\.venv"
+REM Venv location for mantle dependencies (dev mode)
+set "VENV_DIR=%SCRIPT_DIR%src\\mantle\\.venv"
 set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
 set "VENV_PIP=%VENV_DIR%\Scripts\pip.exe"
 
 REM Service groups
-set INFRA=content graph search
-set SERVERS=servers stream
+set INFRA=content graph
+set SERVERS=origin chorus stream
 
 if "%1"=="--help" goto help
 if "%1"=="-h" goto help
@@ -71,7 +73,7 @@ echo.
 echo   This will:
 echo     1. Stop all Agience containers
 echo     2. Delete all persistent data (database, object store,
-echo        search index, and RSA keys)
+echo        and RSA keys)
 echo     3. Start fresh (mode: %MODE%)
 echo.
 echo   After reset, the setup wizard will run on next launch.
@@ -100,13 +102,13 @@ if /i not "%CONFIRM%"=="y" (
 
 echo.
 echo Stopping all containers...
-docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.servers.yml down
+docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.chorus.yml down
 if errorlevel 1 (
     echo WARNING: Some containers may not have stopped cleanly. Continuing...
 )
 
-echo Stopping local backend/frontend processes...
-powershell -NoProfile -Command "$targets = @(8081, 5173); foreach ($port in $targets) { $pids = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; foreach ($listenerPid in $pids) { $proc = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $listenerPid) -ErrorAction SilentlyContinue; if (-not $proc) { continue }; if ($port -eq 8081 -and $proc.CommandLine -match '\bmain\.py\b') { Start-Process taskkill -ArgumentList '/PID', $listenerPid, '/T', '/F' -NoNewWindow -Wait; Write-Host 'Backend stopped.' }; if ($port -eq 5173 -and $proc.CommandLine -match 'vite|npm run dev|node.*vite') { Start-Process taskkill -ArgumentList '/PID', $listenerPid, '/T', '/F' -NoNewWindow -Wait; Write-Host 'Frontend stopped.' } } }" 2>nul
+echo Stopping local mantle/facet processes...
+powershell -NoProfile -Command "$targets = @(8081, 5173); foreach ($port in $targets) { $pids = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; foreach ($listenerPid in $pids) { $proc = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $listenerPid) -ErrorAction SilentlyContinue; if (-not $proc) { continue }; if ($port -eq 8081 -and $proc.CommandLine -match 'mantle.main') { Start-Process taskkill -ArgumentList '/PID', $listenerPid, '/T', '/F' -NoNewWindow -Wait; Write-Host 'Mantle stopped.' }; if ($port -eq 5173 -and $proc.CommandLine -match 'vite|npm run dev|node.*vite') { Start-Process taskkill -ArgumentList '/PID', $listenerPid, '/T', '/F' -NoNewWindow -Wait; Write-Host 'Facet stopped.' } } }" 2>nul
 
 echo.
 echo Deleting data at: %DATA_PATH_RESOLVED%
@@ -128,7 +130,7 @@ goto start_setup
 
 :cmd_down
 echo Stopping all Agience containers...
-docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.servers.yml down
+docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.chorus.yml down
 exit /b %errorlevel%
 
 :help
@@ -139,11 +141,11 @@ echo.
 echo Usage: agience [mode] [options]
 echo.
 echo Modes:
-echo   full    - Everything in Docker: infra + backend + frontend + servers (default)
-echo   dev     - Infra + servers in Docker, backend + frontend run locally
-echo             (restarts local backend/frontend by default)
+echo   full    - Everything in Docker: infra + origin + mantle + facet + chorus (default)
+echo   dev     - Infra + origin + chorus in Docker, mantle + facet run locally
+echo             (restarts local mantle/facet by default)
 echo   canary  - Pull and run pre-built :canary images from Docker Hub (no build required)
-echo   test    - Run precheck: backend lint + tests, frontend lint + tests
+echo   test    - Run precheck: mantle lint + tests, facet lint + tests
 echo.
 echo Options:
 echo   --force-docker, -f   - Force restart Docker containers (stop then start)
@@ -158,7 +160,7 @@ echo Examples:
 echo   agience                      # Full stack in Docker (default)
 echo   agience canary               # Pull and run canary (latest main build from Docker Hub)
 echo   agience canary -f            # Force restart canary containers
-echo   agience dev                  # Dev mode: infra in Docker, backend+frontend local
+echo   agience dev                  # Dev mode: infra in Docker, mantle+facet local
 echo   agience dev -f --build       # Dev mode, force restart and rebuild
 echo   agience dev -i               # Dev mode, reinstall dependencies
 echo   agience down                 # Stop all containers
@@ -198,12 +200,12 @@ if errorlevel 1 (
 )
 echo Docker is running [OK]
 
-REM Check if Node.js is installed (not needed in full/canary mode - frontend runs in Docker)
+REM Check if Node.js is installed (not needed in full/canary mode - Facet runs in Docker)
 if "%MODE%"=="full" (
-    echo [2/4] Skipping Node.js check - frontend runs in Docker
+    echo [2/4] Skipping Node.js check - Facet runs in Docker
 ) else (
     if "%MODE%"=="canary" (
-        echo [2/4] Skipping Node.js check - frontend runs in Docker
+        echo [2/4] Skipping Node.js check - Facet runs in Docker
     ) else (
         echo [2/4] Checking Node.js...
         node --version >nul 2>&1
@@ -216,12 +218,12 @@ if "%MODE%"=="full" (
     )
 )
 
-REM Check if Python is installed (not needed in full/canary mode - backend runs in Docker)
+REM Check if Python is installed (not needed in full/canary mode - mantle runs in Docker)
 if "%MODE%"=="full" (
-    echo [3/4] Skipping Python check - backend runs in Docker
+    echo [3/4] Skipping Python check - mantle runs in Docker
 ) else (
     if "%MODE%"=="canary" (
-        echo [3/4] Skipping Python check - backend runs in Docker
+        echo [3/4] Skipping Python check - mantle runs in Docker
     ) else (
         echo [3/4] Checking Python...
         python --version >nul 2>&1
@@ -245,18 +247,18 @@ set "COMPOSE_UP_FLAGS=-d"
 if "%BUILD_DOCKER%"=="true" set "COMPOSE_UP_FLAGS=--build -d"
 if "%FORCE_DOCKER%"=="true" (
     echo Restarting all Docker containers...
-    docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.override.yml -f docker/docker-compose.servers.yml down
-    docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.override.yml -f docker/docker-compose.servers.yml up !COMPOSE_UP_FLAGS!
+    docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.override.yml -f package/docker/docker-compose.chorus.yml down
+    docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.override.yml -f package/docker/docker-compose.chorus.yml up !COMPOSE_UP_FLAGS!
     if errorlevel 1 ( echo ERROR: Failed to start Docker services. & pause & exit /b 1 )
     echo Docker services restarted [OK]
     set CONTAINERS_JUST_STARTED=true
     goto docker_done
 )
 echo Checking if containers are running...
-docker compose --project-directory . -f docker/docker-compose.yml ps graph 2>nul | findstr /i "graph" >nul 2>&1
+docker compose --project-directory . -f package/docker/docker-compose.yml ps graph 2>nul | findstr /i "graph" >nul 2>&1
 if errorlevel 1 (
     echo Starting Docker services...
-    docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.override.yml -f docker/docker-compose.servers.yml up !COMPOSE_UP_FLAGS!
+    docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.override.yml -f package/docker/docker-compose.chorus.yml up !COMPOSE_UP_FLAGS!
     if errorlevel 1 ( echo ERROR: Failed to start Docker services. & pause & exit /b 1 )
     echo Docker services started [OK]
     set CONTAINERS_JUST_STARTED=true
@@ -274,18 +276,18 @@ set "SERVERS_IMAGE=agience/agience-servers:canary"
 set "STREAM_IMAGE=agience/agience-stream:canary"
 if "%FORCE_DOCKER%"=="true" (
     echo Restarting all canary containers...
-    docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.servers.yml down
-    docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.servers.yml up --pull=always -d
+    docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.chorus.yml down
+    docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.chorus.yml up --pull=always -d
     if errorlevel 1 ( echo ERROR: Failed to start canary services. & pause & exit /b 1 )
     echo Canary containers restarted [OK]
     set CONTAINERS_JUST_STARTED=true
     goto docker_done
 )
 echo Checking if containers are running...
-docker compose --project-directory . -f docker/docker-compose.yml ps graph 2>nul | findstr /i "graph" >nul 2>&1
+docker compose --project-directory . -f package/docker/docker-compose.yml ps graph 2>nul | findstr /i "graph" >nul 2>&1
 if errorlevel 1 (
     echo Pulling and starting canary services...
-    docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.servers.yml up --pull=always -d
+    docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.chorus.yml up --pull=always -d
     if errorlevel 1 ( echo ERROR: Failed to start canary services. & pause & exit /b 1 )
     echo Canary services started [OK]
     set CONTAINERS_JUST_STARTED=true
@@ -302,29 +304,37 @@ set "COMPOSE_UP_FLAGS=-d"
 if "%BUILD_DOCKER%"=="true" set "COMPOSE_UP_FLAGS=--build -d"
 if "%FORCE_DOCKER%"=="true" (
     echo Restarting server containers - infra left running...
-    docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.override.yml -f docker/docker-compose.servers.yml rm -sf !SERVERS!
-    docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.override.yml -f docker/docker-compose.servers.yml up !COMPOSE_UP_FLAGS! !INFRA! !SERVERS!
+    docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.override.yml -f package/docker/docker-compose.chorus.yml rm -sf !SERVERS!
+    docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.override.yml -f package/docker/docker-compose.chorus.yml up !COMPOSE_UP_FLAGS! !INFRA! !SERVERS!
     if errorlevel 1 ( echo ERROR: Failed to start Docker services. & pause & exit /b 1 )
     echo Server containers restarted [OK]
     set CONTAINERS_JUST_STARTED=true
     goto docker_done
 )
 echo Checking if infra containers are running...
-docker compose --project-directory . -f docker/docker-compose.yml ps graph 2>nul | findstr /i "graph" >nul 2>&1
+docker compose --project-directory . -f package/docker/docker-compose.yml ps graph 2>nul | findstr /i "graph" >nul 2>&1
 if errorlevel 1 (
     echo Starting infra and server containers...
-    docker compose --project-directory . -f docker/docker-compose.yml -f docker/docker-compose.override.yml -f docker/docker-compose.servers.yml up !COMPOSE_UP_FLAGS! !INFRA! !SERVERS!
+    docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.override.yml -f package/docker/docker-compose.chorus.yml up !COMPOSE_UP_FLAGS! !INFRA! !SERVERS!
     if errorlevel 1 ( echo ERROR: Failed to start Docker services. & pause & exit /b 1 )
     echo Infra and server containers started [OK]
     set CONTAINERS_JUST_STARTED=true
 ) else (
-    echo Infra and server containers already running [OK]
-    echo Use --force-docker to restart
-    set CONTAINERS_JUST_STARTED=false
+    if "%BUILD_DOCKER%"=="true" (
+        echo Rebuilding server containers - infra left running...
+        docker compose --project-directory . -f package/docker/docker-compose.yml -f package/docker/docker-compose.override.yml -f package/docker/docker-compose.chorus.yml up !COMPOSE_UP_FLAGS! !INFRA! !SERVERS!
+        if errorlevel 1 ( echo ERROR: Failed to rebuild Docker services. & pause & exit /b 1 )
+        echo Server containers rebuilt [OK]
+        set CONTAINERS_JUST_STARTED=true
+    ) else (
+        echo Infra and server containers already running [OK]
+        echo Use --force-docker to restart, or --build to rebuild
+        set CONTAINERS_JUST_STARTED=false
+    )
 )
 
 echo Ensuring Docker app containers are stopped for local dev...
-docker compose --project-directory . -f docker/docker-compose.yml rm -sf backend frontend >nul 2>&1
+docker compose --project-directory . -f package/docker/docker-compose.yml rm -sf mantle facet >nul 2>&1
 
 :docker_done
 
@@ -334,70 +344,70 @@ if "%MODE%"=="dev" (
         echo.
         echo Checking dependencies...
         
-        REM Check if frontend node_modules exists
+        REM Check if Facet node_modules exists
         set NEED_FRONTEND_DEPS=false
-        if not exist "frontend\node_modules" (
-            echo Frontend dependencies missing
+        if not exist "src\facet\node_modules" (
+            echo Facet dependencies missing
             set NEED_FRONTEND_DEPS=true
         )
-        
-        REM Ensure backend venv exists
+
+        REM Ensure mantle venv exists
         set NEED_BACKEND_DEPS=false
         if not exist "!VENV_DIR!" (
-            echo Creating backend virtual environment...
+            echo Creating mantle virtual environment...
             python -m venv "!VENV_DIR!"
             set NEED_BACKEND_DEPS=true
         ) else (
-            REM Check if backend dependencies are installed (check for mcp package)
+            REM Check if mantle dependencies are installed (check for mcp package)
             "!VENV_PYTHON!" -c "import mcp" >nul 2>&1
             if errorlevel 1 (
-                echo Backend dependencies missing
+                echo mantle dependencies missing
                 set NEED_BACKEND_DEPS=true
             ) else (
                 REM Check if requirements.txt changed since last install
                 set "REQ_STAMP=!VENV_DIR!\.requirements_stamp"
                 if not exist "!REQ_STAMP!" (
-                    echo Backend dependencies stamp missing - will reinstall
+                    echo mantle dependencies stamp missing - will reinstall
                     set NEED_BACKEND_DEPS=true
                 ) else (
-                    fc /b "%SCRIPT_DIR%backend\requirements.txt" "!REQ_STAMP!" >nul 2>&1
+                    fc /b "%SCRIPT_DIR%src\\mantle\\requirements.txt" "!REQ_STAMP!" >nul 2>&1
                     if errorlevel 1 (
-                        echo Backend requirements.txt changed - will reinstall
+                        echo mantle requirements.txt changed - will reinstall
                         set NEED_BACKEND_DEPS=true
                     )
                 )
             )
         )
-        
+
         REM Install if needed
         if "!NEED_FRONTEND_DEPS!"=="true" (
             call :install_frontend_deps
             set "NPM_EXIT=!ERRORLEVEL!"
             if not "!NPM_EXIT!"=="0" (
-                echo ERROR: Failed to install frontend dependencies.
+                echo ERROR: Failed to install Facet dependencies.
                 pause
                 exit /b 1
             )
-            echo Frontend dependencies installed [OK]
+            echo Facet dependencies installed [OK]
         ) else (
-            echo Frontend dependencies OK
+            echo Facet dependencies OK
         )
-        
+
         if "!NEED_BACKEND_DEPS!"=="true" (
-            echo Installing backend dependencies into .venv...
-            pushd "%SCRIPT_DIR%backend"
-            "!VENV_PIP!" install -r requirements.txt
+            echo Installing mantle dependencies into .venv...
+            pushd "%SCRIPT_DIR%src\mantle"
+            "!VENV_PYTHON!" -m pip install -r requirements.txt
             set "PIP_EXIT=!ERRORLEVEL!"
             popd
             if not "!PIP_EXIT!"=="0" (
-                echo ERROR: Failed to install backend dependencies.
+                echo ERROR: Failed to install mantle dependencies.
                 pause
                 exit /b 1
             )
-            copy /y "%SCRIPT_DIR%backend\requirements.txt" "!VENV_DIR!\.requirements_stamp" >nul
-            echo Backend dependencies installed [OK]
+            copy /y "%SCRIPT_DIR%src\\mantle\\requirements.txt" "!VENV_DIR!\.requirements_stamp" >nul
+            echo mantle dependencies installed [OK]
         ) else (
-            echo Backend dependencies OK
+            echo mantle dependencies OK
         )
     )
 )
@@ -407,23 +417,23 @@ if "%INSTALL_DEPS%"=="true" (
     call :install_frontend_deps
     set "NPM_EXIT=!ERRORLEVEL!"
     if not "!NPM_EXIT!"=="0" (
-        echo ERROR: Failed to install frontend dependencies.
+        echo ERROR: Failed to install Facet dependencies.
         pause
         exit /b 1
     )
 
-    echo Installing backend dependencies into .venv...
+    echo Installing mantle dependencies into .venv...
     if not exist "!VENV_DIR!" python -m venv "!VENV_DIR!"
-    pushd "%SCRIPT_DIR%backend"
-    "!VENV_PIP!" install -r requirements.txt
+    pushd "%SCRIPT_DIR%src\mantle"
+    "!VENV_PYTHON!" -m pip install -r requirements.txt
     set "PIP_EXIT=!ERRORLEVEL!"
     popd
     if not "!PIP_EXIT!"=="0" (
-        echo ERROR: Failed to install backend dependencies.
+        echo ERROR: Failed to install mantle dependencies.
         pause
         exit /b 1
     )
-    copy /y "%SCRIPT_DIR%backend\requirements.txt" "!VENV_DIR!\.requirements_stamp" >nul
+    copy /y "%SCRIPT_DIR%src\\mantle\\requirements.txt" "!VENV_DIR!\.requirements_stamp" >nul
     echo Dependencies installed [OK]
 )
 
@@ -432,12 +442,12 @@ if "%CLEAN_DEPS%"=="true" (
     call :clean_frontend_deps
     set "NPM_EXIT=!ERRORLEVEL!"
     if not "!NPM_EXIT!"=="0" (
-        echo ERROR: Failed to clean install frontend dependencies.
+        echo ERROR: Failed to clean install Facet dependencies.
         pause
         exit /b 1
     )
 
-    echo Clean installing backend dependencies...
+    echo Clean installing mantle dependencies...
     if exist "!VENV_DIR!" (
         echo Removing existing .venv...
         rmdir /s /q "!VENV_DIR!" 2>nul
@@ -445,25 +455,25 @@ if "%CLEAN_DEPS%"=="true" (
     )
     echo Creating fresh virtual environment...
     python -m venv "!VENV_DIR!"
-    pushd "%SCRIPT_DIR%backend"
-    echo Installing fresh backend dependencies...
-    "!VENV_PIP!" install -r requirements.txt
+    pushd "%SCRIPT_DIR%src\mantle"
+    echo Installing fresh mantle dependencies...
+    "!VENV_PYTHON!" -m pip install -r requirements.txt
     set "PIP_EXIT=!ERRORLEVEL!"
     popd
     if not "!PIP_EXIT!"=="0" (
-        echo ERROR: Failed to clean install backend dependencies.
+        echo ERROR: Failed to clean install mantle dependencies.
         pause
         exit /b 1
     )
-    copy /y "%SCRIPT_DIR%backend\requirements.txt" "!VENV_DIR!\.requirements_stamp" >nul
+    copy /y "%SCRIPT_DIR%src\\mantle\\requirements.txt" "!VENV_DIR!\.requirements_stamp" >nul
     echo Dependencies clean installed [OK]
 )
 
 goto deps_done
 
 :install_frontend_deps
-echo Installing frontend dependencies...
-pushd "%SCRIPT_DIR%frontend"
+echo Installing Facet dependencies...
+pushd "%SCRIPT_DIR%src\facet"
 if exist package-lock.json (
     call npm ci
 ) else (
@@ -475,8 +485,8 @@ popd
 exit /b !NPM_EXIT!
 
 :clean_frontend_deps
-echo Clean installing frontend dependencies...
-pushd "%SCRIPT_DIR%frontend"
+echo Clean installing Facet dependencies...
+pushd "%SCRIPT_DIR%src\facet"
 if exist node_modules (
     echo Removing existing node_modules...
     rmdir /s /q node_modules
@@ -504,7 +514,7 @@ if "%MODE%"=="full" (
     echo   Frontend: http://localhost:5173
     echo.
     echo   MCP Servers:  http://localhost:8082
-    echo     /aria/mcp  /sage/mcp    /atlas/mcp  /nexus/mcp
+    echo     /aria/mcp  /sage/mcp    /mantle/mcp  /iris/mcp
     echo     /astra/mcp /verso/mcp   /seraph/mcp /ophan/mcp
     echo     Stream:      rtmp://localhost:1936/live
     echo.
@@ -527,7 +537,7 @@ if "%MODE%"=="canary" (
     echo   Frontend: http://localhost:5173
     echo.
     echo   MCP Servers:  http://localhost:8082
-    echo     /aria/mcp  /sage/mcp    /atlas/mcp  /nexus/mcp
+    echo     /aria/mcp  /sage/mcp    /mantle/mcp  /iris/mcp
     echo     /astra/mcp /verso/mcp   /seraph/mcp /ophan/mcp
     echo     Stream:      rtmp://localhost:1936/live
     echo.
@@ -549,13 +559,13 @@ echo   Backend:  http://localhost:8081
 echo   Frontend: http://localhost:5173
 echo.
 echo   MCP Servers (Docker): http://localhost:8082
-    echo     /aria /sage /atlas /nexus /astra /verso /seraph /ophan
+    echo     /aria /sage /mantle /iris /astra /verso /seraph /ophan
     echo     Stream: rtmp://localhost:1936/live
 echo.
 
 if "%MODE%"=="dev" (
-    echo Restarting local backend/frontend listeners...
-    powershell -NoProfile -Command "$targets = @(8081, 5173); foreach ($port in $targets) { $pids = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; foreach ($listenerPid in $pids) { $proc = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $listenerPid) -ErrorAction SilentlyContinue; if (-not $proc) { continue }; if ($port -eq 8081 -and $proc.CommandLine -match '\bmain\.py\b') { Start-Process taskkill -ArgumentList '/PID', $listenerPid, '/T', '/F' -NoNewWindow -Wait }; if ($port -eq 5173 -and $proc.CommandLine -match 'vite|npm run dev|node.*vite') { Start-Process taskkill -ArgumentList '/PID', $listenerPid, '/T', '/F' -NoNewWindow -Wait } } }" >nul 2>&1
+    echo Restarting local mantle/facet listeners...
+    powershell -NoProfile -Command "$targets = @(8081, 5173); foreach ($port in $targets) { $pids = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; foreach ($listenerPid in $pids) { $proc = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $listenerPid) -ErrorAction SilentlyContinue; if (-not $proc) { continue }; if ($port -eq 8081 -and $proc.CommandLine -match 'mantle.main') { Start-Process taskkill -ArgumentList '/PID', $listenerPid, '/T', '/F' -NoNewWindow -Wait }; if ($port -eq 5173 -and $proc.CommandLine -match 'vite|npm run dev|node.*vite') { Start-Process taskkill -ArgumentList '/PID', $listenerPid, '/T', '/F' -NoNewWindow -Wait } } }" >nul 2>&1
     timeout /t 1 /nobreak >nul
 )
 
@@ -571,7 +581,7 @@ if "%BACKEND_RUNNING%"=="0" (
     powershell -NoProfile -Command "try { $response = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8081/version -TimeoutSec 3; if ($response.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
     if errorlevel 1 (
         echo Existing listener on port 8081 is unhealthy. Removing stale local backend processes...
-        powershell -NoProfile -Command "$pids = Get-NetTCPConnection -LocalPort 8081 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; foreach ($listenerPid in $pids) { $proc = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $listenerPid) -ErrorAction SilentlyContinue; if ($proc -and $proc.CommandLine -match '\bmain\.py\b') { Start-Process taskkill -ArgumentList '/PID', $listenerPid, '/T', '/F' -NoNewWindow -Wait } }" >nul 2>&1
+        powershell -NoProfile -Command "$pids = Get-NetTCPConnection -LocalPort 8081 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; foreach ($listenerPid in $pids) { $proc = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $listenerPid) -ErrorAction SilentlyContinue; if ($proc -and $proc.CommandLine -match 'mantle.main') { Start-Process taskkill -ArgumentList '/PID', $listenerPid, '/T', '/F' -NoNewWindow -Wait } }" >nul 2>&1
         timeout /t 1 /nobreak >nul
         netstat -ano 2>nul | findstr /c:":8081 " | findstr /i "LISTENING" >nul 2>&1
         set BACKEND_RUNNING=%errorlevel%
@@ -596,7 +606,7 @@ set WT_CMD=wt.exe
 REM Add frontend tab (only if not already running)
 if %FRONTEND_RUNNING% neq 0 (
     echo Starting frontend server...
-    set WT_CMD=!WT_CMD! --title "Frontend" -p "Command Prompt" -d "%cd%\frontend" cmd /k "npm run dev"
+    set WT_CMD=!WT_CMD! --title "Frontend" -p "Command Prompt" -d "%SCRIPT_DIR_SAFE%\src\facet" cmd /k "npm run dev"
     set NEED_TO_LAUNCH=true
 ) else (
     echo Frontend already running on port 5173 - skipping
@@ -605,7 +615,7 @@ if %FRONTEND_RUNNING% neq 0 (
 REM Add backend tab (only if not already running)
 if %BACKEND_RUNNING% neq 0 (
     echo Starting backend server...
-    set WT_CMD=!WT_CMD! ; nt --title "Backend" -p "Command Prompt" -d "%cd%\backend" cmd /k ""%cd%\backend\.venv\Scripts\python.exe" main.py"
+    set WT_CMD=!WT_CMD! ; nt --title "Backend" -p "Command Prompt" cmd /k "cd /d \"%SCRIPT_DIR_SAFE%\src\" && set \"ORIGIN_URI=http://localhost:8080\" && \"%SCRIPT_DIR_SAFE%\src\\mantle\\.venv\Scripts\python.exe\" -m mantle.main"
     set NEED_TO_LAUNCH=true
 ) else (
     if /i "!BACKEND_HEALTHY!"=="true" (

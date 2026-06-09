@@ -1,4 +1,4 @@
-# Development Best Practices
+﻿# Development Best Practices
 
 Status: **Reference**
 Date: 2026-03-31
@@ -12,11 +12,11 @@ Patterns and conventions for contributors working on the Agience codebase. Cover
 - Ship tests with every feature, behavioral change, or regression fix. A PR without coverage updates is incomplete.
 - When fixing a regression, write the failing test first — before applying the patch. This prevents the bug from resurfacing.
 - Keep fixtures realistic: use production-representative field names, timestamps, and IDs so assertions catch schema drift and serialization issues.
-- Mock external systems (ArangoDB, OpenSearch, S3) using dependency overrides or `MagicMock`. Tests must never write to real infrastructure.
+- Mock external systems (ArangoDB, Postgres, S3) using dependency overrides or `MagicMock`. Tests must never write to real infrastructure.
 - Assert on domain outcomes (artifact states, search metadata, HTTP status codes) rather than internal implementation details.
 - When patching services, stub full objects instead of bare booleans to avoid false confidence.
 - Run `pytest tests` locally before pushing. Keep the suite free of skips unless tracked with an issue reference.
-- Pair tests with linting: run `ruff check .` in `backend/` and `npm run lint` in `frontend/`. CI blocks merges when lints fail.
+- Pair tests with linting: run `ruff check .` in the service tree (`src/mantle/`, `src/origin/`) and `npm run lint` in `src/facet/`. CI blocks merges when lints fail.
 
 ---
 

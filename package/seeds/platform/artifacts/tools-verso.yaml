@@ -1,0 +1,42 @@
+namespace: agience
+slug: agience-tools-verso
+content_type: text/markdown
+name: Verso Tools
+context:
+  content_type: text/markdown
+  title: Verso Tools
+  server: verso
+content: |
+  # Verso — Tool Catalog
+
+  **Role:** Reasoning & Workflows
+
+  Synthesis, multi-step orchestration, output evaluation, and training feedback.
+
+  ## Available Tools
+
+  ### `synthesize`
+  Synthesize information from multiple sources via LLM.
+
+  ### `run_workflow`
+  Execute a multi-step workflow defined by a Transform artifact.
+
+  ### `chain_tasks`
+  Chain multiple MCP tool calls sequentially into a pipeline.
+
+  ### `schedule_action`
+  Schedule a deferred action for future execution.
+
+  ### `evaluate_output`
+  Evaluate quality and accuracy of generated output.
+
+  ### `submit_feedback`
+  Submit evaluation feedback for training improvement.
+
+  ---
+  *6 tools available in Verso.*
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-tools
+    origin: true
+    order_key: a6

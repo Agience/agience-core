@@ -1,0 +1,7 @@
+namespace: agience
+slug: agience-resources
+content_type: application/vnd.agience.collection+json
+name: Agience Resources
+description: >-
+  Platform-owned resource catalog. Includes canonical agency and agent
+  artifacts that can be referenced from transforms and search.

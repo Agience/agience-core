@@ -6,10 +6,9 @@
     Validates build_info.json matches the version, creates tag vX.Y.Z locally,
     merges release/X.Y -> main, then prints push instructions.
 
-    Triggering pipelines (after you push):
-      - build-and-push-ghcr.yml  ->  :stable  :X.Y  :X.Y.Z  (Docker Hub + GHCR)
-      - release.yml              ->  GitHub Release with release notes
-      - deploy-suite.yml         ->  my.agience.ai deploy (on release published)
+        Triggering pipelines (after you push):
+            - build-and-push-ghcr.yml  ->  :stable  :X.Y  :X.Y.Z  (Docker Hub + GHCR)
+            - release.yml              ->  GitHub Release with release notes
 
 .PARAMETER Version
     Full patch version to tag (X.Y.Z - e.g. 0.2.2).
@@ -134,5 +133,5 @@ Write-Host ""
 Write-Host "  Done. Triggered:" -ForegroundColor Green
 Write-Host "    - build-and-push-ghcr.yml  ->  :stable  :$MinorVersion  :$Version  (Docker Hub + GHCR)" -ForegroundColor Gray
 Write-Host "    - release.yml              ->  GitHub Release with release notes" -ForegroundColor Gray
-Write-Host "    - deploy-suite.yml         ->  my.agience.ai deploy (on workflow_run)" -ForegroundColor Gray
+Write-Host "  my.agience.ai deploy is manual via task: Agience: My — Deploy" -ForegroundColor Gray
 Write-Host ""

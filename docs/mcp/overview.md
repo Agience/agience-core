@@ -1,4 +1,4 @@
-# MCP Overview
+﻿# MCP Overview
 
 Status: **Reference**
 Date: 2026-04-01
@@ -40,7 +40,7 @@ The product boundary is important: MCP is used for access and execution, while r
 | Agience MCP server | Exposes search, artifact access, curation, and analysis tools to external clients |
 | Agience MCP client | Connects to external MCP servers over HTTP or stdio |
 | Auth layer | RS256 JWTs and scoped API keys for user and service access |
-| Storage layer | ArangoDB workspaces and collections, OpenSearch search, S3/CloudFront content |
+| Storage layer | ArangoDB unified artifact store, encrypted MANTLE+SSE search in S3, S3/CloudFront content |
 
 ### Discovery and auth
 

@@ -1,4 +1,4 @@
-# Self-hosting guide
+﻿# Self-hosting guide
 
 Status: **Reference**
 Date: 2026-04-01
@@ -9,20 +9,22 @@ This guide covers deploying Agience on a single VM or VPS with your own domain. 
 
 ## Architecture overview
 
-One server runs:
+One server runs the four-container Agience stack plus support services:
 
 - Reverse proxy with automatic TLS (Caddy — included in the compose stack)
-- Frontend container (React UI)
-- Backend container (FastAPI)
-- Databases: ArangoDB, OpenSearch
+- **Origin** (FastAPI + Postgres) — identity, OIDC, grants
+- **Mantle** (FastAPI + Arango + encrypted MANTLE/SSE search) — artifact kernel
+- **Chorus** (FastMCP unified host) — persona MCP servers + universal gateway
+- **Facet** (React UI)
 - Object storage: MinIO (S3-compatible, included) or AWS S3 + CloudFront
+- Optional: SRS stream ingest for live media
 
 ### Subdomain layout
 
 | Subdomain | Purpose |
 |---|---|
-| `app.yourdomain.com` | React UI |
-| `api.yourdomain.com` | FastAPI backend |
+| `app.yourdomain.com` | Facet UI |
+| `api.yourdomain.com` | Mantle API (`/api/*`) + Origin OIDC (`/auth/*`, `/setup/*`) + Chorus (`/mcp/*`, `/.well-known/*`) |
 | `content.yourdomain.com` | MinIO / S3 object storage |
 | `stream.yourdomain.com` | Astra streaming service (optional) |
 
@@ -33,7 +35,8 @@ One server runs:
 ### Server
 
 - Linux VM — Ubuntu 22.04 LTS or later recommended
-- Minimum: 4 vCPU, 8 GB RAM (OpenSearch and ArangoDB both need headroom)
+- Minimum: 4 vCPU, 8 GB RAM (ArangoDB needs headroom; the encrypted MANTLE+SSE
+  search runs in-process inside Mantle, not in a separate JVM service)
 - Recommended EC2 equivalent: `t3.large` or larger
 - Disk: 60–100 GB (gp3 on AWS; any fast block storage elsewhere)
 - Docker and Docker Compose installed
@@ -57,23 +60,11 @@ Keep these ports **private** (loopback / Docker network only — do not expose p
 
 | Port | Service |
 |---|---|
-| 8081 | Backend API |
+| 8080 | Origin API |
+| 8081 | Mantle API |
+| 8082 | Chorus (MCP gateway) |
 | 8529 | ArangoDB |
-| 9200, 9600 | OpenSearch |
-
-### OpenSearch kernel setting
-
-OpenSearch requires a higher virtual memory limit than the default Linux kernel allows. Run this on the host before starting the stack:
-
-```bash
-sudo sysctl -w vm.max_map_count=262144
-```
-
-To make it permanent, add the following line to `/etc/sysctl.conf`:
-
-```
-vm.max_map_count=262144
-```
+| 5432 | Postgres |
 
 ---
 
@@ -134,16 +125,15 @@ The `VITE_*` variables are injected into the running frontend container at start
 
 | Variable | Value |
 |---|---|
-| `ARANGO_ROOT_PASSWORD` | Strong random password |
-| `OPENSEARCH_INITIAL_ADMIN_PASSWORD` | Strong random password |
-| `OPENSEARCH_USERNAME` | `admin` |
-| `OPENSEARCH_PASSWORD` | Same value as `OPENSEARCH_INITIAL_ADMIN_PASSWORD` |
+| `ARANGO_ROOT_PASSWORD` | Strong random password (or let `init` generate one — see `package/docker/init.py`) |
+| `POSTGRES_PASSWORD` | Strong random password (or let `init` generate one) |
 
-### OpenAI
+### LLM provider
 
 | Variable | Value |
 |---|---|
-| `OPENAI_API_KEY` | Your OpenAI API key (required for embeddings and LLM features) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (default LLM) |
+| `EMBEDDINGS_URI` | URL of the Agience embeddings server (or omit to fall back to BM25-only search) |
 
 ### Content storage — MinIO (recommended for self-hosting)
 
@@ -331,19 +321,9 @@ This symptom usually appears when Nginx strips the upgrade headers.
 - Confirm `AWS_ENDPOINT_URL_PUBLIC` is a URL the browser can reach (presigned URLs use this hostname)
 - If using MinIO, confirm `content.yourdomain.com` resolves and the Caddy or Nginx proxy is routing to port 9000
 
-### OpenSearch crashes on startup
+### Mantle or Origin is slow to start
 
-Run the kernel tuning command on the host:
-
-```bash
-sudo sysctl -w vm.max_map_count=262144
-```
-
-Then add `vm.max_map_count=262144` to `/etc/sysctl.conf` so it survives a reboot.
-
-### Backend is slow to start
-
-On first boot, the backend initialises ArangoDB schemas and waits for all services to become healthy. Allow 60-90 seconds. Check `docker compose logs backend` if it does not come up.
+On first boot, Mantle initialises ArangoDB schemas and Origin runs Alembic migrations against Postgres; both wait for their respective support containers to become healthy. Allow 60–90 seconds. Check `docker compose logs mantle` / `docker compose logs origin` if they don't come up.
 
 ### Upgrading to AWS S3 + CloudFront
 

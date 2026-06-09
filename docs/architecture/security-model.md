@@ -1,4 +1,4 @@
-# Security Model
+﻿# Security Model
 
 Status: **Reference**
 Date: 2026-04-01
@@ -44,7 +44,7 @@ The frontend discovers configured providers via `GET /auth/providers`. The inter
 
 **Person mapping.** Agience maintains an internal `Person` record for each user. The record stores `oidc_provider` + `oidc_subject` as the stable binding to the upstream identity. Emails are normalized to lowercase. The Agience-assigned `Person.id` (a UUID) is the `sub` claim in all issued tokens — not the upstream IdP subject.
 
-**Client identity.** The OAuth flow requires a `client_id` parameter that identifies the calling application (e.g., `agience-frontend`, `vscode-mcp`, `desktop-host`). This is copied into the issued JWT as the `client_id` claim, not to be confused with the upstream IdP subject. It allows audit logs to distinguish a browser session, a VS Code session, and a Desktop Host session that all belong to the same `sub`.
+**Client identity.** The OAuth flow requires a `client_id` parameter that identifies the calling application (e.g., `agience-facet`, `vscode-mcp`, `desktop-host`). This is copied into the issued JWT as the `client_id` claim, not to be confused with the upstream IdP subject. It allows audit logs to distinguish a browser session, a VS Code session, and a Desktop Host session that all belong to the same `sub`.
 
 **Access token expiry.** Access tokens expire after 12 hours. There is no silent background refresh — the user (or client) must exchange their refresh token to get a new access token. Refresh tokens are valid for 30 days.
 
@@ -103,7 +103,7 @@ Issued by `POST /auth/token` with `grant_type=client_credentials`, used by MCP s
 | `iss` | `AUTHORITY_ISSUER` | |
 | `iat` / `exp` | Issue / expiry time | 1-hour expiry; no refresh token issued |
 
-Server tokens expire after 1 hour. Servers re-authenticate automatically via the `_exchange_token()` function in `servers/_shared/agience_server_auth.py`. No refresh token is issued — servers simply perform a new client credentials exchange when their token nears expiry (60-second refresh buffer).
+Server tokens expire after 1 hour. Servers re-authenticate automatically via the `_exchange_token()` function in `src/chorus/_shared/agience_server_auth.py`. No refresh token is issued — servers simply perform a new client credentials exchange when their token nears expiry (60-second refresh buffer).
 
 When a server makes a request on behalf of a user (e.g., a tool call triggered by a human action), Core issues a **delegation JWT** (see below) that the server presents directly. The delegation JWT carries both the user identity (`sub`) and the server identity (`aud`, `act.sub`).
 
@@ -147,14 +147,14 @@ Server credentials are the identity mechanism for MCP server processes authentic
 |--------|-------------|
 | aria | `agience-server-aria` |
 | sage | `agience-server-sage` |
-| atlas | `agience-server-atlas` |
-| nexus | `agience-server-nexus` |
+| mantle | `agience-server-mantle` |
+| iris | `agience-server-iris` |
 | astra | `agience-server-astra` |
 | verso | `agience-server-verso` |
 | seraph | `agience-server-seraph` |
 | ophan | `agience-server-ophan` |
 
-**Kernel fast-path.** All first-party servers authenticate via `PLATFORM_INTERNAL_SECRET` — a shared secret configured in the platform's env. This avoids the auth recursion problem (Core cannot call Seraph to authenticate Seraph) and simplifies deployment (no provisioned `ServerCredential` records needed for builtin servers). Server IDs are derived from `BUILTIN_MCP_SERVER_PATHS` into `KERNEL_SERVER_IDS` in `backend/core/config.py`. The token endpoint checks for kernel server IDs first; if matched, it validates against the internal secret rather than performing a database lookup.
+**Mutual service JWTs.** First-party kernel services (origin / mantle / chorus) authenticate to each other via mutual service JWTs signed with their own keypair (`<service>.private.pem`). Peers verify via the inline JWKS in the platform authority manifest (`KEYS_DIR/authority.manifest.json`). The legacy `PLATFORM_INTERNAL_SECRET` shared-secret was retired in Phase C — there is no shared secret. Each Chorus persona has its own service identity registered in the manifest.
 
 **Standard path.** Third-party servers use the provisioned `ServerCredential` flow: the token endpoint looks up the `ServerCredential` record in ArangoDB and validates the submitted `client_secret` against the stored bcrypt hash.
 
@@ -195,7 +195,7 @@ MCP Server → Core: REST callback (delegation JWT in Authorization header)
 
 ## Server Auth Module
 
-All first-party MCP servers use the shared `AgieceServerAuth` class from `servers/_shared/agience_server_auth.py`. No server implements its own JWKS fetch, JWT verification, RSA key management, or ASGI middleware.
+All first-party MCP servers (Chorus personas) use the shared `AgieceServerAuth` class from `src/chorus/_shared/agience_server_auth.py`. No persona implements its own JWKS fetch, JWT verification, RSA key management, or ASGI middleware.
 
 **Capabilities:**
 
@@ -298,13 +298,18 @@ User clicks "Connect to Google Drive"
 
 ## JWKS Endpoint
 
-Agience publishes its RSA public key at:
+Agience publishes its trust roots inline in the platform authority
+manifest (`KEYS_DIR/authority.manifest.json`) — an artifact written by
+the init container at first boot, signed by the platform authority
+keypair, and read by every service on startup. After Step F there is no
+HTTP `/.well-known/jwks.json` fetch; trust is bootstrapped from the
+manifest's inline JWKS.
 
-```
-GET /.well-known/jwks.json
-```
-
-Key management is handled by `backend/core/key_manager.py`. RSA key pairs are generated and stored on disk in `backend/keys/`. The JWKS endpoint publishes the public key(s) so external services and MCP clients can verify Agience-issued JWTs without contacting the platform.
+Key management is handled by `src/kernel/key_manager.py`. RSA key pairs
+(one per first-party service: origin, mantle, chorus, plus the platform
+authority itself) are generated and stored on disk in `KEYS_DIR/`. The
+authority manifest aggregates each service's public key into a single
+JWKS-shaped block.
 
 **Key rotation.** The platform can serve multiple keys simultaneously (identified by `kid`) to support zero-downtime rotation. Tokens issued before rotation carry the old `kid`; they remain valid until expiry. New tokens carry the new `kid`. Once all old tokens have expired, the old key can be removed from the JWKS.
 
@@ -312,7 +317,7 @@ Key management is handled by `backend/core/key_manager.py`. RSA key pairs are ge
 
 ## Access Control Configuration
 
-Agience supports allowlist-based access control at the platform level, restricting who can create an account or log in. These are configured via environment variables in `backend/core/config.py`:
+Agience supports allowlist-based access control at the platform level, restricting who can create an account or log in. These are configured via environment variables in `src/kernel/config.py`:
 
 | Variable | Description |
 |----------|-------------|

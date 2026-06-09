@@ -1,0 +1,56 @@
+namespace: agience
+slug: agience-doc-agents
+content_type: text/markdown
+name: AI Agents and MCP
+context:
+  content_type: text/markdown
+  title: AI Agents and MCP
+content: |
+  # AI Agents and MCP
+
+  Agience is built around **MCP (Model Context Protocol)** -- an open standard for connecting AI
+  models to tools and resources. Every agent in Agience is an MCP server.
+
+  ## Platform Agents
+
+  Your instance includes seven built-in server personas:
+
+  | Agent | Specialty |
+  |-------|-----------|
+  | **Aria** | Output & presentation -- formats results for humans |
+  | **Astra** | Ingestion & indexing -- captures and prepares content |
+  | **Sage** | Research & retrieval -- searches and synthesises knowledge |
+  | **Iris** | Networking & routing -- connects services and channels |
+  | **Ophan** | Finance & licensing -- value transfers and entitlements |
+  | **Seraph** | Security & trust -- access control and cryptographic signing |
+  | **Verso** | Reasoning & workflows -- orchestrates multi-step tasks |
+
+  Browse **Platform Artifacts -> All Servers** for details on each server, and
+  **Platform Artifacts -> All Tools** for a complete tool catalog.
+
+  ## Using Agents
+
+  You can invoke agents in three ways:
+
+  1. **Via Chat** -- type in the chat panel; Aria handles conversation and delegates to other agents
+  2. **Via the Command Palette** (⌘K) -- search for an agent action and run it directly
+  3. **Via Transforms** -- create an artifact with a `run` block that chains agent actions
+
+  ## Adding External Servers
+
+  You can connect any MCP-compatible server to Agience by creating a card of type
+  `vnd.agience.mcp-server+json` in your workspace. Once registered, its tools become
+  available to agents.
+
+  ## The MCP Advantage
+
+  Because agents communicate via MCP they're:
+
+  - **Composable** -- tools from different servers chain together
+  - **Discoverable** -- the platform can list all available tools at runtime
+  - **Secure** -- auth tokens are scoped per server and per workspace
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-start-here
+    origin: true
+    order_key: a3

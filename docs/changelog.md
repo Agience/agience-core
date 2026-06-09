@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Status: **Reference**
 Date: 2026-04-01
@@ -24,7 +24,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 **Search**
 
 - Hybrid BM25 (lexical) + kNN (semantic) search with Reciprocal Rank Fusion (k=60)
-- OpenAI text-embedding-ada-002 embeddings via OpenSearch
+- Embeddings via the configured embeddings provider; encrypted IVF cells in S3
 - Aperture control — statistical elbow method for semantic neighborhood filtering
 - Field boost presets (description-first, balanced, content-heavy)
 - Unified search across workspaces and collections via `POST /artifacts/search`
@@ -55,8 +55,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Aria** (port 8083) — response formatting, chat turn execution, presentation artifacts
 - **Astra** (port 8087) — file ingestion, text extraction
-- **Atlas** (port 8085) — provenance tracing, conflict detection, contract enforcement
-- **Nexus** (port 8086) — email/message delivery, MCP server management, sandboxed shell execution
+- **Mantle** (port 8081) — provenance tracing, conflict detection, contract enforcement
+- **Iris** (port 8086) — email/message delivery, MCP server management, sandboxed shell execution
 - **Sage** (port 8084) — hybrid search, artifact lookup, Azure AI Search projection
 - Unified host mount (`_host`, port 8082) — all persona servers on a single port for deployment simplicity
 
@@ -85,7 +85,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 **Deployment**
 
-- Docker Compose stack: all services, infra (ArangoDB, OpenSearch, MinIO), and MCP persona servers
+- Docker Compose stack: all services, infra (ArangoDB, Postgres, MinIO), and MCP persona servers
 - Self-hosting path with documented environment variable configuration
 - Hosted preview environment at `agience.ai`
 - Frontend runtime config injection (`public/config.js`) for zero-rebuild environment switching
@@ -94,7 +94,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Three-layer model** — Core (kernel), Handlers (MCP servers and drivers), Presentation (frontend shell) with enforced separation
 - **Type blindness in Core** — no MIME constants, no `artifact.context` parsing in Core services or Presentation components
-- **Registry-driven viewer dispatch** — all type-specific viewer wiring flows through `frontend/src/registry/`; Presentation never imports handler code directly
+- **Registry-driven viewer dispatch** — all type-specific viewer wiring flows through `src/facet/src/registry/`; Presentation never imports handler code directly
 - **MCP Apps pattern** — content type viewers served as `ui://` resources from MCP servers and rendered in the frontend's iframe sandbox (`McpAppHost.tsx`)
 - **Unified entity design** — all artifacts use a single `Artifact` entity with one `to_dict()` method. `Collection` is an alias for `Artifact`. Container artifacts are distinguished by `content_type`.
 - **Fractional indexing** — workspace artifact ordering uses lexicographic base-62 keys to avoid renumbering on reorder

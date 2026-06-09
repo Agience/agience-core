@@ -1,4 +1,4 @@
-# Agience Platform Overview
+﻿# Agience Platform Overview
 
 Status: **Reference**
 Date: 2026-04-01
@@ -27,7 +27,7 @@ Important context is often created in real time and then flattened:
 Agience captures the reasoning chain that produced outputs, not just the outputs themselves. The canonical reasoning structure:
 
 ```
-evidence → claim → constraint → decision → action → receipt
+evidence → claim → constraint → decision → action
 ```
 
 These units become artifacts in versioned collections. Documents and reports become derived projections of the committed artifact collections.
@@ -131,14 +131,16 @@ Kernel
 ### Storage
 
 ```
-ArangoDB          → Workspaces (ephemeral drafts, high-churn editing)
-                  → Collections (committed, versioned, immutable history)
-                  → Grants, API keys, commits, commit items
-S3-compatible     → Media/document content storage
-OpenSearch        → Hybrid BM25 + kNN search (OpenAI embeddings)
+Postgres (Origin) → Identity, OIDC clients, grants, passkeys, OTP
+ArangoDB (Mantle)  → Unified artifact + collection store (drafts +
+                    committed versions in one table, distinguished by state)
+                  → Grants (light-cone propagated), commits, commit items
+S3-compatible     → Media/document content
+                  → Encrypted MANTLE+SSE search blobs (no plaintext text
+                    in any search index)
 ```
 
-ArangoDB is the sole database. Workspaces hold ephemeral draft state; collections hold durable committed truth. Both share the same ArangoDB instance with separate document collections.
+Postgres is the identity tier (Origin only). ArangoDB is the artifact tier (Mantle). Search runs entirely in-process inside Mantle on encrypted MANTLE+SSE blobs in S3 — no separate search container.
 
 ---
 
@@ -234,7 +236,7 @@ That search layer supports:
 - evidence-backed research and synthesis
 - chat and question-answering grounded in available context
 
-Search is hybrid BM25 (lexical) + kNN (semantic) with RRF fusion via OpenSearch and OpenAI embeddings.
+Search is encrypted hybrid: MANTLE-SSE (lexical, blind-token BM25) + MANTLE (vector, encrypted IVF) fused via RRF. Both arms decrypt only the cells the query needs; the storage layer never sees plaintext. Embeddings come from the configured embeddings provider (default: the Agience embeddings server).
 
 ### Operators and automation
 
@@ -290,7 +292,7 @@ The product rule is official-first: if a vendor already publishes an MCP server,
 
 Servers extend the platform via MCP. Servers define artifact types (via the content type system), tools (MCP tool surface), and operators (Operator artifacts).
 
-Eight purpose-built MCP servers ship with the platform: **Astra** (ingestion), **Sage** (research), **Atlas** (governance), **Verso** (reasoning), **Aria** (output), **Nexus** (networking), **Seraph** (security), **Ophan** (finance).
+Eight purpose-built MCP servers ship with the platform: **Astra** (ingestion), **Sage** (research), **Mantle** (artifact kernelernance), **Verso** (reasoning), **Aria** (output), **Iris** (networking), **Seraph** (security), **Ophan** (finance).
 
 Artifact types can be derived from platform primitives using the `inherits` field in `type.json`. This preserves core semantics while allowing domain-specific extensions.
 

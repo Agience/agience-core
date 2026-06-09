@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agience-host-docker"
+version = "0.1.0"
+license = "AGPL-3.0-only"
+description = "Reference shell for an Agience docker-host (mutual-JWT trusted internal peer)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "httpx>=0.27",
+    "pyjwt[crypto]>=2.9",
+    "cryptography>=42"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4"
+]
+
+[tool.ruff]
+line-length = 100

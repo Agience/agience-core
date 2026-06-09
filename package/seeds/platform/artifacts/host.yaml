@@ -1,0 +1,42 @@
+# Current-instance host artifact — the integrated host running all first-party
+# MCP servers in-process. References the deployment authority.
+namespace: agience
+slug: agience-host-current-instance
+content_type: application/vnd.agience.host+json
+name: Host
+description: >-
+  Integrated host for this Agience Core deployment. Runs all first-party MCP
+  servers in-process under the deployment authority.
+context:
+  type: host
+  content_type: application/vnd.agience.host+json
+  title: Agience Core
+  platform: integrated
+  authority:
+    artifact_id: agience/agience-authority-current-instance
+    collection_id: agience/agience-authorities
+  servers:
+    - aria
+    - astra
+    - mantle
+    - sage
+    - iris
+    - ophan
+    - seraph
+    - verso
+  host:
+    scope: current-instance
+    install:
+      owner_repo: true
+content: >-
+  Integrated host for this Agience Core deployment. Runs all first-party MCP
+  servers in-process. Operates under the deployment authority.
+edges:
+  - rel: contained_by
+    to: agience/agience-hosts
+    origin: true
+    order_key: a0
+  - rel: contained_by
+    to: agience/agience-seeds-platform-artifacts
+    origin: false
+    order_key: a4

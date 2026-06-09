@@ -1,0 +1,56 @@
+# Reference Dockerfile for an Agience docker-host.
+#
+# Build context is the repo root (so `src/kernel/` is reachable).
+# Adapt this for your own service:
+#   1. Replace HOST_NAME with your service name (used for the keypair file).
+#   2. Replace HOST_DIR with your host's source directory.
+#   3. Adjust requirements.txt for your dependencies.
+#   4. Adjust the CMD line for your entrypoint.
+#
+# Build:
+#   docker build -f package/hosts/docker/Dockerfile.template \
+#     --build-arg HOST_NAME=my-host \
+#     --build-arg HOST_DIR=package/hosts/docker \
+#     -t my-host:dev .
+
+FROM python:3.12-slim
+
+ARG HOST_NAME=my-host
+ARG HOST_DIR=package/hosts/docker
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    AGIENCE_SERVICE_NAME=${HOST_NAME}
+
+WORKDIR /app
+
+# ---- System deps ----
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential gcc && \
+    rm -rf /var/lib/apt/lists/*
+
+# ---- Python deps ----
+COPY ${HOST_DIR}/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ---- Kernel (signing + authority verification) ----
+COPY src/kernel/ ./kernel/
+
+# ---- Host source ----
+COPY ${HOST_DIR}/ ./host/
+
+# ---- Build metadata ----
+COPY build_info.json /app/build_info.json
+
+ARG APP_VERSION
+LABEL org.opencontainers.image.version="${APP_VERSION}"
+
+# Mutual-JWT trust: the running container must have access to:
+#   /keys/<HOST_NAME>.private.pem      (this host's signing key)
+#   /keys/authority.manifest.json      (platform trust anchors)
+# Mount the shared secrets volume at /keys (read-only).
+ENV KEYS_DIR=/keys
+
+EXPOSE 8080
+CMD ["python", "-m", "host.example_main"]

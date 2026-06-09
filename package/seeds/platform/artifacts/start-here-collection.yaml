@@ -1,0 +1,11 @@
+namespace: agience
+slug: agience-seeds-start-here
+content_type: application/vnd.agience.collection+json
+name: Start Here
+description: >-
+  Onboarding guides for new users. Read these to get started with Agience.
+edges:
+  - rel: contained_by
+    to: agience/agience-inbox-seeds
+    origin: false
+    order_key: a0

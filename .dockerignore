@@ -26,9 +26,17 @@ dist-ssr
 
 # Python (if relevant to your project)
 __pycache__/
+**/__pycache__
 *.py[cod]
 *.pyo
 *.pyd
+
+# Python virtualenvs — must not leak host venvs into image builds
+# (e.g. src/mantle/.venv would otherwise be copied by COPY src/mantle/).
+**/.venv
+**/venv
+.venv
+venv
 
 # Test artifacts & coverage
 coverage/

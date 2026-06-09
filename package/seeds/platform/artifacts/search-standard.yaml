@@ -1,0 +1,17 @@
+namespace: agience
+slug: agience-search-standard
+content_type: application/vnd.agience.search+json
+name: Search
+description: Standard semantic + lexical search over your authorized artifacts.
+context:
+  type: search
+  content_type: application/vnd.agience.search+json
+  title: Search
+  run:
+    type: standard
+content: "Standard Agience search — encrypted SSE lexical + MANTLE vector, RRF-fused, scoped to your authorized contexts. Invoke with a query_text or embedding."
+edges:
+  - rel: contained_by
+    to: agience/agience-resources
+    origin: true
+    order_key: a0

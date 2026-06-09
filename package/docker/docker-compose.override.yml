@@ -1,0 +1,75 @@
+﻿# Local development overlay — source builds plus host-exposed ports.
+# This file is what turns the base deployment compose into a local build/run setup.
+# This file should NOT be used in production.
+#
+# Dev installs access the platform via localhost ports (8081 backend, 5173 frontend).
+
+services:
+
+  init:
+    image: ${INIT_IMAGE:-agience-core-init}
+    build:
+      context: .
+      dockerfile: package/docker/Dockerfile.init
+
+  content:
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+
+  graph:
+    ports:
+      - "${ARANGO_PORT:-8529}:8529"
+
+  origin:
+    image: ${ORIGIN_IMAGE:-agience-core-origin}
+    build:
+      context: .
+      dockerfile: package/docker/origin.Dockerfile
+    ports:
+      - "${ORIGIN_PORT:-8080}:8080"
+    environment:
+      - FRONTEND_URI=${FRONTEND_URI:-http://localhost:5173}
+      - ORIGIN_URI=${ORIGIN_URI:-http://localhost:8080}
+    volumes:
+      - ${DATA_PATH:-./.data}/keys:/app/.data/keys:ro
+      - ${DATA_PATH:-./.data}/origin:/app/.data/origin
+
+  mantle:
+    image: ${MANTLE_IMAGE:-agience-core-mantle}
+    build:
+      context: .
+      dockerfile: package/docker/mantle.Dockerfile
+    ports:
+      - "${MANTLE_PORT:-8081}:8081"
+    environment:
+      - FRONTEND_URI=${FRONTEND_URI:-http://localhost:5173}
+      - MANTLE_URI=${MANTLE_URI:-http://localhost:8081}
+      - BACKEND_URI=${MANTLE_URI:-http://localhost:8081}
+      - ORIGIN_URI=${ORIGIN_URI:-http://localhost:8080}
+    volumes:
+      - ${DATA_PATH:-./.data}/keys:/app/.data/keys:ro
+
+  facet:
+    image: ${FACET_IMAGE:-agience-core-facet}
+    build:
+      context: .
+      dockerfile: package/docker/facet.Dockerfile
+    ports:
+      - "${FACET_PORT:-5173}:80"
+
+  stream:
+    image: ${STREAM_IMAGE:-agience-core-stream}
+    build:
+      context: package/docker/stream
+      dockerfile: Dockerfile
+    ports:
+      # RTMP ingest — OBS and other encoders connect here.
+      - "${STREAM_RTMP_PORT:-1936}:1936"
+      # HLS/HTTP — browser playback and Caddy proxy target.
+      - "${STREAM_HTTP_PORT:-1985}:1985"
+    environment:
+      # In dev, Mantle is reachable at localhost:8081 from the host but
+      # from inside Docker it's at http://mantle:8081.
+      - STREAM_WEBHOOK_URI=${STREAM_WEBHOOK_URI:-http://mantle:8081}
+

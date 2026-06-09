@@ -1,0 +1,216 @@
+﻿# Agience Home — local install (home.agience.ai → 127.0.0.1)
+#
+# Self-contained — no .env file, no external config files required.
+# The init container generates all credentials on first boot.
+# The Caddy image fetches the TLS cert from CDN at startup.
+# Platform settings are configured through the setup wizard in the browser.
+#
+# Architecture (post Step 1.5 four-container split):
+#   origin   :8080  identity / OIDC / grants (SQLite-backed)
+#   mantle  :8081  artifact kernel + encrypted mantle+SSE search (Arango+MinIO)
+#   chorus   :8082  universal MCP gateway + persona servers (FastMCP)
+#   facet    :80    React SPA (served by Caddy)
+#   stream         RTMP / SRS for live media (port 1936)
+#   caddy    :443  TLS reverse proxy
+#
+# Set REGISTRY in .env to override the Docker Hub namespace (default: agience).
+# Set VERSION=edge to pull main-branch builds.
+#
+# Install:   curl -fsSL https://get.agience.ai/install.sh | sh -s -- --mode home
+# Start:     docker compose up -d
+# Open:      https://home.agience.ai
+# Update:    docker compose pull && docker compose up -d
+
+services:
+
+  # ── Init — generates all key material on first boot ──────────────────
+  # Idempotent: skips if .data/.initialized exists.
+
+  init:
+    image: ${REGISTRY:-agience}/agience-init:${VERSION:-stable}
+    container_name: init
+    volumes:
+      - ./.data:/data
+
+  # ── Data layer ───────────────────────────────────────────────────────
+
+  graph:
+    image: arangodb:3.11
+    container_name: graph
+    restart: unless-stopped
+    environment:
+      - ARANGO_NO_AUTH=0
+    entrypoint: ["/bin/sh", "-c", "export ARANGO_ROOT_PASSWORD=$(cat /run/keys/arango.pass) && exec /entrypoint.sh arangod"]
+    volumes:
+      - ./.data/arangodb:/var/lib/arangodb3
+      - ./.data/arangodb-apps:/var/lib/arangodb3-apps
+      - ./.data/keys:/run/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8529/_api/version >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  content:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
+    container_name: content
+    restart: unless-stopped
+    environment:
+      - MINIO_ROOT_USER=agience
+    entrypoint: ["/bin/sh", "-c", "export MINIO_ROOT_PASSWORD=$(cat /run/keys/minio.pass) && exec /usr/bin/docker-entrypoint.sh server /data --console-address :9001"]
+    volumes:
+      - ./.data/minio:/data
+      - ./.data/keys:/run/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  # ── Platform services (four-container architecture) ─────────────────
+
+  origin:
+    image: ${REGISTRY:-agience}/agience-origin:${VERSION:-stable}
+    pull_policy: always
+    container_name: origin
+    restart: unless-stopped
+    environment:
+      - BUILD_INFO_PATH=/app/build_info.json
+      - KEYS_DIR=/app/.data/keys
+      - ORIGIN_URI=https://home.agience.ai
+      - FRONTEND_URI=https://home.agience.ai
+    volumes:
+      - ./.data/keys:/app/.data/keys:ro
+      - ./.data/origin:/app/.data/origin
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; urllib.request.urlopen('http://localhost:8080/healthz', timeout=2); sys.exit(0)\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  mantle:
+    image: ${REGISTRY:-agience}/agience-mantle:${VERSION:-stable}
+    pull_policy: always
+    container_name: agience-mantle
+    restart: unless-stopped
+    environment:
+      - BUILD_INFO_PATH=/app/build_info.json
+      - ARANGO_HOST=graph
+      - AGIENCE_SERVER_HOST_URI=http://chorus:8082
+      - MINIO_ROOT_USER=agience
+      - KEYS_DIR=/app/.data/keys
+      - ORIGIN_URI=http://origin:8080
+      - FRONTEND_URI=https://home.agience.ai
+      - MANTLE_URI=https://home.agience.ai/api
+      # Embeddings is external — set EMBEDDINGS_URI to a reachable /embed
+      # endpoint. Unset → lexical-only search.
+      - EMBEDDINGS_PROVIDER=agience
+      - EMBEDDINGS_URI=${EMBEDDINGS_URI:-}
+      - EMBEDDINGS_API_KEY=${EMBEDDINGS_API_KEY:-}
+      - EMBEDDINGS_DIM=1024
+      - AWS_ENDPOINT_URL=http://content:9000
+      - AWS_ENDPOINT_URL_PUBLIC=https://home.agience.ai/content
+    volumes:
+      - ./.data/keys:/app/.data/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; urllib.request.urlopen('http://localhost:8081/status', timeout=2); sys.exit(0)\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+    depends_on:
+      content:
+        condition: service_healthy
+      graph:
+        condition: service_healthy
+      origin:
+        condition: service_healthy
+
+  chorus:
+    image: ${REGISTRY:-agience}/agience-chorus:${VERSION:-stable}
+    pull_policy: always
+    container_name: chorus
+    restart: unless-stopped
+    environment:
+      - MANTLE_URI=http://mantle:8081
+      - ORIGIN_URI=http://origin:8080
+      - SRS_HTTP_API=http://stream:1985
+      - STREAM_BASE_URL=http://stream:1985/live
+      - STREAM_INGEST_URL=rtmp://localhost:1936/live
+      - KEYS_DIR=/run/secrets/keys
+    volumes:
+      - ./.data/iris:/workspace
+      - ./.data/stream:/var/stream
+      - ./.data/keys:/run/secrets/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; urllib.request.urlopen('http://localhost:8082/healthz', timeout=2); sys.exit(0)\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    depends_on:
+      mantle:
+        condition: service_healthy
+
+  stream:
+    image: ${REGISTRY:-agience}/agience-stream:${VERSION:-stable}
+    pull_policy: always
+    container_name: stream
+    restart: unless-stopped
+    environment:
+      - CHORUS_URI=http://chorus:8082/astra
+    volumes:
+      - ./.data/stream:/var/stream
+    ports:
+      - "1936:1936"
+
+  facet:
+    image: ${REGISTRY:-agience}/agience-facet:${VERSION:-stable}
+    pull_policy: always
+    container_name: facet
+    restart: unless-stopped
+    environment:
+      - VITE_MANTLE_URI=https://home.agience.ai/api
+      - VITE_ORIGIN_URI=https://home.agience.ai
+      - VITE_TITLE=Agience
+
+  # ── Router — Caddy with TLS cert fetched from CDN at startup ─────────
+  # The agience-home image has the Caddyfile baked in and fetches
+  # the TLS cert from get.agience.ai on every container start.
+
+  caddy:
+    image: ${REGISTRY:-agience}/agience-home:${VERSION:-stable}
+    pull_policy: always
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./.data/keys:/run/keys
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      facet:
+        condition: service_started
+      origin:
+        condition: service_healthy
+      mantle:
+        condition: service_healthy
+      content:
+        condition: service_healthy
+      stream:
+        condition: service_started

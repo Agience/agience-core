@@ -1,0 +1,32 @@
+namespace: agience
+slug: agience-llm-anthropic-sonnet
+content_type: application/vnd.agience.llm-connection+json
+name: Claude Sonnet 4.6
+context:
+  content_type: application/vnd.agience.llm-connection+json
+  title: Claude Sonnet 4.6
+  description: Default reasoning model. Strong general-purpose intelligence.
+  provider: anthropic
+  model: claude-sonnet-4-6
+  tier: free
+  rate_limits:
+    requests_per_minute: 60
+    tokens_per_minute: 100000
+    tokens_per_day: 2000000
+  capabilities:
+    chat: true
+    reasoning: true
+    vision: true
+    function_calling: true
+    max_context_tokens: 200000
+  credentials_ref:
+    secret_type: llm_key
+    provider: anthropic
+    resolution: platform_default
+  is_platform_default: true
+content: "Claude Sonnet 4.6 — Default reasoning model. Strong general-purpose intelligence. Provider: anthropic, Model: claude-sonnet-4-6, Tier: free."
+edges:
+  - rel: contained_by
+    to: agience/agience-llm-connections
+    origin: true
+    order_key: a0

@@ -1,0 +1,8 @@
+namespace: agience
+slug: agience-llm-connections
+content_type: application/vnd.agience.collection+json
+name: LLM Connections
+description: >-
+  Platform-provided LLM connection artifacts. Includes default connections to
+  current models (Claude, GPT) included with subscription tiers. Users can add
+  their own connections.

@@ -1,0 +1,66 @@
+﻿# Agience Chorus — all 7 MCP persona servers in a single host container.
+# Include alongside the base compose file for local dev or production.
+#
+# Usage (from repo root, with --project-directory .):
+#   dev/local:  -f docker/docker-compose.yml -f docker/docker-compose.override.yml -f docker/docker-compose.chorus.yml
+#   deploy:     -f docker/docker-compose.yml -f path/to/your-overlay.yml          -f docker/docker-compose.chorus.yml
+#
+# Endpoints (all on port 8082):
+#   /aria/mcp    Aria   — Presentation & Interface
+#   /sage/mcp    Sage   — Research & Retrieval
+#   /iris/mcp    Iris   — Routing & Communication
+#   /astra/mcp   Astra  — Ingestion & Indexing  (+ stream webhook routes)
+#   /verso/mcp   Verso  — Reasoning & Workflow
+#   /seraph/mcp  Seraph — Security & Governance
+#   /ophan/mcp   Ophan  — Economic Operations
+#
+# Default MANTLE_URI: http://host.docker.internal:8081 (dev mode, mantle runs locally).
+# Set MANTLE_URI=http://mantle:8081 in .env for full/prod stack deployments.
+
+services:
+
+  chorus:
+    image: ${CHORUS_IMAGE:-agience-core-chorus}
+    container_name: ${COMPOSE_PROJECT_NAME:-agience}-chorus
+    build:
+      context: .
+      dockerfile: package/docker/chorus.Dockerfile
+      args:
+        GH_TOKEN: ${GH_TOKEN:-}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MANTLE_URI=${MANTLE_URI:-http://host.docker.internal:8081}
+      - ORIGIN_URI=${ORIGIN_URI:-http://host.docker.internal:8080}
+      - MCP_PORT=8082
+      - KEYS_DIR=/app/.data/keys
+      - SRS_HTTP_API=${SRS_HTTP_API:-http://stream:1985}
+      - STREAM_BASE_URL=${STREAM_BASE_URL:-http://stream:1985/live}
+      - STREAM_INGEST_URL=${STREAM_INGEST_URL:-rtmp://stream:1936/live}
+    volumes:
+      - ${IRIS_WORKSPACE:-./.data/iris}:/workspace
+      - ${DATA_PATH:-./.data}/stream:/var/stream  # shared with stream for HLS→MP4 finalization
+      - ${DATA_PATH:-./.data}/keys:/app/.data/keys:ro  # chorus.private.pem + authority.manifest.json
+    ports:
+      - "${CHORUS_PORT:-8082}:8082"
+
+  stream:
+    image: ${STREAM_IMAGE:-agience-core-stream}
+    container_name: ${COMPOSE_PROJECT_NAME:-agience}-stream
+    build:
+      context: src/chorus/astra
+      dockerfile: stream/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - BACKEND_URI=${STREAM_WEBHOOK_URI:-http://chorus:8082/astra}
+    volumes:
+      - ${DATA_PATH:-./.data}/stream:/var/stream
+    ports:
+      - "${STREAM_RTMP_PORT:-1936}:1936"
+      - "${STREAM_HTTP_PORT:-1985}:1985"

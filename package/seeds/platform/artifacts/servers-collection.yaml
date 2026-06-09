@@ -1,0 +1,14 @@
+namespace: agience
+slug: agience-seeds-all-servers
+content_type: application/vnd.agience.collection+json
+name: Agience Servers
+description: >-
+  Platform-owned MCP server catalog. Every first-party persona (Aria, Astra,
+  Mantle, Sage, Iris, Ophan, Seraph, Verso) is seeded here as a
+  vnd.agience.mcp-server+json artifact. Users receive read access automatically
+  on first login.
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-platform-artifacts
+    origin: false
+    order_key: a0

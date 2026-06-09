@@ -1,0 +1,25 @@
+namespace: agience
+slug: agience-agent-seraph
+content_type: application/vnd.agience.agent+json
+name: Seraph
+context:
+  type: agent
+  content_type: application/vnd.agience.agent+json
+  title: Seraph
+  agent:
+    version: 1
+    kind: platform-server
+    role: Security and trust
+    server_id: agience/agience-server-seraph
+    host_artifact_id: agience/agience-host-current-instance
+    authority_artifact_id: agience/agience-authority-current-instance
+content: "Seraph is a platform agent. Domain: Security and trust. Enforces trust, guardrails, and security policies."
+edges:
+  - rel: contained_by
+    to: agience/agience-resources
+    origin: true
+    order_key: a5
+  - rel: contained_by
+    to: agience/agience-seeds-agents
+    origin: false
+    order_key: a5

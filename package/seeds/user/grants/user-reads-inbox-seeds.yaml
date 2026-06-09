@@ -1,0 +1,7 @@
+type: grant
+namespace: agience
+slug: user-reads-inbox-seeds
+principal: "{{user.id}}"
+resource: agience/agience-inbox-seeds
+actions: [read]
+name: Platform seed collection (auto-granted on first login)

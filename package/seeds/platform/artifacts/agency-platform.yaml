@@ -1,0 +1,27 @@
+namespace: agience
+slug: agience-agency-platform
+content_type: application/vnd.agience.agency+json
+name: Agience Platform Agency
+context:
+  type: agency
+  content_type: application/vnd.agience.agency+json
+  title: Agience Platform Agency
+  agency:
+    version: 1
+    lead_agent: agience/agience-agent-aria
+    agents:
+      - agience/agience-agent-aria
+      - agience/agience-agent-astra
+      - agience/agience-agent-sage
+      - agience/agience-agent-iris
+      - agience/agience-agent-ophan
+      - agience/agience-agent-seraph
+      - agience/agience-agent-verso
+content: >-
+  Platform-managed agency artifact that groups canonical Agience platform agents.
+  Users can reference these agents from collections, search, and transforms.
+edges:
+  - rel: contained_by
+    to: agience/agience-resources
+    origin: true
+    order_key: a7

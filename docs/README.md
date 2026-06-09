@@ -69,6 +69,7 @@ For MCP client configuration, see [MCP Client Setup](mcp/client-setup.md).
 
 | Document | Description |
 |---|---|
+| [Anchored Reasoning](features/anchored-reasoning.md) | Premium tier — anchors AI answers to verified evidence, prevents hallucination (patent-pending) |
 | [Search](features/search.md) | Hybrid BM25 + semantic search, aperture control, query language |
 | [Agent Execution](features/agent-execution.md) | Agent artifacts, operator execution, and invocation API |
 | [Desktop Host Relay](features/desktop-host-relay.md) | Local MCP bridge via WebSocket relay for desktop apps |
@@ -107,7 +108,7 @@ For MCP client configuration, see [MCP Client Setup](mcp/client-setup.md).
 | [Best Practices](guides/best-practices.md) | Coding conventions, testing, and anti-patterns |
 | [Component Guide](guides/component-guide.md) | Frontend component inventory and usage patterns |
 | [Color Standards](guides/color-standards.md) | Design system color palette and usage rules |
-| [CI/CD Pipeline](guides/ci-cd.md) | Build, test, and deployment pipeline overview |
+| [Run, Release & Deploy](guides/ci-cd.md) | Operator runbook: run locally, cut releases, deploy hosted sites |
 
 ---
 

@@ -1,0 +1,7 @@
+type: grant
+namespace: agience
+slug: user-reads-anchorset
+principal: "{{user.id}}"
+resource: agience/agience-anchorset
+actions: [read]
+name: Shared AnchorSet ontology (auto-granted on first login)

@@ -1,0 +1,22 @@
+namespace: agience
+slug: agience-server-astra
+content_type: application/vnd.agience.mcp-server+json
+name: Astra
+context:
+  type: mcp-server
+  content_type: application/vnd.agience.mcp-server+json
+  title: Astra
+  description: "Platform-native MCP server for file ingestion, validation, indexing, and live streaming."
+  mcp_server:
+    version: 1
+    kind: platform-builtin
+    name: astra
+    role: "Ingestion & streaming"
+    client_id: agience-server-astra
+    transport: builtin
+content: "Astra — Ingestion & streaming. Platform-native MCP server for file ingestion, validation, indexing, and live streaming."
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-servers
+    origin: true
+    order_key: a2

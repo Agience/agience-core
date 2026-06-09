@@ -1,0 +1,7 @@
+type: grant
+namespace: agience
+slug: user-reads-llm-connections
+principal: "{{user.id}}"
+resource: agience/agience-llm-connections
+actions: [read]
+name: Platform LLM connections (auto-granted on first login)

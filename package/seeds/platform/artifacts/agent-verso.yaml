@@ -1,0 +1,25 @@
+namespace: agience
+slug: agience-agent-verso
+content_type: application/vnd.agience.agent+json
+name: Verso
+context:
+  type: agent
+  content_type: application/vnd.agience.agent+json
+  title: Verso
+  agent:
+    version: 1
+    kind: platform-server
+    role: Reasoning and transforms
+    server_id: agience/agience-server-verso
+    host_artifact_id: agience/agience-host-current-instance
+    authority_artifact_id: agience/agience-authority-current-instance
+content: "Verso is a platform agent. Domain: Reasoning and transforms. Drives synthesis and transform-style reasoning flows."
+edges:
+  - rel: contained_by
+    to: agience/agience-resources
+    origin: true
+    order_key: a6
+  - rel: contained_by
+    to: agience/agience-seeds-agents
+    origin: false
+    order_key: a6

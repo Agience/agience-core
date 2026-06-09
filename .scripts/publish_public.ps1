@@ -119,9 +119,9 @@ $ExcludePaths = @(
     ".github/prompts"
     ".github/copilot-instructions.md"
     "CLAUDE.md"
-    "backend/CLAUDE.md"
-    "frontend/CLAUDE.md"
-    "servers/CLAUDE.md"
+    "atlas/CLAUDE.md"
+    "facet/CLAUDE.md"
+    "chorus/CLAUDE.md"
 )
 
 try {

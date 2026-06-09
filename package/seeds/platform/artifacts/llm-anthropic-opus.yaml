@@ -1,0 +1,32 @@
+namespace: agience
+slug: agience-llm-anthropic-opus
+content_type: application/vnd.agience.llm-connection+json
+name: Claude Opus 4.7
+context:
+  content_type: application/vnd.agience.llm-connection+json
+  title: Claude Opus 4.7
+  description: Most capable reasoning model. Pro tier.
+  provider: anthropic
+  model: claude-opus-4-7
+  tier: pro
+  rate_limits:
+    requests_per_minute: 60
+    tokens_per_minute: 100000
+    tokens_per_day: 2000000
+  capabilities:
+    chat: true
+    reasoning: true
+    vision: true
+    function_calling: true
+    max_context_tokens: 200000
+  credentials_ref:
+    secret_type: llm_key
+    provider: anthropic
+    resolution: platform_default
+  is_platform_default: true
+content: "Claude Opus 4.7 — Most capable reasoning model. Pro tier. Provider: anthropic, Model: claude-opus-4-7, Tier: pro."
+edges:
+  - rel: contained_by
+    to: agience/agience-llm-connections
+    origin: true
+    order_key: a2

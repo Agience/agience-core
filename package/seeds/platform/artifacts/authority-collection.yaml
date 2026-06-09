@@ -1,0 +1,7 @@
+namespace: agience
+slug: agience-authorities
+content_type: application/vnd.agience.collection+json
+name: Agience Authorities
+description: >-
+  Platform-owned authority registry for this Agience deployment. Users receive
+  read access automatically; operators manage authority and trust topology here.

@@ -1,283 +1,228 @@
-# CI/CD Pipeline & Host Deployment
+# Run, Release & Deploy
 
 Status: **Reference**
-Date: 2026-04-01
+Date: 2026-06-07
 
----
+The operator runbook for three things:
 
-## Overview
+1. **Run locally** — `agience.bat`
+2. **Cut releases** — version, tag, build images
+3. **Deploy hosted sites** — my.agience.ai and other tenants
 
-Agience uses a build-once, deploy-anywhere model. `agience-core` is the application source of truth. CI validates branch changes, branch publishes produce integration and release-line images, and stable Git tags publish the official release images.
-
-Host repos such as `agience-host-my` remain deployment-only. They pull already-built Docker Hub images and should pin explicit tags in `.env`.
+Agience uses a **build-once, deploy-anywhere** model. `agience-core` is the
+application source of truth: it builds the images. Hosted sites are
+deployment-only repos that pull already-built images and run `docker compose`.
 
 ```
-agience-core (GitHub)
-    │
-    ├── push to main         ──▶ CI ──▶ publish canary images
-    ├── push to release/X.Y  ──▶ CI ──▶ publish release-line images
-    └── push tag vX.Y.Z      ──▶ publish stable images
-                                                 │
-                                     ┌───────────┼───────────┐
-                                     ▼           ▼           ▼
-                              agience-host-my   brand hosts   test hosts
-                              pinned tags       pinned tags   pinned tags
+agience-core (private)
+    ├── push to main         ──▶ CI ──▶ :edge images
+    ├── push to release/X.Y  ──▶ CI ──▶ :stable-rc + :X.Y-rc-<sha7> images
+    └── tag vX.Y.Z           ──▶ CI ──▶ :stable :X.Y :X.Y.Z images  (Docker Hub + GHCR)
+                                                  │
+                                  ┌───────────────┼───────────────┐
+                                  ▼               ▼               ▼
+                            agience-prod-infra  agience-host-my   foresight tenant
+                            (shared Caddy)      (my.agience.ai)   (foresightreports…)
 ```
 
 ---
 
-## Container registries
+## 1. Run locally — `agience.bat`
 
-Images publish to Docker Hub and GitHub Container Registry (GHCR).
+From the repo root (`.\agience.bat <mode> [options]`):
 
-Current repositories:
-
-| Docker Hub Repository | Image |
+| Command | What it does |
 |---|---|
-| `${REGISTRY}/agience-backend` | FastAPI backend |
-| `${REGISTRY}/agience-frontend` | React frontend |
-| `${REGISTRY}/agience-servers` | Unified server host |
-| `${REGISTRY}/agience-stream` | Astra stream ingest |
+| `.\agience.bat dev -f` | **Daily driver.** Infra + origin + chorus in Docker; **mantle + facet run locally** (your code, live-reload). |
+| `.\agience.bat dev -f --reset` | Same, but factory-resets `.data` first → setup wizard → seeds + post-setup reindex. |
+| `.\agience.bat full` | Everything in Docker (uses locally-built images). |
+| `.\agience.bat full -b` | Full, **rebuild** images first (picks up code changes). |
+| `.\agience.bat test` | Precheck: mantle + facet lint & tests (`.scripts/precheck.ps1`). |
+| `.\agience.bat down` | Stop all containers. |
 
-GHCR mirrors the same images under:
+Backend `http://localhost:8081`, frontend `http://localhost:5173`. First `dev`
+run creates `src/mantle/.venv` and installs deps; `-i` forces a dependency
+refresh, `--clean-deps` rebuilds the venv + `node_modules` from scratch.
 
-- `ghcr.io/<owner>/agience-backend`
-- `ghcr.io/<owner>/agience-frontend`
-- `ghcr.io/<owner>/agience-servers`
-- `ghcr.io/<owner>/agience-stream`
+`--reset` wipes the database, object store, and RSA keys, then drops you into
+the first-run setup wizard. See [Local Development](../getting-started/local-development.md)
+and [Admin Setup](../getting-started/admin-setup.md).
 
-Required GitHub Actions secrets:
+---
 
-| Secret | Purpose |
+## 2. Container registries & image tags
+
+Each stable release publishes **7 images** to **Docker Hub** (`${REGISTRY}/…`,
+default namespace `agience`) and mirrors them to **GHCR**
+(`ghcr.io/<owner>/…`). Embeddings is **not** in the suite — it's an external
+service (see caveats):
+
+| Image | Service |
 |---|---|
-| `DOCKERHUB_NAMESPACE` | Docker Hub namespace (user or org that owns image repos) |
-| `DOCKERHUB_TOKEN` | Docker Hub access token |
+| `agience-origin` | FastAPI identity service (OIDC, grants, passkeys) |
+| `agience-mantle` | FastAPI artifact kernel + encrypted MANTLE/SSE search |
+| `agience-chorus` | FastMCP unified persona host + universal MCP gateway |
+| `agience-facet` | React SPA (environment-agnostic; host supplies runtime env) |
+| `agience-stream` | Astra stream ingest (SRS RTMP) |
+| `agience-init` | One-shot init container (key + password generation) |
+| `agience-home` | Caddy + cert-bootstrap image for the self-host starter |
 
-The current workflow publishes into the namespace defined by `DOCKERHUB_NAMESPACE`.
+Required GitHub Actions secrets: `DOCKERHUB_NAMESPACE`, `DOCKERHUB_TOKEN`
+(GHCR uses `GITHUB_TOKEN`).
 
----
+**Tag matrix:**
 
-## Branch & release model
-
-The branch model is:
-
-- `feature/**` and `dev/**`: active development
-- `main`: integration branch
-- `release/X.Y`: stabilization branch for release line `X.Y`
-- `hotfix/**`: targeted fixes that merge back into the release line and then into `main`
-
-Publishing behavior:
-
-- `main` publishes canary images automatically after CI passes
-- `release/X.Y` publishes release-line images automatically after CI passes
-- stable Git tags `vX.Y.Z` publish the official release images
-- prerelease Git tags are not used
-
-After shipping a release, merge the release branch back into `main`.
-
-### Freeze flow (recommended)
-
-When you want a release freeze:
-
-1. Cut `release/X.Y` from `main`.
-2. Keep accepting feature PRs to `main` for the next version.
-3. During freeze, target only release fixes at `release/X.Y`.
-4. Tag stable `vX.Y.Z` from `release/X.Y` (not from `main`).
-5. Merge `release/X.Y` back into `main` after the release to prevent drift.
-
----
-
-## Version source of truth
-
-`build_info.json` is the human-visible product version.
-
-Rules:
-
-- Do not change it for every branch build
-- Change it when the intended shipped product version changes
-- Stable Git tags must match it exactly
-
-Example:
-
-- `build_info.json = 1.1.0` requires stable Git tag `v1.1.0`
-
-If the stable tag and `build_info.json` do not match, stable publishing fails.
-
----
-
-## Image tagging strategy
-
-| Image tag | Source | Meaning |
+| Tag | Source | Meaning |
 |---|---|---|
-| `canary` | push to `main` | latest integration build |
-| `main-<sha>` | push to `main` | pinned integration build |
-| `X.Y-rc` | push to `release/X.Y` | latest build on release line `X.Y` |
-| `X.Y-<sha>` | push to `release/X.Y` | pinned build on release line `X.Y` |
-| `latest` | Git tag `vX.Y.Z` | current stable production release |
-| `X.Y` | Git tag `vX.Y.Z` | current stable release for line `X.Y` |
-| `X.Y.Z` | Git tag `vX.Y.Z` | pinned stable release |
+| `:edge` , `:edge-<sha7>` | push to `main` | latest integration build (rolling + per-commit pin) |
+| `:stable-rc` | push to `release/X.Y` | latest release-candidate across release lines |
+| `:X.Y-rc-<sha7>` | push to `release/X.Y` | pinned RC on line `X.Y` |
+| `:stable` | tag `vX.Y.Z` | current stable production release (moving pointer) |
+| `:X.Y` | tag `vX.Y.Z` | latest stable on line `X.Y` |
+| `:X.Y.Z` | tag `vX.Y.Z` | pinned stable release |
 
-Rules:
-
-- `latest` is reserved for stable releases only
-- `main` never publishes `latest`
-- `release/X.Y` never publishes `latest`
-- production hosts should pin explicit image tags in `.env`
+`:stable` is reserved for stable releases — `main` and `release/*` never publish
+it. Production hosts that want determinism pin `:X.Y.Z` (see §5).
 
 ---
 
-## Workflow behavior
+## 3. Branch & version model
 
-Workflow files:
-
-- `agience-core/.github/workflows/ci.yml`
-- `agience-core/.github/workflows/build-and-push.yml`
-
-### CI workflow
-
-`ci.yml` runs on:
-
-- push to `main`
-- push to `dev/**`
-- push to `feature/**`
-- push to `release/**`
-- push to `hotfix/**`
-- pull requests targeting `main`, `dev/**`, and `release/**`
-
-It runs backend, frontend, and docs validation only when the relevant areas changed.
-
-When the event is a push to `main` or `release/**`, and publish-relevant files changed, CI calls the reusable publish workflow after validation passes.
-
-### Publish workflow
-
-`build-and-push.yml` has two entry points:
-
-- reusable invocation from CI for `main` and `release/**` branch publishing
-- direct trigger on pushed stable tags matching `v*`
-
-The workflow:
-
-- checks out the exact commit being published
-- reads `build_info.json`
-- validates stable tags against `build_info.json`
-- rejects prerelease Git tags
-- logs in to Docker Hub
-- builds and pushes backend, frontend, servers, and stream images
-
-The frontend image remains environment-agnostic. Host repos provide runtime environment values such as backend URI, title, and branding.
-
-### Stable release helper
-
-Use the helper only for stable releases:
-
-```bash
-python .scripts/create_release_tag.py
-python .scripts/create_release_tag.py --create
-git push origin vX.Y.Z
+```
+feature/** , dev/**   active development
+        │
+        ▼
+      main              integration; publishes :canary
+        │
+        ▼
+   release/X.Y          stabilization for line X.Y; publishes :*-rc
+        │
+        ▼
+   tag vX.Y.Z           official release; publishes :stable :X.Y :X.Y.Z
 ```
 
-The helper reads `build_info.json`, refuses prerelease versions, previews the matching stable tag, and can create the local annotated tag for you.
+**`build_info.json` is the version source of truth** (the human-visible product
+version). Change it only when the shipped version changes; a stable tag `vX.Y.Z`
+**must** equal `build_info.json` exactly or stable publishing fails. Prerelease
+Git tags are not used — RCs come from `release/*` branches, not tags.
+
+> Releases are cut from `main`. If you've been working on `dev/<you>`, merge it
+> into `main` first.
 
 ---
 
-## Host repo pattern
+## 4. Cut a release
 
-Each host repo is deployment config only. It contains a compose file, edge proxy config, and environment values. It does not build application images.
-    docker-compose.yml      # pulls images, no build: directives
-    Caddyfile               # reverse proxy config for this domain
-    .env.example            # documents all required env vars
-    README.md               # deployment instructions for this host
-    .gitignore              # ignores .env (secrets never committed)
-```
+The release scripts live in `.scripts/` and are exposed as **VS Code tasks**
+(Ctrl+Shift+P → *Run Task*). Run from the repo root.
 
-A concrete starter lives in the [`agience-home`](https://github.com/agience/agience-home) repo.
+| Step | VS Code task | Script |
+|---|---|---|
+| Cut a release line | **Agience: RC — Cut Branch** | `cut-release.ps1 -Version X.Y` |
+| Tag a stable release | **Agience: Stable — Tag Release** | `tag-stable.ps1 -Version X.Y.Z` |
+| Create / finish a hotfix | **Agience: Hotfix — Create / Finish** | `hotfix.ps1 -Version X.Y.Z [-Finish -ForwardPort]` |
+| Pull `main` into a release line | **Agience: Release — Pull Main In** | `promote_main.ps1 -Base release/X.Y -Head main` |
+| Publish source to the public mirror | **Agience: Edge — Publish** | `publish_public.ps1` |
 
-The `.env` file on the server (never committed) sets explicit image tags:
+**a) Cut a release line** — `cut-release.ps1 -Version 0.3`
+Must be on `main`. Creates `release/0.3`, stamps `build_info.json` = `0.3.0`,
+commits, pushes. CI then builds `:stable-rc` + `:0.3-rc-<sha7>`. Stabilize on
+this branch (hotfixes / cherry-picks); keep merging features to `main` for the
+next line.
 
-```env
-REGISTRY=agience
-BACKEND_IMAGE=${REGISTRY}/agience-backend:1.2.3
-FRONTEND_IMAGE=${REGISTRY}/agience-frontend:1.2.3
-SERVERS_IMAGE=${REGISTRY}/agience-servers:1.2.3
-STREAM_IMAGE=${REGISTRY}/agience-stream:1.2.3
-DOMAIN=app.example.com
-API_DOMAIN=api.example.com
-VITE_BACKEND_URI=https://api.example.com
-VITE_CLIENT_ID=
-# ... all other required vars
-```
+**b) Tag stable** — `tag-stable.ps1 -Version 0.3.0`
+Bumps `build_info.json` to match if needed, tags `v0.3.0`, pushes `release/0.3`,
+**forward-ports `release/0.3` → `main`**, then runs `publish_public.ps1` to push
+the tag to the public mirror. The tag triggers:
 
-Deploying a new release is:
+- `build-and-push-ghcr.yml` → all 8 images at `:stable :0.3 :0.3.0` (Docker Hub + GHCR)
+- `release.yml` → GitHub Release with notes
 
-```bash
-docker compose pull
-docker compose up -d
-```
+**c) Hotfix** — `hotfix.ps1 -Version 0.2.1` then `… -Finish -ForwardPort`.
+Patch an existing `release/X.Y` without routing through `main`; `-Finish`
+forward-ports the fix back into `main`.
 
-That is all the host needs.
+### Workflow reference
 
----
-
-## Host roster
-
-| Host repo | Operator | Instance purpose | Release tracking |
-|---|---|---|---|
-| `agience-home` | Agience | Example self-host starter | pinned tag |
-| `agience-host-app` | Agience | SaaS main app authority instance | pinned tag |
-| `agience-host-astra` | Agience | (reserved — future Astra-specific host) | TBD |
-| `agience-host-verso` | Agience | (reserved — future Verso-specific host) | TBD |
-| `ikailo-host-aria` | Ikailo | Pinned release testing + Aria server sidecar | pinned tag |
-| `foresight-host-sage` | Foresight | White-labeled research agent product | pinned tag |
-| `questify-host-nexus` | Questify | DevOps subscription product (spawns instances) | pinned tag |
-
-### Hosts with server sidecars
-
-Some host repos add one or more MCP servers as additional services alongside the core stack. The server images are pulled directly from the server repos' own CI once those pipelines exist.
-
-Example — `ikailo-host-aria` adds the Aria server:
-
-```yaml
-services:
-  # ... core agience-core services (backend, frontend, etc.) ...
-
-  aria:
-    image: ${ARIA_IMAGE}
-    container_name: aria
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      - AGIENCE_API_URI=http://backend:8081
-      - PLATFORM_INTERNAL_SECRET=${PLATFORM_INTERNAL_SECRET}
-      - SRS_HTTP_API=http://stream:1985
-    depends_on:
-      backend:
-        condition: service_healthy
-```
+| Workflow | Trigger | Effect |
+|---|---|---|
+| `ci.yml` | push to `main`/`dev/**`/`feature/**`/`release/**`/`hotfix/**`, PRs | lint + tests; on `main`/`release/**` calls the publish workflow |
+| `build-and-push.yml` | reusable (from CI) | builds `:canary` / `:*-rc` branch images |
+| `build-and-push-ghcr.yml` | push tag `v*` | builds `:stable :X.Y :X.Y.Z` to Docker Hub + GHCR |
+| `release.yml` | push tag `v*` | GitHub Release notes |
+| `cut-release.yml` / `tag-stable.yml` / `hotfix-merge.yml` | — | CI-side counterparts of the local scripts |
 
 ---
 
-## Pinned deployment flow
+## 5. Deploy hosted sites
 
-1. Developer prepares a release branch and sets `build_info.json` to a release or prerelease version.
-2. Developer creates and pushes the matching stable Git tag `v1.2.3`.
-3. CI validates the tag/version match and pushes the images to Docker Hub.
-4. On the host, operators set explicit image tags in `.env`.
-5. Deploy or update the host:
-   ```bash
-   docker compose pull
-   docker compose up -d
-   ```
-6. Production hosts stay on pinned tags until operators deliberately update them.
+**Topology.** One production box runs a **shared Caddy** (`agience-prod-infra`)
+on an external Docker network named `agience`. Each tenant is its **own compose
+stack** that joins that network; Caddy routes by hostname to the tenant's
+containers. Tenants are isolated by compose project, container-name prefix, and
+data path — but share the box, the network, and the `agience/*` images.
+
+| Repo (local working dir) | Serves | Project / data |
+|---|---|---|
+| `agience-prod-infra` | shared Caddy + `agience` network | — |
+| `agience-host-my` (`my-agience-ai`) | my.agience.ai | `agience-*`, `/var/lib/my-agience` |
+| Foresight tenant (`foresight-my-agience-ai`) | foresightreports.my.agience.ai | `foresight-*`, `/var/lib/foresight` |
+
+Each host repo has a `release.yml` that SSHes to the box and runs
+`docker compose pull && docker compose up -d`, resolving image versions from its
+**`manifest.yml`** (`registry:` + `version:`, default `version: stable`). The
+exact domain, image pins, and secrets live in each host repo's `manifest.yml`,
+`<domain>.caddy`, and server-side `.env` (never committed).
+
+**First-time order:** deploy `agience-prod-infra` (creates the network + Caddy)
+→ `agience-host-my` → the Foresight tenant.
+
+**Routine deploy** (after a stable tag — `:stable` now points at the new build):
+
+- **my.agience.ai** — VS Code task **Agience: My — Deploy**
+  (`gh workflow run deploy-suite.yml --repo Agience/agience-core-private`).
+  `deploy-suite.yml` dispatches `agience-host-my`'s `release.yml` on its
+  `release` ref.
+- **Foresight / any other tenant** — there is no core shortcut: trigger that
+  tenant repo's own `release.yml` (GitHub → Actions → *Run workflow*, or push
+  its `release` branch).
+
+**Pin / roll back.** Edit `manifest.yml` in the tenant repo (set `version:` to
+`0.3.0` instead of `stable`), commit to `release`, redeploy. Revert the commit
+to roll back.
+
+**Add a tenant.** Clone a host repo; set its `<domain>.caddy`, `manifest.yml`,
+data path, and server `.env` (DOMAIN, OAuth, secrets); add a DNS A record to the
+box; deploy. The shared Caddy picks up the new `conf.d/<domain>.caddy` snippet on
+reload.
+
+### Self-host flavors (single box)
+
+For a single box (not the managed multi-tenant setup), the installer
+(`package/install/install.ps1` / `install.sh`) offers two compose flavors that
+pull the published `:stable` images:
+
+- **Home** (`package/install/home/`) — Caddy with **automatic TLS** on your own
+  domain (the `agience-home` image fetches the cert at startup). For a public
+  install with a domain.
+- **Plain** (`package/install/plain/`) — bare Caddy, **HTTP only, no domain**
+  (`http://localhost:8080`). For local / LAN / behind-your-own-proxy.
+
+See [Deploy to EC2](../getting-started/deploy-ec2.md) and
+[Self-Hosting](../getting-started/self-hosting.md). The release notes label the
+run targets **Local / Home / Dev / My / Hosted**.
 
 ---
 
-## Server image publishing
+## 6. Operator caveats
 
-Each `agience-server-*` repo will have its own GitHub Actions workflow mirroring the pattern above, publishing to:
-
-```
-{DOCKERHUB_NAMESPACE}/agience-server-aria:latest
-{DOCKERHUB_NAMESPACE}/agience-server-aria:1.2.3
-{DOCKERHUB_NAMESPACE}/agience-server-sage:latest
-# etc.
-```
+- **Releases come from `main`** — merge your `dev/*` branch in before cutting.
+- **Embeddings is external.** No stack bundles an embeddings container — set
+  `EMBEDDINGS_URI` (server `.env` / tenant `manifest`) to a reachable `/embed`
+  endpoint, e.g. a managed GPU host running `src/embeddings/`
+  (`package/docker/embeddings.gpu.Dockerfile` builds the CUDA image). Unset →
+  search degrades to lexical-only. See [Search](../features/search.md).
+- **Back up `/var/lib/<tenant>/.data/keys`** on the box — JWT + encryption keys
+  live there; losing them orphans every encrypted MANTLE cell.
+- **Self-host hosts pin explicit tags** (`:X.Y.Z`); the managed tenants track
+  `:stable` via `manifest.yml`.

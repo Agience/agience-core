@@ -1,0 +1,6 @@
+namespace: agience
+slug: agience-inbox-seeds
+content_type: application/vnd.agience.collection+json
+name: Agience Inbox Seeds
+description: >-
+  Platform-curated collection. Grants are applied automatically on first login.

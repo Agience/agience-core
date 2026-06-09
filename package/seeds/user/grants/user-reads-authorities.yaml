@@ -1,0 +1,7 @@
+type: grant
+namespace: agience
+slug: user-reads-authorities
+principal: "{{user.id}}"
+resource: agience/agience-authorities
+actions: [read]
+name: Platform authority collection (auto-granted on first login)

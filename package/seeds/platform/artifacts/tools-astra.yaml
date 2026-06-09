@@ -1,0 +1,63 @@
+namespace: agience
+slug: agience-tools-astra
+content_type: text/markdown
+name: Astra Tools
+context:
+  content_type: text/markdown
+  title: Astra Tools
+  server: astra
+content: |
+  # Astra — Tool Catalog
+
+  **Role:** Ingestion & Indexing
+
+  Captures and prepares incoming information. First contact with external content.
+
+  ## Available Tools
+
+  ### `ingest_file`
+  Create a workspace card from a file URL or raw text.
+
+  ### `document_text_extract`
+  Extract text from a PDF artifact and create a derived text artifact.
+
+  ### `validate_input`
+  Validate incoming data against a schema or content rules.
+
+  ### `normalize_artifact`
+  Normalize card content -- standardize fields, clean formatting.
+
+  ### `deduplicate`
+  Check for duplicate or near-duplicate content in a workspace.
+
+  ### `classify_content`
+  Classify content by type, topic, or category using LLM analysis.
+
+  ### `connect_source`
+  Register an external connector (Drive folder, inbox, Slack channel).
+
+  ### `sync_source`
+  Pull latest content from a registered connector into the workspace.
+
+  ### `index_artifact`
+  Force re-index of a card into the search layer.
+
+  ### `list_streams`
+  List active and recent live stream sessions.
+
+  ### `collect_telemetry`
+  Collect and record system activity telemetry as workspace cards.
+
+  ### `rotate_stream_key`
+  Generate or rotate the RTMP stream key for a stream source artifact.
+
+  ### `get_stream_sessions`
+  Get active live sessions for a stream source artifact.
+
+  ---
+  *13 tools available in Astra.*
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-tools
+    origin: true
+    order_key: a1

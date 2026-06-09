@@ -1,0 +1,10 @@
+namespace: agience
+slug: agience-seeds-all-tools
+content_type: application/vnd.agience.collection+json
+name: Agience Tools
+description: Tool catalog for every platform server. Browse what each agent can do.
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-platform-artifacts
+    origin: false
+    order_key: a1

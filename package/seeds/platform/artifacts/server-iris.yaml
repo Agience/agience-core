@@ -1,0 +1,22 @@
+namespace: agience
+slug: agience-server-iris
+content_type: application/vnd.agience.mcp-server+json
+name: Iris
+context:
+  type: mcp-server
+  content_type: application/vnd.agience.mcp-server+json
+  title: Iris
+  description: "Platform-native MCP server for message routing, comms planes, and connectivity."
+  mcp_server:
+    version: 1
+    kind: platform-builtin
+    name: iris
+    role: "Routing & communication"
+    client_id: agience-server-iris
+    transport: builtin
+content: "Iris — Routing & communication. Platform-native MCP server for message routing, comms planes, and connectivity."
+edges:
+  - rel: contained_by
+    to: agience/agience-seeds-all-servers
+    origin: true
+    order_key: a4

@@ -1,4 +1,4 @@
-# Agience
+﻿# Agience
 
 **The operating system that AI workflows trust.**
 
@@ -51,7 +51,7 @@ The platform ships with eight purpose-built MCP servers covering ingestion, retr
 | Third-party applications | External MCP servers |
 | Processes / jobs | Agents / Operators |
 | System calls | MCP tool calls |
-| Filesystem indexer | OpenSearch |
+| Filesystem indexer | MANTLE encrypted search (BM25 + IVF) |
 | Capability-based access | Scoped API keys |
 | Change journal | Provenance chain |
 
@@ -62,13 +62,13 @@ The platform ships with eight purpose-built MCP servers covering ingestion, retr
 - **Artifact model** — typed, versioned objects with stable IDs, full history, and graph relationships
 - **ArangoDB architecture** — all artifact storage in ArangoDB; workspaces for ephemeral drafts, collections for committed versions
 - **Commit flow** — explicit workspace → collection promotion; nothing published silently
-- **Hybrid search** — BM25 + kNN vector search with RRF fusion, aperture filtering, and per-token semantic modifiers
+- **Encrypted hybrid search** — MANTLE-SSE blind-token BM25 + MANTLE encrypted IVF vector search, fused via RRF; all posting lists and embeddings AES-256-GCM at rest in S3
 - **Multi-provider OAuth2** — Google, Microsoft Entra, Auth0, custom OIDC, username/password; RS256 JWT + scoped API keys
-- **MCP server** — 11 tools at `/mcp`; advertised via `/.well-known/mcp.json`; works in VS Code, Claude Desktop, Cursor
+- **MCP server** — universal gateway in Chorus at `/{server_id}/mcp`; advertised via `/.well-known/mcp`; works in VS Code, Claude Desktop, Cursor
 - **Agentic chat loop** — chat artifacts with an 8-tool surface and multi-turn LLM loop
 - **Live stream ingestion** — OBS → SRS → real-time AWS Transcribe; transcript artifacts committed on stream end
 - **S3/CloudFront media handling** — direct browser-to-S3 presigned upload, signed CDN delivery, orphan cleanup
-- **Eight agent persona servers** — Astra (ingestion), Sage (retrieval), Verso (reasoning), Aria (output), Nexus (comms), Atlas (governance), Seraph (security), Ophan (finance)
+- **Eight agent persona servers** — Astra (ingestion), Sage (retrieval), Verso (reasoning), Aria (output), Iris (comms), Mantle (governance), Seraph (security), Ophan (finance)
 
 See [ROADMAP.md](ROADMAP.md) for the full capability inventory and what's coming next.
 
@@ -82,23 +82,23 @@ No git clone needed. One command installs the full platform on your machine. Run
 
 **Windows (PowerShell):**
 ```powershell
-irm https://get.agience.ai/home/install.ps1 | iex
+irm https://get.agience.ai/install.ps1 | iex
 ```
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://get.agience.ai/home/install.sh | sh
+curl -fsSL https://get.agience.ai/install.sh | sh
 ```
 
 After that: `agience up` / `agience down` / `agience update`.
 
 > **On a restricted network or prefer plain HTTP?**
-> The [Local install](packaging/install/local/) runs at `http://localhost:8080` with no domain or certificate required.
+> The plain mode runs at `http://localhost:8080` with no domain or certificate required.
 > ```powershell
-> irm https://get.agience.ai/local/install.ps1 | iex
+> irm https://get.agience.ai/install.ps1 | iex -Mode plain
 > ```
 > ```bash
-> curl -fsSL https://get.agience.ai/local/install.sh | sh
+> curl -fsSL https://get.agience.ai/install.sh | sh -s -- --mode plain
 > ```
 
 ### Developer Setup (build from source)
@@ -120,7 +120,7 @@ agience dev -f --build
 ./agience dev -f --build
 ```
 
-This starts infrastructure in Docker, installs dependencies into a `.venv`, and launches the backend + frontend locally. The setup wizard handles OAuth and LLM configuration on first boot — no manual `.env` file required.
+This starts the support containers (Arango / Postgres / MinIO) in Docker, installs Python dependencies into a `.venv`, and launches Origin / Mantle / Chorus / Facet locally. The setup wizard handles OAuth and LLM configuration on first boot — no manual `.env` file required.
 
 Full developer guide: [`docs/getting-started/local-development.md`](docs/getting-started/local-development.md)
 
@@ -128,55 +128,65 @@ Full developer guide: [`docs/getting-started/local-development.md`](docs/getting
 
 Sign up at [agience.ai](https://agience.ai) — no setup required.
 
-### Canary builds (contributors and testers)
+### Edge builds (contributors and testers)
 
 Published on every merge to `main`. Not for production use.
 
 **Windows (PowerShell):**
 ```powershell
-irm https://get.agience.ai/canary/install.ps1 | iex
+irm https://get.agience.ai/install.ps1 | iex -Channel edge
 ```
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://get.agience.ai/canary/install.sh | sh
+curl -fsSL https://get.agience.ai/install.sh | sh -s -- --channel edge
 ```
 
 ---
 
 ## Architecture
 
+Four containers; the platform deploys as four named images plus three
+support services (`init`, `graph` / Arango, `sql` / Postgres, `content` /
+MinIO, `stream` / SRS) wired together by `docker compose`.
+
 ```
   ┌─────────────────────────────────────┐
-  │  Presentation (React / Vite)        │  Cards, grid, windows, navigation
+  │  Facet (React / Vite)               │  Cards, grid, windows, navigation
   └─────────────────────────────────────┘
-                    │ registry
+                    │
   ┌─────────────────────────────────────┐
-  │  Handlers (MCP Servers)             │  Type-specific viewers, tools, prompts
-  │  Aria · Astra · Atlas · Sage        │  Served as ui:// MCP resources
-  │  Nexus · Ophan · Seraph · Verso     │  Each a standalone FastMCP process
+  │  Chorus (FastMCP unified host)      │  Aria · Astra · Sage
+  │  Universal MCP gateway, persona     │  Iris · Ophan · Seraph · Verso
+  │  servers, ui:// viewers             │  + relay WebSocket for desktop hosts
   └─────────────────────────────────────┘
-                    │ MCP
-  ┌─────────────────────────────────────┐
-  │  Core (FastAPI)                     │  Type-agnostic platform services
-  │  Auth · Artifacts · Workspaces      │  ArangoDB · OpenSearch
-  │  Collections · Search · MCP infra  │  S3 · JWT · Scoped API keys
-  └─────────────────────────────────────┘
+                    │ HTTP JSON-RPC + REST
+  ┌─────────────────────────────────────┐    ┌─────────────────────────────┐
+  │  Mantle (FastAPI artifact kernel)    │    │  Origin (FastAPI identity)  │
+  │  Type-blind CRUD + commit + events  │    │  OIDC · grants · passkeys   │
+  │  Encrypted MANTLE+SSE search (S3)    │    │  Scoped API keys · setup    │
+  │  ArangoDB · MinIO · S3              │    │  Postgres                   │
+  └─────────────────────────────────────┘    └─────────────────────────────┘
 ```
 
-Architecture spec: [`.dev/features/layered-architecture.md`](.dev/features/layered-architecture.md)
+Architecture spec: [`.dev/features/four-container-architecture.md`](.dev/features/four-container-architecture.md)
+· [`.dev/features/layered-architecture.md`](.dev/features/layered-architecture.md)
 
 ### Repo layout
 
 ```
-backend/        FastAPI Core — type-agnostic platform services
-frontend/       React + Vite + Tailwind UI
-servers/        First-party MCP persona servers
-servers/_host/  Unified Docker mount for all personas
-types/          Builtin MIME type definitions
-hosts/          Desktop companion relay runtime
-docker/         Compose files and Caddy config
-docs/           Public-facing documentation
+src/origin/         Identity service (FastAPI + Postgres)
+src/mantle/          Artifact kernel (FastAPI + Arango + encrypted search)
+src/chorus/         Persona MCP servers + universal gateway (FastMCP)
+src/facet/          React + Vite + Tailwind UI
+src/kernel/         Shared Python (config, key_manager, scopes, embeddings)
+package/types/      Builtin MIME type definitions (cross-service)
+package/docker/     Compose files + per-service Dockerfiles
+package/install/    Unified install.sh / install.ps1 + home + plain compose
+package/seeds/      Declarative bootstrap artifacts
+package/hosts/      Desktop companion relay runtime
+docs/               Public-facing documentation
+.dev/features/      Internal design specs and migration plans
 ```
 
 ---

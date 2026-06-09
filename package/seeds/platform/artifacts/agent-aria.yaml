@@ -1,0 +1,25 @@
+namespace: agience
+slug: agience-agent-aria
+content_type: application/vnd.agience.agent+json
+name: Aria
+context:
+  type: agent
+  content_type: application/vnd.agience.agent+json
+  title: Aria
+  agent:
+    version: 1
+    kind: platform-server
+    role: Output and presentation
+    server_id: agience/agience-server-aria
+    host_artifact_id: agience/agience-host-current-instance
+    authority_artifact_id: agience/agience-authority-current-instance
+content: "Aria is a platform agent. Domain: Output and presentation. Formats and presents final responses for humans."
+edges:
+  - rel: contained_by
+    to: agience/agience-resources
+    origin: true
+    order_key: a0
+  - rel: contained_by
+    to: agience/agience-seeds-agents
+    origin: false
+    order_key: a0

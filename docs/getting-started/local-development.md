@@ -1,4 +1,4 @@
-# Local Development Setup
+﻿# Local Development Setup
 
 Status: **Reference**
 Date: 2026-04-10
@@ -30,12 +30,12 @@ agience dev -f --build
 
 This will:
 1. Check that Docker, Python, and Node.js are installed
-2. Start infrastructure containers (ArangoDB, OpenSearch, MinIO) + MCP servers in Docker
-3. Create a Python virtual environment at `backend/.venv` and install dependencies
-4. Install frontend npm dependencies
-5. Launch the backend and frontend in a new Windows Terminal window
+2. Start support containers (ArangoDB, Postgres, MinIO, init) in Docker
+3. Create Python virtual environments under `src/origin/.venv` and `src/mantle/.venv` and install dependencies
+4. Install Facet npm dependencies
+5. Launch Origin, Mantle, Chorus, and Facet in a new terminal window
 
-On **first boot**, the init container generates all credentials (encryption keys, database passwords, platform secret, setup token). Open `http://localhost:5173` — the setup wizard walks you through OAuth login and LLM provider configuration. No `.env` file is required.
+On **first boot**, the init container generates all credentials (encryption keys, database passwords, service identity keypairs, setup token). Open `http://localhost:5173` — the setup wizard walks you through OAuth login and LLM provider configuration. No `.env` file is required.
 
 ---
 
@@ -55,11 +55,11 @@ On **first boot**, the init container generates all credentials (encryption keys
 docker info
 ```
 
-**Python note**: The `agience` launcher automatically creates and uses a virtual environment at `backend/.venv`. If you run the backend manually, activate it first:
+**Python note**: The `agience` launcher creates separate venvs under `src/origin/.venv` and `src/mantle/.venv` (one per service tree). If you run a service manually, activate the venv for that tree first:
 
 ```powershell
-backend\.venv\Scripts\Activate.ps1    # Windows PowerShell
-# source backend/.venv/bin/activate    # bash / Git Bash
+src\mantle\.venv\Scripts\Activate.ps1    # Windows PowerShell
+# sourcemantle/ mantle/.venv/bin/activate    # bash / Git Bash
 ```
 
 ---
@@ -83,7 +83,7 @@ cd agience-core
 Copy-Item .env.example .env.local
 ```
 
-The backend reads `.env.local` first (local/test), then `.env` (Docker defaults), then falls back to database settings from the setup wizard. For most developers, the setup wizard is sufficient.
+Each service reads `.env.local` first (local/test), then `.env` (Docker defaults), then falls back to database settings from the setup wizard. For most developers, the setup wizard is sufficient.
 
 ---
 
@@ -91,25 +91,25 @@ The backend reads `.env.local` first (local/test), then `.env` (Docker defaults)
 
 The `agience dev` command handles everything. For manual control:
 
-Dev mode starts the database services and MCP servers in Docker, leaving the backend and frontend running as local processes for faster iteration.
+Dev mode starts the support services (databases + object store + init) in Docker, leaving Origin, Mantle, Chorus, and Facet running as local processes for faster iteration.
 
 ```bash
 docker compose --project-directory . \
-  -f docker/docker-compose.yml \
-  -f docker/docker-compose.override.yml \
-  up -d content graph search
+  -f package/docker/docker-compose.yml \
+  -f package/docker/docker-compose.override.yml \
+  up -d content graph
 ```
 
 On Windows PowerShell (no line continuation needed, or use backtick):
 
 ```powershell
 docker compose --project-directory . `
-  -f docker/docker-compose.yml `
-  -f docker/docker-compose.override.yml `
-  up -d content graph search
+  -f package/docker/docker-compose.yml `
+  -f package/docker/docker-compose.override.yml `
+  up -d content graph
 ```
 
-Wait for all three containers to reach the `healthy` state:
+Wait for both containers to reach a healthy state:
 
 ```bash
 docker ps
@@ -118,75 +118,86 @@ docker ps
 Expected output (abbreviated):
 
 ```
-CONTAINER ID   IMAGE         STATUS
-...            arangodb      Up ... (healthy)
-...            opensearch    Up ... (healthy)
+CONTAINER ID   IMAGE                    STATUS
+...            arangodb:3.11            Up ... (healthy)
+...            minio/minio:RELEASE...   Up ... (healthy)
 ```
 
-**What each service is:**
+**What each support service is:**
 
 | Service name | Technology | Purpose | Local port |
 |---|---|---|---|
-| `graph` | ArangoDB | All artifact storage (workspaces + collections) | 8529 |
-| `search` | OpenSearch | Hybrid BM25 + kNN search | 9200 |
+| `graph` | ArangoDB | Unified artifact storage (workspaces + collections) | 8529 |
+| `sql` | Postgres | Origin identity DB (Person / APIKey / Grant / ...) | 5432 |
+| `content` | MinIO | S3-compatible object store (artifact content + MANTLE+SSE encrypted blobs) | 9000 |
 
-These ports are intentionally non-standard to avoid collisions with other local services.
+These ports are intentionally non-standard to avoid collisions with other local services. Search runs in-process inside Mantle on encrypted MANTLE+SSE blobs in MinIO — there is no separate search container after Step 2.6.9.
 
 **Stopping the infrastructure:**
 
 ```bash
 docker compose --project-directory . \
-  -f docker/docker-compose.yml \
-  -f docker/docker-compose.override.yml \
+  -f package/docker/docker-compose.yml \
+  -f package/docker/docker-compose.override.yml \
   down
 ```
 
 ---
 
-## 4. Run the Backend
+## 4. Run the Services
 
-In a new terminal, with the venv active:
+In separate terminals, with the appropriate venv active:
 
 ```bash
-cd backend
+# Origin (identity, port 8080)
+cdmantle/ origin
 .venv/Scripts/activate        # Windows — or: source .venv/bin/activate (bash)
 pip install -r requirements.txt
 python main.py
+
+# Mantle (artifact kernel, port 8081)
+cdmantle/ mantle
+.venv/Scripts/activate
+pip install -r requirements.txt
+python main.py
+
+# Chorus (MCP gateway + persona host, port 8082)
+cdmantle/ chorus
+python server.py
 ```
 
-> **Tip**: If you used `agience dev`, the venv at `backend/.venv` is already created and dependencies are installed. Just activate it.
+> **Tip**: If you used `agience dev`, the venvs are already created and dependencies are installed. Just activate them.
 
-The backend starts on `http://localhost:8081`.
+**First-run behavior**: On the first startup:
 
-**First-run behavior**: On the first startup the backend:
+1. Origin creates Postgres tables via Alembic, seeds the bootstrap operator
+2. Mantle creates ArangoDB collections + indexes; the encrypted MANTLE+SSE indexes auto-bootstrap on first commit
+3. Each service signs platform-default artifacts (LLM connections, authority, host, etc.) on first launch
 
-1. Creates ArangoDB collections and indexes
-2. Provisions the OpenSearch application user and indexes
-3. Seeds authority collections, inbox sources, and default LLM connection artifacts for new users
+You will see log output for each step. If a support container isn't yet healthy, the services retry automatically for a short window. If startup fails, check `docker ps` to confirm graph + sql + content are running and healthy.
 
-You will see log output for each of these steps. If a database container is not yet healthy, the backend retries automatically for a short window. If startup fails, check `docker ps` to confirm both containers are running and healthy.
+**Log level**: Set `BACKEND_LOG_LEVEL=DEBUG` in `.env.local` for verbose output during development.
 
-**Log level**: Set `BACKEND_LOG_LEVEL=DEBUG` in `.env.local` for verbose output during development. The default is `DEBUG` in the template.
-
-**Interactive API docs**: Once the backend is running, FastAPI's Swagger UI is available at:
+**Interactive API docs**:
 
 ```
-http://localhost:8081/docs
+http://localhost:8080/docs   # Origin
+http://localhost:8081/docs   # Mantle
 ```
 
 ---
 
-## 5. Run the Frontend
+## 5. Run Facet
 
-In a second terminal:
+In one more terminal:
 
 ```bash
-cd frontend
+cdmantle/ facet
 npm install
 npm run dev
 ```
 
-The dev server starts at `http://localhost:5173` and proxies API calls to the backend at `http://localhost:8081`.
+The dev server starts at `http://localhost:5173` and proxies API calls to Origin (`:8080`) and Mantle (`:8081`).
 
 **What `npm run dev` does:**
 
@@ -204,7 +215,7 @@ After first login, the backend provisions your user's inbox, workspace, and seed
 
 The desktop relay host is an optional local companion runtime that:
 
-- Exposes the first-party MCP persona servers locally (Aria, Sage, Atlas, etc.)
+- Exposes the first-party MCP persona servers locally (Aria, Sage, Mantle, etc.)
 - Provides safe read-only filesystem tools via MCP
 - Can maintain a relay connection to a running backend authority
 
@@ -233,7 +244,7 @@ Copy `hosts/desktop/config.example.json` to a local config file and edit:
   "allowed_roots": [
     "C:/Users/yourname/Documents"
   ],
-  "enabled_personas": ["aria", "sage", "atlas", "nexus", "astra", "verso", "seraph", "ophan"],
+  "enabled_personas": ["aria", "sage", "iris", "astra", "verso", "seraph", "ophan"],
   "log_level": "INFO"
 }
 ```
@@ -304,9 +315,9 @@ All containers (`graph`, `search`) should show `(healthy)`.
 
 ## 8. Run Tests
 
-### Backend
+### Mantle / Origin (Python)
 
-From `backend/`:
+From `src/mantle/` (or `src/origin/`):
 
 ```bash
 # Lint
@@ -330,11 +341,11 @@ Run with verbose output:
 pytest tests/ -v
 ```
 
-**Note**: Tests use mocked databases and never connect to live ArangoDB, OpenSearch, or S3. No running containers are required for the test suite.
+**Note**: Tests use mocked databases and never connect to live ArangoDB, Postgres, or S3. No running containers are required for the test suite.
 
-### Frontend
+### Facet
 
-From `frontend/`:
+From `src/facet/`:
 
 ```bash
 # Lint
@@ -382,21 +393,11 @@ If containers are missing, start them again (section 3). If they are present but
 
 ```bash
 docker logs agience-core-graph-1
-docker logs agience-core-search-1
+docker logs agience-core-content-1
+docker logs agience-core-sql-1
 ```
 
-Common cause: OpenSearch takes 30–60 seconds to initialize on first boot. The backend retries, but if it times out, restart the backend process after OpenSearch becomes healthy.
-
-### OpenSearch fails to start — "max virtual memory areas"
-
-This is a Linux kernel setting. On WSL 2:
-
-```bash
-wsl -d docker-desktop
-sysctl -w vm.max_map_count=262144
-```
-
-To make it permanent, add `vm.max_map_count=262144` to `/etc/sysctl.conf` inside WSL.
+Common cause: ArangoDB or Postgres takes 30–60 seconds to initialize on first boot. Origin / Mantle retry, but if they time out, restart the affected service after the support container becomes healthy.
 
 ### "Access denied" after Google login
 
@@ -441,10 +442,10 @@ ruff check .            # verify remaining issues
 
 ### `pytest` fails with import errors
 
-Your Python path may be off. Run pytest from inside `backend/`:
+Your Python path may be off. Run pytest from inside the service tree (`src/mantle/` or `src/origin/`):
 
 ```bash
-cd backend
+cdmantle/ mantle
 pytest tests/
 ```
 

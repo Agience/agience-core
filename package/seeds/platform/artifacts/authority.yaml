@@ -1,0 +1,37 @@
+# Current-instance authority artifact — issuer, trust anchors (inline JWKS),
+# and bootstrap token hash. Config values come from kernel.config; trust anchors
+# + token hash come from the init container's authority.manifest.json on disk.
+namespace: agience
+slug: agience-authority-current-instance
+content_type: application/vnd.agience.authority+json
+name: Authority
+description: >-
+  Platform-native authority artifact for the current Agience deployment.
+  Defines the issuer, domain, and trust surface above the current host.
+context:
+  type: authority
+  content_type: application/vnd.agience.authority+json
+  title: Current Agience Authority
+  authority:
+    domain: "{{config.AUTHORITY_DOMAIN}}"
+    issuer: "{{config.AUTHORITY_ISSUER}}"
+    trust_model: platform-default
+    current_host_artifact_id: agience/agience-host-current-instance
+    host_artifact_ids:
+      - agience/agience-host-current-instance
+    facet_uri: "{{config.FACET_URI}}"
+    origin_uri: "{{config.ORIGIN_URI}}"
+  trust_anchors: "{{file:authority.manifest.json:trust_anchors}}"
+  bootstrap_token_hash: "{{file:authority.manifest.json:bootstrap_token_hash}}"
+content: >-
+  Platform-native authority artifact for the current Agience deployment. This
+  authority defines the domain and trust surface above the current instance host.
+edges:
+  - rel: contained_by
+    to: agience/agience-authorities
+    origin: true
+    order_key: a0
+  - rel: contained_by
+    to: agience/agience-seeds-platform-artifacts
+    origin: false
+    order_key: a3

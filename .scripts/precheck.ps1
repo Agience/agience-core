@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
   [switch]$DocsOnly,
   [switch]$BackendOnly,
@@ -75,10 +75,10 @@ try {
 
   if (-not $SkipBackend) {
     Write-Step 'Backend lint (ruff) + tests (pytest)'
-    Push-Location (Join-Path $repoRoot 'backend')
+    Push-Location (Join-Path $repoRoot 'mantle')
     try {
       if (-not (Test-Command 'python')) {
-        throw 'Python is required for backend checks.'
+        throw 'Python is required for Mantle checks.'
       }
 
       if (-not (Test-Command 'ruff')) {
@@ -125,10 +125,10 @@ try {
 
   if (-not $SkipFrontend) {
     Write-Step 'Frontend lint (eslint) + build + tests (vitest)'
-    Push-Location (Join-Path $repoRoot 'frontend')
+    Push-Location (Join-Path $repoRoot 'facet')
     try {
       if (-not (Test-Command 'npm')) {
-        throw 'Node/npm is required for frontend checks.'
+        throw 'Node/npm is required for Facet checks.'
       }
 
       $nodeModules = Join-Path $PWD 'node_modules'
@@ -149,16 +149,16 @@ try {
         # Prefer skipping reinstall when node_modules already exists.
         if (-not $hasNodeModules) {
           if (Test-Path (Join-Path $PWD 'package-lock.json')) {
-            Write-Step 'Installing frontend deps (npm ci)'
+            Write-Step 'Installing Facet deps (npm ci)'
             Invoke-Checked 'npm ci' { npm ci }
           }
           else {
-            Write-Step 'Installing frontend deps (npm install)'
+            Write-Step 'Installing Facet deps (npm install)'
             Invoke-Checked 'npm install' { npm install }
           }
         }
         elseif (-not $depsLookHealthy) {
-          Write-Step 'Repairing frontend deps (npm install)'
+          Write-Step 'Repairing Facet deps (npm install)'
           Invoke-Checked 'npm install' { npm install }
         }
         else {
@@ -166,9 +166,9 @@ try {
         }
       }
 
-      Invoke-Checked 'frontend lint' { npm run lint }
-      Invoke-Checked 'frontend build' { npm run build }
-      Invoke-Checked 'frontend test' { npm run test }
+      Invoke-Checked 'facet lint' { npm run lint }
+      Invoke-Checked 'facet build' { npm run build }
+      Invoke-Checked 'facet test' { npm run test }
     }
     finally {
       Pop-Location

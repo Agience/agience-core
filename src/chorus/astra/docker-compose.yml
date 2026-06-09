@@ -1,0 +1,35 @@
+# agience-server-astra — Ingestion & transcription service stack
+#
+# Services:
+#   astra   — FastMCP server exposing ingest / transcription tools
+#
+# Stream lifecycle (publish/unpublish webhooks) is now handled by Mantle
+# (core infra).  The SRS gateway runs as an agience-stream service in the
+# core docker-compose.  Only the rotate_stream_key tool remains here.
+# Transcription is handled by Verso (transcribe_artifact tool).
+# AWS credentials are stored as Seraph Secrets per-user.
+#
+# Usage (from this directory):
+#   docker compose up -d
+#
+# Required env vars (set in .env or export before running):
+#   AGIENCE_API_URI          — URL of the agience-core backend (e.g. https://api.example.com)
+#   AGIENCE_API_KEY          — Bearer token for authenticating with the platform
+
+services:
+
+  astra:
+    image: ${ASTRA_IMAGE:-${REGISTRY:-agience}/agience-server-astra:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: astra
+    restart: unless-stopped
+    environment:
+      - AGIENCE_API_URI=${AGIENCE_API_URI:-http://host.docker.internal:8081}
+      - AGIENCE_API_KEY=${AGIENCE_API_KEY}
+      - MCP_TRANSPORT=${MCP_TRANSPORT:-streamable-http}
+      - MCP_HOST=${MCP_HOST:-0.0.0.0}
+      - MCP_PORT=${MCP_PORT:-8087}
+    ports:
+      - "${MCP_PORT:-8087}:8087"

@@ -1,4 +1,4 @@
-# Admin Startup Guide (Dev Mode + Seeded Onboarding)
+﻿# Admin Startup Guide (Dev Mode + Seeded Onboarding)
 
 Status: **Reference**
 Date: 2026-04-01
@@ -36,33 +36,34 @@ agience.bat
 
 Then open `http://localhost:5173`.
 
-Manual dev path (when you need separate local backend/frontend processes):
+Manual dev path (when you need separate local Origin/Mantle/Chorus/Facet processes):
 
-1. Start infra containers:
+1. Start support containers:
 
    ```bash
-   docker compose up -d graph search
+   docker compose up -d graph content sql
    ```
 
-2. Start backend:
+2. Start the services (in separate terminals):
 
    ```bash
-   cd backend
-   python main.py
+   cdmantle/ origin && python main.py     # port 8080
+   cdmantle/ mantle  && python main.py     # port 8081
+   cdmantle/ chorus && python server.py   # port 8082
    ```
 
-3. Start frontend:
+3. Start Facet:
 
    ```bash
-   cd frontend
+   cdmantle/ facet
    npm install
    npm run dev
    ```
 
 Expected result:
 
-- Backend starts successfully and, on startup, ensures the seed collection exists (created empty if missing).
-- Frontend loads and redirects you to Google auth.
+- Origin / Mantle start successfully; on first startup they ensure the seed collection exists (created empty if missing).
+- Facet loads and redirects you to Google auth.
 
 ---
 

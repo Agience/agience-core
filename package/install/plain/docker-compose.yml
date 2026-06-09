@@ -1,0 +1,265 @@
+﻿# Agience Plain — local install, no domain, no TLS
+#
+# Self-contained — no .env file, no external config required.
+# The init container generates all credentials on first boot.
+# Runs on http://localhost:8080 — no domain or certificate needed.
+#
+# Architecture (post Step 1.5 four-container split):
+#   origin   :8080  identity / OIDC / grants (SQLite-backed)
+#   mantle  :8081  artifact kernel + encrypted mantle+SSE search (Arango+MinIO)
+#   chorus   :8082  universal MCP gateway + persona servers (FastMCP)
+#   facet    :80    React SPA (served by Caddy)
+#   caddy    :8080  router (single public port)
+#
+# Set REGISTRY in environment to override the Docker Hub namespace
+# (default: agience). Set VERSION=edge to pull main-branch builds.
+#
+# Install:   curl -fsSL https://get.agience.ai/install.sh | sh -s -- --mode plain
+#            irm https://get.agience.ai/install.ps1 | iex  # Windows
+# Start:     docker compose up -d
+# Open:      http://localhost:8080
+
+services:
+
+  # ── Init — generates all key material on first boot ──────────────────
+  # Idempotent: skips if .data/.initialized exists.
+
+  init:
+    image: ${REGISTRY:-agience}/agience-init:${VERSION:-stable}
+    container_name: init
+    volumes:
+      - ./.data:/data
+
+  # ── Data layer ───────────────────────────────────────────────────────
+
+  graph:
+    image: arangodb:3.11
+    container_name: graph
+    restart: unless-stopped
+    environment:
+      - ARANGO_NO_AUTH=0
+    entrypoint: ["/bin/sh", "-c", "export ARANGO_ROOT_PASSWORD=$(cat /run/keys/arango.pass) && exec /entrypoint.sh arangod"]
+    volumes:
+      - ./.data/arangodb:/var/lib/arangodb3
+      - ./.data/arangodb-apps:/var/lib/arangodb3-apps
+      - ./.data/keys:/run/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8529/_api/version >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  content:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
+    container_name: content
+    restart: unless-stopped
+    environment:
+      - MINIO_ROOT_USER=agience
+    entrypoint: ["/bin/sh", "-c", "export MINIO_ROOT_PASSWORD=$(cat /run/keys/minio.pass) && exec /usr/bin/docker-entrypoint.sh server /data --console-address :9001"]
+    volumes:
+      - ./.data/minio:/data
+      - ./.data/keys:/run/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  # ── Platform services (four-container architecture) ─────────────────
+
+  origin:
+    image: ${REGISTRY:-agience}/agience-origin:${VERSION:-stable}
+    pull_policy: always
+    container_name: origin
+    restart: unless-stopped
+    environment:
+      - BUILD_INFO_PATH=/app/build_info.json
+      - KEYS_DIR=/app/.data/keys
+      - ORIGIN_URI=http://localhost:8080
+      - FRONTEND_URI=http://localhost:8080
+    volumes:
+      - ./.data/keys:/app/.data/keys:ro
+      - ./.data/origin:/app/.data/origin
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; urllib.request.urlopen('http://localhost:8080/healthz', timeout=2); sys.exit(0)\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  mantle:
+    image: ${REGISTRY:-agience}/agience-mantle:${VERSION:-stable}
+    pull_policy: always
+    container_name: agience-mantle
+    restart: unless-stopped
+    environment:
+      - BUILD_INFO_PATH=/app/build_info.json
+      - ARANGO_HOST=graph
+      - AGIENCE_SERVER_HOST_URI=http://chorus:8082
+      - MINIO_ROOT_USER=agience
+      - KEYS_DIR=/app/.data/keys
+      - ORIGIN_URI=http://origin:8080
+      - FRONTEND_URI=http://localhost:8080
+      - MANTLE_URI=http://localhost:8080/api
+      # Embeddings is external — set EMBEDDINGS_URI to a reachable /embed
+      # endpoint. Unset → lexical-only search.
+      - EMBEDDINGS_PROVIDER=agience
+      - EMBEDDINGS_URI=${EMBEDDINGS_URI:-}
+      - EMBEDDINGS_API_KEY=${EMBEDDINGS_API_KEY:-}
+      - EMBEDDINGS_DIM=1024
+      - AWS_ENDPOINT_URL=http://content:9000
+      - AWS_ENDPOINT_URL_PUBLIC=http://localhost:8080/content
+    volumes:
+      - ./.data/keys:/app/.data/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; urllib.request.urlopen('http://localhost:8081/status', timeout=2); sys.exit(0)\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+    depends_on:
+      content:
+        condition: service_healthy
+      graph:
+        condition: service_healthy
+      origin:
+        condition: service_healthy
+
+  chorus:
+    image: ${REGISTRY:-agience}/agience-chorus:${VERSION:-stable}
+    pull_policy: always
+    container_name: chorus
+    restart: unless-stopped
+    environment:
+      - MANTLE_URI=http://mantle:8081
+      - ORIGIN_URI=http://origin:8080
+      - SRS_HTTP_API=http://stream:1985
+      - STREAM_BASE_URL=http://stream:1985/live
+      - STREAM_INGEST_URL=rtmp://localhost:1936/live
+      - KEYS_DIR=/run/secrets/keys
+    volumes:
+      - ./.data/iris:/workspace
+      - ./.data/stream:/var/stream
+      - ./.data/keys:/run/secrets/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; urllib.request.urlopen('http://localhost:8082/healthz', timeout=2); sys.exit(0)\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    depends_on:
+      mantle:
+        condition: service_healthy
+
+  stream:
+    image: ${REGISTRY:-agience}/agience-stream:${VERSION:-stable}
+    pull_policy: always
+    container_name: stream
+    restart: unless-stopped
+    environment:
+      - CHORUS_URI=http://chorus:8082/astra
+    volumes:
+      - ./.data/stream:/var/stream
+    ports:
+      - "1936:1936"
+
+  facet:
+    image: ${REGISTRY:-agience}/agience-facet:${VERSION:-stable}
+    pull_policy: always
+    container_name: facet
+    restart: unless-stopped
+    environment:
+      - VITE_MANTLE_URI=http://localhost:8080/api
+      - VITE_ORIGIN_URI=http://localhost:8080
+      - VITE_TITLE=Agience
+
+  # ── Router — plain Caddy, HTTP only, no domain required ──────────────
+  # Serves on http://localhost:8080 → routes to mantle (api) / origin /
+  # facet (UI) / content (object store) / chorus (mcp + .well-known).
+
+  caddy:
+    image: caddy:2.11.2-alpine
+    pull_policy: always
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    configs:
+      - source: caddy_config
+        target: /etc/caddy/Caddyfile
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      facet:
+        condition: service_started
+      origin:
+        condition: service_healthy
+      mantle:
+        condition: service_healthy
+      content:
+        condition: service_healthy
+      stream:
+        condition: service_started
+
+configs:
+  caddy_config:
+    content: |
+      :8080 {
+        # Security headers (HSTS omitted because plain mode is HTTP-only).
+        header {
+          X-Content-Type-Options "nosniff"
+          X-Frame-Options "DENY"
+          Referrer-Policy "strict-origin-when-cross-origin"
+          -Server
+        }
+
+        # Origin (identity / OIDC / grants) — fronted at root for OAuth
+        # callbacks; specific paths below override.
+        handle /auth/* {
+          reverse_proxy origin:8080 {
+            flush_interval -1
+          }
+        }
+        handle /setup/* {
+          reverse_proxy origin:8080
+        }
+
+        # mantle (artifact kernel) — /api/* prefix.
+        handle_path /api/* {
+          reverse_proxy mantle:8081 {
+            flush_interval -1
+          }
+        }
+
+        # Chorus (MCP gateway) — /mcp/* and /.well-known/*.
+        @mcp path /mcp /mcp/*
+        handle @mcp {
+          reverse_proxy chorus:8082 {
+            flush_interval -1
+          }
+        }
+        handle /.well-known/* {
+          reverse_proxy chorus:8082
+        }
+
+        # Content (MinIO presigned-URL bucket).
+        handle_path /content/* {
+          reverse_proxy content:9000
+        }
+
+        # Default — Facet SPA.
+        handle {
+          reverse_proxy facet:80
+        }
+      }

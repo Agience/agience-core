@@ -1,0 +1,7 @@
+type: grant
+namespace: agience
+slug: user-reads-resources
+principal: "{{user.id}}"
+resource: agience/agience-resources
+actions: [read]
+name: Platform resources collection (auto-granted on first login)

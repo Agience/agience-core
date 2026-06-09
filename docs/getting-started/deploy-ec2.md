@@ -1,4 +1,4 @@
-# Deploy to AWS EC2 (Minimal Effort)
+﻿# Deploy to AWS EC2 (Minimal Effort)
 
 Status: **Reference**
 Date: 2026-04-01
@@ -13,7 +13,7 @@ One EC2 instance runs:
 
 - Caddy (TLS termination + reverse proxy)
 - Frontend container
-- Backend stack (ArangoDB, OpenSearch, API)
+- Service stack (Origin, Mantle, Chorus, Facet) + support (ArangoDB, Postgres, MinIO)
 - MinIO (S3-compatible content storage)
 
 Domains (recommended):
@@ -26,7 +26,7 @@ Domains (recommended):
 
 ## 1) Create the EC2 instance
 
-- Instance type: `t3.large` is a reasonable starting point (OpenSearch + multiple DBs on one box needs RAM)
+- Instance type: `t3.large` is a reasonable starting point (ArangoDB + Postgres + Mantle in-process MANTLE/SSE on one box needs RAM)
 - Disk: 60–100GB gp3 to start
 - OS: Ubuntu 22.04 LTS or 24.04 LTS
 - Attach an Elastic IP (optional but recommended)
@@ -60,15 +60,11 @@ SSH into the instance and install Docker + Compose plugin.
 
 (You can use your preferred method; the key requirement is `docker compose` works.)
 
-### OpenSearch prerequisite (important)
+### Search infrastructure
 
-OpenSearch commonly requires a higher Linux virtual memory map limit.
-
-If the `search` container fails early, set on the EC2 host:
-
-- `sudo sysctl -w vm.max_map_count=262144`
-
-To persist across reboots, add to `/etc/sysctl.conf`.
+After Step 2.6.9 (2026-05-09), search runs entirely in-process inside
+Mantle on encrypted MANTLE+SSE blobs in MinIO/S3. There is no separate
+search container, no JVM tuning, and no `vm.max_map_count` requirement.
 
 ---
 

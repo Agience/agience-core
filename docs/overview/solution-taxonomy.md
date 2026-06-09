@@ -13,9 +13,9 @@ This taxonomy is public architecture vocabulary. It explains the product roles A
 | **Sage** | Research & Retrieval | Discover sources, gather evidence, rank relevance |
 | **Verso** | Reasoning & Orchestration | Synthesize, coordinate multi-step tasks, evaluate |
 | **Aria** | Presentation & Interface | Format, visualize, narrate — last mile to humans |
-| **Nexus** | Networking, Transport & Routing | Connect agents, services, and external systems |
+| **Iris** | Networking, Transport & Routing | Connect agents, services, and external systems |
 | **Seraph** | Security, Governance & Trust | Access control, audit, identity, policy compliance |
-| **Atlas** | Provenance, Attribution & Lineage | Version lineage, conflict detection, traceability |
+| **Mantle** | Provenance, Attribution & Lineage | Version lineage, conflict detection, traceability |
 | **Ophan** | Finance, Economic Logic & Performance | Accounting, trade, resource allocation, budgeting, metrics |
 
 ## Pipeline position
@@ -27,9 +27,9 @@ Reasoning:    Verso  — synthesize, reason, run operators
 Output:       Aria   — format, visualize, present to humans
 
 Cross-cutting:
-  Nexus   — networking, messaging, routing, remote execution
+  Iris    — networking, messaging, routing, remote execution
   Seraph  — security, identity, access control, policy
-  Atlas   — provenance, lineage, attribution, coherence
+  Mantle   — provenance, lineage, attribution, coherence
   Ophan   — finance, accounting, budgets, performance metrics
 ```
 
@@ -104,7 +104,7 @@ Typical MCP/tool surfaces:
 
 ---
 
-### Nexus — networking, transport & routing
+### Iris — networking, transport & routing
 Primary responsibilities:
 - Platform-native messaging via channel adapters (Telegram, Slack, email)
 - Webhook ingestion from external systems
@@ -140,7 +140,7 @@ Typical MCP/tool surfaces:
 
 ---
 
-### Atlas — provenance, attribution & lineage
+### Mantle — provenance, attribution & lineage
 Primary responsibilities:
 - Trace artifact version lineage and source attribution
 - Detect conflicting claims across workspace or collection
@@ -187,11 +187,11 @@ Typical MCP/tool surfaces:
 | Research & Retrieval | Sage | Hybrid search, evidence synthesis, meeting insights |
 | Reasoning & Orchestration | Verso | Synthesis, multi-step operators, evaluation |
 | Presentation & Interface | Aria | Format, visualize, narrate to humans |
-| Networking & Infrastructure | Nexus | Messaging, routing, tunnels, proxy |
+| Networking & Infrastructure | Iris | Messaging, routing, tunnels, proxy |
 | Security & Governance | Seraph | Access control, audit, identity, policy |
-| Provenance & Lineage | Atlas | Attribution, conflict detection, contracts |
+| Provenance & Lineage | Mantle | Attribution, conflict detection, contracts |
 | Finance & Performance | Ophan | Accounting, trade, metrics, budgets |
 
 ## Notes
-- **Running operators** and recording **receipts/provenance** are core Agience framework capabilities (not a separate pillar).
-- **Official-first**: Agience never duplicates what an official vendor MCP server provides. External servers (GitHub, AWS, filesystem, Slack, etc.) are registered as `vnd.agience.mcp-server+json` artifacts. Nexus's `proxy_tool` and Astra's `connect_source`/`sync_source` are the integration points — they route through official servers, not around them.
+- **Running operators** and recording **provenance** are core Agience framework capabilities (not a separate pillar). Provenance travels with every artifact's context — no separate receipt object is created.
+- **Official-first**: Agience never duplicates what an official vendor MCP server provides. External servers (GitHub, AWS, filesystem, Slack, etc.) are registered as `vnd.agience.mcp-server+json` artifacts. Iris's `proxy_tool` and Astra's `connect_source`/`sync_source` are the integration points — they route through official servers, not around them.

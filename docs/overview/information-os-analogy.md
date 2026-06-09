@@ -1,4 +1,4 @@
-# Agience as an Information OS (Filesystem Analogy)
+﻿# Agience as an Information OS (Filesystem Analogy)
 
 Status: **Reference**
 Date: 2026-04-01
@@ -76,7 +76,7 @@ This is exactly the separation an OS/filesystem provides: inode table + blocks +
 
 - **Agents/operators -> processes/jobs**
   - They take inputs, call tools, produce outputs.
-  - They generate explicit artifacts (e.g., answer/evidence) with receipts/provenance rather than ephemeral chat.
+  - They generate explicit artifacts (e.g., answer/evidence) carrying provenance rather than ephemeral chat.
 
 - **MCP servers -> drivers / external services behind system calls**
   - Agience doesn't load arbitrary third-party code into the core backend.
@@ -85,14 +85,14 @@ This is exactly the separation an OS/filesystem provides: inode table + blocks +
 - **Scoped grant tokens -> capability-based access control**
   - Instead of ambient access, keys grant explicit capabilities (what resource/tool actions are allowed).
 
-- **Receipts / provenance -> job logs + audit trail**
-  - "What ran, on what inputs, producing what outputs" is the operational truth.
+- **Provenance -> job logs + audit trail**
+  - "What ran, on what inputs, producing what outputs" travels with each output artifact's context — there is no separate receipt object.
 
 ---
 
 ## Search: the filesystem indexer analogy
 
-- **OpenSearch index -> OS indexer (Spotlight/Windows Search)**
+- **MANTLE encrypted search index -> OS indexer (Spotlight/Windows Search)**
   - Record information with accurate **context**
   - Semantic Ontology aligns to human observation behavior.
   - Always on, always detailed.
@@ -129,7 +129,7 @@ Both surfaces operate on the same stored entity. The artifact is the inode; the 
   - Tools and integrations are enumerated interfaces (MCP), which is easier to govern than arbitrary plugins.
 
 - **Auditability is structural**
-  - Durable artifacts, version history, and receipts/provenance make it easier to defend outputs in regulated environments.
+  - Durable artifacts, version history, and built-in provenance make it easier to defend outputs in regulated environments.
 
 - **Multiple views over the same truth**
   - Instead of copying content into many artifacts, you render different views from shared units.

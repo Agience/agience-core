@@ -279,14 +279,16 @@ def _write_trust_anchors(path: Path, public_key) -> None:
 
 
 if __name__ == "__main__":
-    sentinel = DATA_DIR / ".initialized"
-    if sentinel.exists():
-        print("[init] Already initialized, skipping")
-        raise SystemExit(0)
+    # Every step below is individually idempotent (write_if_missing / exists
+    # checks), so we run them on every boot rather than short-circuiting on a
+    # `.initialized` sentinel. This lets a newer init image add newly-required
+    # key material (e.g. the origin/mantle/chorus service keypairs added in the
+    # four-container split) to an EXISTING deployment on the next deploy.
+    # A prior `.initialized` short-circuit skipped everything after an upgrade,
+    # leaving the new keys ungenerated -> "JWT key files not found" at startup.
     ensure_dirs()
     gen_simple_secrets()
     service_keys = gen_service_keypairs()
     gen_licensing_keys()
     gen_authority_manifest(service_keys)
-    sentinel.write_text("")
     print("[init] Complete")

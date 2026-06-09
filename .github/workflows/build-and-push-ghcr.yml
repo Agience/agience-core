@@ -100,7 +100,13 @@ jobs:
               echo "${OUT}<<EOF"
               for tag in "${TAGS[@]}"; do
                 echo "${DOCKERHUB_NS}/${IMG}:${tag}"
-                echo "${GHCR_NS}/${IMG}:${tag}"
+                # TEMP: agience-home is a new GHCR package the CI token can't yet
+                # create (403 Forbidden). Push it to Docker Hub only (where the
+                # home install pulls from) until the GHCR package access is
+                # granted to this repo, then remove this guard.
+                if [ "$IMG" != "agience-home" ]; then
+                  echo "${GHCR_NS}/${IMG}:${tag}"
+                fi
               done
               echo "EOF"
             } >> "$GITHUB_OUTPUT"

@@ -1,4 +1,4 @@
-# Renews the TLS certificate for home.agience.ai via Cloudflare DNS-01 and
+# Renews the TLS certificate for home.agience.ai via EasyDNS DNS-01 and
 # publishes the new cert/key to the Agience/get.agience.ai repository so
 # get.agience.ai/home/tls.{crt,key} serves the fresh files.
 #

@@ -194,5 +194,4 @@ is Free → Pro → Team → Anchored.
 - [What is Agience?](../overview/what-is-agience.md)
 - [Security model](../architecture/security-model.md)
 - [Pricing](https://agience.ai/pricing)
-- [Architecture white paper](../../.dev/vision/architecture-white-paper.md)
-  (internal — public PDF on request)
+- Architecture white paper (internal — available as a PDF on request)

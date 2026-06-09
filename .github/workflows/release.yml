@@ -1,4 +1,4 @@
-﻿name: Create GitHub Release
+name: Create GitHub Release
 
 on:
   push:
@@ -15,48 +15,60 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history + tags so we can diff this tag against the previous one.
+          fetch-depth: 0
 
-      - name: Read build version
-        id: build-info
+      - name: Build release notes
+        id: notes
         shell: bash
         run: |
           set -euo pipefail
-          VERSION=$(python3 -c "
-          import json, pathlib
-          data = json.loads(pathlib.Path('build_info.json').read_text())
-          print(str(data.get('version', '')).strip())
-          ")
+          TAG="${GITHUB_REF_NAME}"
+
+          VERSION=$(python3 -c "import json,pathlib;print(str(json.loads(pathlib.Path('build_info.json').read_text()).get('version','')).strip())")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Previous v* tag by version order, excluding the one being released.
+          PREV_TAG=$(git tag --list 'v*' --sort=-version:refname | grep -vx "$TAG" | head -n1 || true)
+          if [ -n "$PREV_TAG" ]; then RANGE="${PREV_TAG}..${TAG}"; else RANGE="$TAG"; fi
+
+          {
+            echo "See the [Getting Started](https://github.com/Agience/agience-core#getting-started) section of the README for setup instructions:"
+            echo
+            echo "- **Local** — stable images, no domain, no TLS: \`http://localhost:8080\`"
+            echo "- **Home** — stable images on your own domain with automatic TLS via [agience-home](https://github.com/Agience/agience-home)"
+            echo "- **Dev** — run from source (contributors)"
+            echo "- **My** — managed cloud deployment at [my.agience.ai](https://my.agience.ai)"
+            echo "- **Hosted** — sign up at [agience.ai](https://agience.ai)"
+            echo
+            echo "## What's Changed"
+            echo
+            # Commit-based (the team commits directly, so PR-based auto-notes are empty).
+            git log --no-merges --pretty=format:'- %s (`%h`) — %an' "$RANGE" || true
+            echo
+            echo
+            echo "## Docker Images"
+            echo
+            echo '```bash'
+            echo "# Docker Hub"
+            for svc in mantle facet chorus stream init; do echo "docker pull agience/agience-$svc:$VERSION"; done
+            echo
+            echo "# GitHub Container Registry"
+            for svc in mantle facet chorus stream init; do echo "docker pull ghcr.io/agience/agience-$svc:$VERSION"; done
+            echo '```'
+            if [ -n "$PREV_TAG" ]; then
+              echo
+              echo "**Full Changelog**: https://github.com/Agience/agience-core/compare/${PREV_TAG}...${TAG}"
+            fi
+          } > release_notes.md
+
+          echo "----- release_notes.md -----"
+          cat release_notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Agience v${{ steps.build-info.outputs.version }}
-          generate_release_notes: true
-          body: |
-            See the [Getting Started](https://github.com/Agience/agience-core#getting-started) section of the README for setup instructions:
-
-            - **Local** — stable images, no domain, no TLS: `http://localhost:8080`
-            - **Home** — stable images on your own domain with automatic TLS via [agience-home](https://github.com/Agience/agience-home)
-            - **Dev** — run from source (contributors)
-            - **My** — managed cloud deployment at [my.agience.ai](https://my.agience.ai)
-            - **Hosted** — sign up at [agience.ai](https://agience.ai)
-
-            ## Docker Images
-
-            ```bash
-            # Docker Hub
-            docker pull agience/agience-mantle:${{ steps.build-info.outputs.version }}
-            docker pull agience/agience-facet:${{ steps.build-info.outputs.version }}
-            docker pull agience/agience-chorus:${{ steps.build-info.outputs.version }}
-            docker pull agience/agience-stream:${{ steps.build-info.outputs.version }}
-            docker pull agience/agience-init:${{ steps.build-info.outputs.version }}
-
-            # GitHub Container Registry
-            docker pull ghcr.io/agience/agience-mantle:${{ steps.build-info.outputs.version }}
-            docker pull ghcr.io/agience/agience-facet:${{ steps.build-info.outputs.version }}
-            docker pull ghcr.io/agience/agience-chorus:${{ steps.build-info.outputs.version }}
-            docker pull ghcr.io/agience/agience-stream:${{ steps.build-info.outputs.version }}
-            docker pull ghcr.io/agience/agience-init:${{ steps.build-info.outputs.version }}
-            ```
+          name: Agience v${{ steps.notes.outputs.version }}
+          body_path: release_notes.md

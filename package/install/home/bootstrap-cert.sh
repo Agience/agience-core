@@ -29,11 +29,14 @@ if [[ -z "${EASYDNS_Key:-}" ]]; then
   exit 1
 fi
 
-echo "==> Issuing certificate for home.agience.ai via DNS-01 (EasyDNS)..."
+echo "==> Issuing certificate for home.agience.ai + *.home.agience.ai via DNS-01 (EasyDNS)..."
+# SAN cert: apex + wildcard. Wildcard is insurance for future per-instance
+# subdomains; the product still ships home.agience.ai only.
 ~/.acme.sh/acme.sh \
   --issue \
   --dns dns_easydns \
   -d home.agience.ai \
+  -d '*.home.agience.ai' \
   --server letsencrypt \
   --force \
   --email ops@agience.ai \

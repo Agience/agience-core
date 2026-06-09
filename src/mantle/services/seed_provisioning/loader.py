@@ -123,9 +123,19 @@ def get_instance_namespace() -> uuid.UUID:
         except (ValueError, OSError):
             logger.warning("instance.uuid at %s was unreadable — rotating", path)
     new_ns = uuid.uuid4()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(str(new_ns), encoding="utf-8")
-    logger.info("Minted new instance namespace %s at %s", new_ns, path)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(str(new_ns), encoding="utf-8")
+        logger.info("Minted new instance namespace %s at %s", new_ns, path)
+    except OSError as exc:
+        # The keys dir is mounted read-only for services by design; the init
+        # container pre-creates instance.uuid. Don't crash startup if it's
+        # missing — use an ephemeral namespace this boot and warn loudly.
+        logger.warning(
+            "Could not persist instance.uuid at %s (%s); using an ephemeral "
+            "namespace this boot. Ensure the init container pre-creates it.",
+            path, exc,
+        )
     return new_ns
 
 

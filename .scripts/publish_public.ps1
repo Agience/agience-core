@@ -43,7 +43,7 @@ param(
     [switch]$DryRun
 )
 
-# Explicitly override any inherited ErrorActionPreference — git writes informational
+# Explicitly override any inherited ErrorActionPreference - git writes informational
 # messages to stderr which PowerShell treats as terminating errors under "Stop".
 # Real errors are detected via $LASTEXITCODE checks throughout this script.
 $ErrorActionPreference = "Continue"
@@ -141,7 +141,7 @@ try {
 
         if ($FetchExitCode -ne 0) {
             if ($PublicBranch -ne "main") {
-                # Release branch does not exist yet — base it on public/main
+                # Release branch does not exist yet - base it on public/main
                 Write-Host "  Branch '$PublicBranch' not found on remote. Creating from $PublicRemote/main..." -ForegroundColor DarkYellow
                 git fetch $PublicRemote main 2>&1 | Out-Null
                 if ($LASTEXITCODE -ne 0) {
@@ -261,7 +261,7 @@ try {
         }
 
         # Tags are only pushed for release/* branches (stable releases).
-        # Pushing to main produces an edge build — no tag, no GitHub Release.
+        # Pushing to main produces an edge build - no tag, no GitHub Release.
         if ($PublicBranch -eq "main") {
             Write-Host "  Skipping tag (main/edge publish). CI will build :edge images from branch push." -ForegroundColor DarkYellow
             $Published = $true

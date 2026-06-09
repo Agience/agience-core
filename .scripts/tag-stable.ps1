@@ -133,5 +133,5 @@ Write-Host ""
 Write-Host "  Done. Triggered:" -ForegroundColor Green
 Write-Host "    - build-and-push-ghcr.yml  ->  :stable  :$MinorVersion  :$Version  (Docker Hub + GHCR)" -ForegroundColor Gray
 Write-Host "    - release.yml              ->  GitHub Release with release notes" -ForegroundColor Gray
-Write-Host "  my.agience.ai deploy is manual via task: Agience: My — Deploy" -ForegroundColor Gray
+Write-Host "  my.agience.ai deploy is manual via task: Agience: My - Deploy" -ForegroundColor Gray
 Write-Host ""

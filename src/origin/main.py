@@ -12,13 +12,14 @@ import json
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config as AlembicConfig
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from kernel import config
@@ -46,13 +47,12 @@ from origin.routers.setup_router import setup_router
 from origin.services import manifest as manifest_loader
 from origin.services.oidc_providers import reload_oauth_providers
 from origin.services.platform_settings_service import settings as platform_settings
+from kernel.logging_utils import configure_logging
 
+# Apply the shared logging config in-process so timestamps land on uvicorn's
+# own startup + access lines regardless of the --log-config CLI flag.
+configure_logging()
 logger = logging.getLogger("agience.origin")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s.%(msecs)03dZ %(levelname)s - %(name)s - %(message)s",
-    datefmt="%Y-%m-%dT%H:%M:%S",
-)
 
 
 # ---------------------------------------------------------------------------
@@ -285,3 +285,18 @@ def version() -> dict:
 @app.get("/.well-known/jwks.json", include_in_schema=False)
 def jwks_root() -> dict:
     return {"keys": [get_jwk_public()]}
+
+
+# Origin is the identity authority and owns the /.well-known namespace
+# (it already serves jwks.json + openid-configuration). security.txt is a
+# site-level security-contact file (RFC 9116), so it belongs here too.
+# `Expires` is computed ~1 year out per request so it never goes stale.
+@app.get("/.well-known/security.txt", include_in_schema=False)
+def security_txt() -> PlainTextResponse:
+    expires = (datetime.now(timezone.utc) + timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    body = (
+        "Contact: mailto:connect@agience.ai\n"
+        f"Expires: {expires}\n"
+        "Preferred-Languages: en\n"
+    )
+    return PlainTextResponse(body, media_type="text/plain; charset=utf-8")

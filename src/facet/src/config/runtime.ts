@@ -11,7 +11,7 @@ const DEFAULT_CONFIG: RuntimeConfig = {
     import.meta.env.VITE_MANTLE_URI ||
     'http://localhost:8081',
   originUri: import.meta.env.VITE_ORIGIN_URI || 'http://localhost:8080',
-  clientId: import.meta.env.VITE_CLIENT_ID || '',
+  clientId: import.meta.env.VITE_CLIENT_ID || 'platform',
   title: import.meta.env.VITE_TITLE || 'Agience',
   favicon: import.meta.env.VITE_FAVICON || '/favicon.png',
 };

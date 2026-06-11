@@ -39,10 +39,12 @@ from fastapi import FastAPI
 log = logging.getLogger("servers-host")
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), format="%(asctime)s %(levelname)s - %(name)s - %(message)s")
 
-# Suppress noisy per-request httpx/uvicorn logs (dozens of events/emit per chat turn)
+# Suppress noisy per-request httpx logs (dozens per chat turn). uvicorn.access
+# noise (events/emit, version, healthz, status) is dropped by the shared
+# SuppressNoisyAccessFilter, applied via the log_config passed to uvicorn.run()
+# below — so access lines are kept (with timestamps) minus the noisy paths.
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
-logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 MCP_HOST: str = os.getenv("MCP_HOST", "0.0.0.0")
 MCP_PORT: int = int(os.getenv("MCP_PORT", "8082"))
@@ -394,5 +396,10 @@ def well_known_mcp():
 
 
 if __name__ == "__main__":
+    # Shared log config gives uvicorn's own startup + access lines the same
+    # UTC-timestamped format as the app loggers (kernel is importable here —
+    # sys.path was set up above before the persona imports).
+    from kernel.logging_utils import build_log_config
+
     log.info("Starting servers-host — host=%s port=%s", MCP_HOST, MCP_PORT)
-    uvicorn.run(app, host=MCP_HOST, port=MCP_PORT, access_log=True)
+    uvicorn.run(app, host=MCP_HOST, port=MCP_PORT, access_log=True, log_config=build_log_config())

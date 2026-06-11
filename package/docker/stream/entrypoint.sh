@@ -21,6 +21,9 @@ max_connections         1000;
 daemon                  on;
 srs_log_tank            file;
 srs_log_file            /dev/stdout;
+# Drop the per-~5s "Process:"/"Hybrid:" cpu heartbeat (emitted at trace). warn
+# keeps publish/connection warnings + errors; raise to trace to debug streams.
+srs_log_level           warn;
 
 http_server {
   enabled       on;

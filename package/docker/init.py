@@ -113,10 +113,6 @@ def gen_simple_secrets() -> None:
     # MinIO password: use env override on first boot (import/existing-data scenario), else generate
     minio_pass = os.getenv("MINIO_ROOT_PASSWORD") or _gen_complex_password()
     write_if_missing(KEYS_DIR / "minio.pass", minio_pass, mode=0o444)
-    # Per-deployment instance namespace (UUID5 base for stable seed artifact IDs).
-    # Not secret, but written here so it lives in the keys dir Mantle reads — Mantle
-    # mounts keys read-only and must NOT have to mint this itself.
-    write_if_missing(KEYS_DIR / "instance.uuid", str(uuid.uuid4()), mode=0o444)
 
 
 def _generate_rsa_keypair(label: str) -> rsa.RSAPrivateKey:

@@ -26,7 +26,7 @@ import {
 //  Types
 // ---------------------------------------------------------------------------
 
-type WizardStep = 'welcome' | 'domain' | 'auth' | 'operator' | 'email' | 'ai' | 'review'
+type WizardStep = 'welcome' | 'domain' | 'auth' | 'operator' | 'email' | 'review'
 
 interface StepAction {
   label: string
@@ -49,8 +49,8 @@ const SetupWizard: React.FC = () => {
   const isLocalhost = useMemo(() => ['localhost', '127.0.0.1'].includes(window.location.hostname), [])
   const STEPS: WizardStep[] = useMemo(
     () => isLocalhost
-      ? ['welcome', 'operator', 'email', 'ai', 'review']
-      : ['welcome', 'domain', 'auth', 'operator', 'email', 'ai', 'review'],
+      ? ['welcome', 'operator', 'email', 'review']
+      : ['welcome', 'domain', 'auth', 'operator', 'email', 'review'],
     [isLocalhost]
   )
 
@@ -88,11 +88,6 @@ const SetupWizard: React.FC = () => {
   const [emailProvider, setEmailProvider] = useState('')
   const [emailConfig, setEmailConfig] = useState<Record<string, string>>({})
   const [emailFromEnv, setEmailFromEnv] = useState(false)
-
-  // Step 6: AI
-  const [aiProvider, setAiProvider] = useState<'relay' | 'openrouter' | 'openai' | 'anthropic' | null>(null)
-  const [llmKey, setLlmKey] = useState('')
-  const [aiKeyFromEnv, setAiKeyFromEnv] = useState(false)
 
   // Connection test results
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; error?: string }>>({})
@@ -173,14 +168,6 @@ const SetupWizard: React.FC = () => {
       settings.push({ key: 'auth.email.enabled', value: emailAuthEnabled ? 'true' : 'false', category: 'auth' })
       if (googleClientId) {
         settings.push({ key: 'auth.google.client_id', value: googleClientId, category: 'auth' })
-      }
-
-      // AI (optional)
-      if (aiProvider) {
-        settings.push({ key: 'ai.llm_provider', value: aiProvider, category: 'ai' })
-        if (llmKey && !aiKeyFromEnv) {
-          settings.push({ key: 'ai.llm_api_key', value: llmKey, category: 'ai', is_secret: true })
-        }
       }
 
       // Email
@@ -279,18 +266,11 @@ const SetupWizard: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Pre-configure AI and email steps from .env defaults surfaced by /setup/status.
+  // Pre-configure the email step from .env defaults surfaced by /setup/status.
   // Only apply if the user hasn't already chosen a provider.
   useEffect(() => {
     getSetupStatus()
       .then(status => {
-        // AI
-        const provider = status.env_defaults?.llm_provider as string | undefined
-        const hasKey = status.env_defaults?.llm_api_key
-        if (hasKey && provider && ['openai', 'anthropic', 'openrouter'].includes(provider)) {
-          setAiProvider(prev => prev ?? (provider as 'openai' | 'anthropic' | 'openrouter'))
-          setAiKeyFromEnv(true)
-        }
         // Email
         const emailProviderEnv = status.env_defaults?.email_provider as string | undefined
         if (emailProviderEnv && ['smtp', 'ses', 'sendgrid', 'resend'].includes(emailProviderEnv)) {
@@ -341,12 +321,6 @@ const SetupWizard: React.FC = () => {
           label: emailProvider ? 'Continue' : 'Skip for now',
           onClick: goNext,
           note: !emailProvider ? 'Without email, users can only sign in with a password. No password reset or login codes.' : undefined,
-        }
-      case 'ai':
-        return {
-          label: aiProvider ? 'Continue' : 'Skip for now',
-          onClick: goNext,
-          note: !aiProvider ? "Without AI, search and embeddings won't work. You can configure it later in settings." : undefined,
         }
       case 'review':
         return { label: submitting ? 'Setting up…' : 'Complete Setup', onClick: handleComplete, disabled: submitting }
@@ -700,124 +674,6 @@ const SetupWizard: React.FC = () => {
     </div>
   )
 
-  const renderAI = () => (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl font-semibold text-gray-900">AI Access</h1>
-        <p className="text-gray-500">Powers search, embeddings, and AI features.</p>
-      </div>
-      <div className="space-y-3">
-        {/* Agience relay — recommended */}
-        <button
-          onClick={() => { setAiProvider('relay'); setLlmKey(''); setAiKeyFromEnv(false) }}
-          className={`w-full text-left px-4 py-3 rounded-lg border transition-colors text-sm ${
-            aiProvider === 'relay'
-              ? 'border-indigo-400 bg-indigo-50 text-indigo-900'
-              : 'border-gray-200 hover:border-gray-300 text-gray-700'
-          }`}
-        >
-          <span className="font-medium">Agience AI</span>
-          <span className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-medium">Recommended</span>
-          <span className="text-xs text-gray-400 ml-2">— Zero config, free up to 50 queries/day</span>
-        </button>
-
-        {/* Relay notice */}
-        {aiProvider === 'relay' && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-xs text-gray-600 space-y-1">
-            <p>Queries are routed through <strong>relay.agience.ai</strong> using Agience's model access. Prompts are not logged or used for training.</p>
-            <p>Free tier: <strong>50 queries/day</strong> — enough to verify your setup. Bring your own key or upgrade in settings for full access.</p>
-            <p><a href="https://agience.ai/privacy" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">Privacy policy →</a></p>
-          </div>
-        )}
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          <div className="flex-1 border-t border-gray-200" />
-          <span>or bring your own</span>
-          <div className="flex-1 border-t border-gray-200" />
-        </div>
-
-        {/* Anthropic */}
-        <button
-          onClick={() => { setAiProvider('anthropic'); setLlmKey(''); setAiKeyFromEnv(false) }}
-          className={`w-full text-left px-4 py-3 rounded-lg border transition-colors text-sm ${
-            aiProvider === 'anthropic'
-              ? 'border-indigo-400 bg-indigo-50 text-indigo-900'
-              : 'border-gray-200 hover:border-gray-300 text-gray-700'
-          }`}
-        >
-          <span className="font-medium">Anthropic</span>
-          <span className="text-xs text-gray-400 ml-2">— Claude models (platform default)</span>
-        </button>
-
-        {/* OpenAI */}
-        <button
-          onClick={() => { setAiProvider('openai'); setLlmKey(''); setAiKeyFromEnv(false) }}
-          className={`w-full text-left px-4 py-3 rounded-lg border transition-colors text-sm ${
-            aiProvider === 'openai'
-              ? 'border-indigo-400 bg-indigo-50 text-indigo-900'
-              : 'border-gray-200 hover:border-gray-300 text-gray-700'
-          }`}
-        >
-          <span className="font-medium">OpenAI</span>
-          <span className="text-xs text-gray-400 ml-2">— GPT models</span>
-        </button>
-
-        {/* OpenRouter */}
-        <button
-          onClick={() => { setAiProvider('openrouter'); setLlmKey(''); setAiKeyFromEnv(false) }}
-          className={`w-full text-left px-4 py-3 rounded-lg border transition-colors text-sm ${
-            aiProvider === 'openrouter'
-              ? 'border-indigo-400 bg-indigo-50 text-indigo-900'
-              : 'border-gray-200 hover:border-gray-300 text-gray-700'
-          }`}
-        >
-          <span className="font-medium">OpenRouter</span>
-          <span className="text-xs text-gray-400 ml-2">— Any model, free tier available</span>
-        </button>
-
-        {/* Shared key input for all BYOK providers */}
-        {aiProvider && aiProvider !== 'relay' && (
-          aiKeyFromEnv ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-xs text-green-700">
-              <p>✓ API key detected from environment configuration.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <input
-                type="password"
-                value={llmKey}
-                onChange={e => setLlmKey(e.target.value)}
-                placeholder={
-                  aiProvider === 'anthropic' ? 'sk-ant-...' :
-                  aiProvider === 'openrouter' ? 'sk-or-...' :
-                  'sk-...'
-                }
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm font-mono"
-                autoComplete="off"
-                autoFocus
-              />
-              {llmKey && (
-                <button
-                  onClick={() => handleTestConnection(aiProvider, { api_key: llmKey })}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-                >
-                  {testResults[aiProvider]?.success ? '✓ Valid' : 'Test key →'}
-                </button>
-              )}
-              {aiProvider === 'openrouter' && (
-                <p className="text-xs text-gray-400">
-                  Get a free key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">openrouter.ai/keys</a>
-                </p>
-              )}
-            </div>
-          )
-        )}
-      </div>
-
-    </div>
-  )
-
   const renderReview = () => (
     <div className="space-y-6">
       <div className="text-center space-y-2">
@@ -844,16 +700,6 @@ const SetupWizard: React.FC = () => {
           }</span>
         </div>
         <div className="flex justify-between py-2 border-b border-gray-100">
-          <span className="text-gray-500">AI</span>
-          <span className="text-gray-900 font-medium">{
-            aiProvider === 'relay' ? 'Agience relay' :
-            aiProvider === 'anthropic' ? (aiKeyFromEnv ? 'Anthropic (from environment)' : 'Anthropic') :
-            aiProvider === 'openai' ? (aiKeyFromEnv ? 'OpenAI (from environment)' : 'OpenAI') :
-            aiProvider === 'openrouter' ? 'OpenRouter' :
-            'Not configured'
-          }</span>
-        </div>
-        <div className="flex justify-between py-2 border-b border-gray-100">
           <span className="text-gray-500">Sign-In</span>
           <span className="text-gray-900 font-medium">
             {[emailAuthEnabled && 'Password', googleClientId && 'Google'].filter(Boolean).join(' + ') || 'None'}
@@ -870,7 +716,6 @@ const SetupWizard: React.FC = () => {
       case 'auth': return renderAuth()
       case 'operator': return renderOperator()
       case 'email': return renderEmailService()
-      case 'ai': return renderAI()
       case 'review': return renderReview()
     }
   }

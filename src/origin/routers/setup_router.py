@@ -111,13 +111,13 @@ async def get_setup_status():
             email_provider_env = "resend"
         elif os.getenv("SENDGRID_API_KEY"):
             email_provider_env = "sendgrid"
+        elif os.getenv("GMAIL_OAUTH_REFRESH_TOKEN"):
+            email_provider_env = "gmail"
     return SetupStatusResponse(
         needs_setup=platform_settings.needs_setup(),
         ready=not platform_settings.needs_setup(),
         version="origin",
         env_defaults={
-            "llm_api_key": bool(os.getenv("LLM_API_KEY")),
-            "llm_provider": os.getenv("LLM_PROVIDER", ""),
             "email_provider": email_provider_env,
             "smtp_host": os.getenv("SMTP_HOST", ""),
             "smtp_port": os.getenv("SMTP_PORT", ""),
@@ -126,6 +126,8 @@ async def get_setup_status():
             "smtp_has_password": bool(os.getenv("SMTP_PASSWORD")),
             "resend_has_api_key": bool(os.getenv("RESEND_API_KEY")),
             "sendgrid_has_api_key": bool(os.getenv("SENDGRID_API_KEY")),
+            "gmail_has_client": bool(os.getenv("GMAIL_OAUTH_CLIENT_ID")),
+            "gmail_has_refresh_token": bool(os.getenv("GMAIL_OAUTH_REFRESH_TOKEN")),
         },
     )
 
@@ -280,6 +282,18 @@ async def complete_setup(
         _sendgrid_key = os.getenv("SENDGRID_API_KEY", "")
         if _sendgrid_key:
             settings_dicts.append({"key": "email.sendgrid.api_key", "value": _sendgrid_key, "category": "email", "is_secret": True})
+    elif _email_provider_val == "gmail":
+        # Gmail's dedicated OAuth client — pull any creds not supplied in the wizard
+        # from GMAIL_OAUTH_* env so unattended / static-file setup works.
+        for _gkey, _genv, _gsecret in (
+            ("email.gmail.client_id", "GMAIL_OAUTH_CLIENT_ID", False),
+            ("email.gmail.client_secret", "GMAIL_OAUTH_CLIENT_SECRET", True),
+            ("email.gmail.refresh_token", "GMAIL_OAUTH_REFRESH_TOKEN", True),
+        ):
+            if not any(s.key == _gkey for s in body.settings):
+                _gval = os.getenv(_genv, "")
+                if _gval:
+                    settings_dicts.append({"key": _gkey, "value": _gval, "category": "email", "is_secret": _gsecret})
     settings_dicts.append(
         {"key": "platform.setup_complete", "value": "true", "category": "platform", "is_secret": False}
     )

@@ -88,12 +88,8 @@ services:
     volumes:
       - ./.data/keys:/app/.data/keys:ro
       - ./.data/origin:/app/.data/origin
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; urllib.request.urlopen('http://localhost:8080/healthz', timeout=2); sys.exit(0)\" || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+    # No healthcheck — peers reach origin over HTTP and tolerate it not being
+    # ready yet; nothing gates on its health. Graceful degradation, not gating.
     depends_on:
       init:
         condition: service_completed_successfully
@@ -122,19 +118,16 @@ services:
       - AWS_ENDPOINT_URL_PUBLIC=http://localhost:8080/content
     volumes:
       - ./.data/keys:/app/.data/keys:ro
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; urllib.request.urlopen('http://localhost:8081/status', timeout=2); sys.exit(0)\" || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 18
-      start_period: 60s
+    # No healthcheck — mantle retries Arango and reaches origin over HTTP, so it
+    # tolerates peers that aren't ready. service_started = ordering only, no
+    # inter-container health gating; degrade gracefully instead.
     depends_on:
       content:
-        condition: service_healthy
+        condition: service_started
       graph:
-        condition: service_healthy
+        condition: service_started
       origin:
-        condition: service_healthy
+        condition: service_started
 
   chorus:
     image: ${REGISTRY:-agience}/agience-chorus:${VERSION:-stable}
@@ -152,15 +145,11 @@ services:
       - ./.data/iris:/workspace
       - ./.data/stream:/var/stream
       - ./.data/keys:/run/secrets/keys:ro
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; urllib.request.urlopen('http://localhost:8082/healthz', timeout=2); sys.exit(0)\" || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+    # No healthcheck — chorus reaches mantle/origin over HTTP and degrades
+    # gracefully. service_started = ordering only.
     depends_on:
       mantle:
-        condition: service_healthy
+        condition: service_started
 
   stream:
     image: ${REGISTRY:-agience}/agience-stream:${VERSION:-stable}
@@ -204,11 +193,11 @@ services:
       facet:
         condition: service_started
       origin:
-        condition: service_healthy
+        condition: service_started
       mantle:
-        condition: service_healthy
+        condition: service_started
       content:
-        condition: service_healthy
+        condition: service_started
       stream:
         condition: service_started
 
@@ -242,15 +231,20 @@ configs:
           }
         }
 
-        # Chorus (MCP gateway) — /mcp/* and /.well-known/*.
-        @mcp path /mcp /mcp/*
+        # Chorus — MCP execution gateway (/mcp, /mcp/*). /.well-known/mcp is
+        # interim static discovery only; real discovery is user-scoped +
+        # artifact-backed (spans all visible MCP servers, public-only when
+        # anonymous — not just chorus) and belongs in Mantle. Tracked separately.
+        @mcp path /mcp /mcp/* /.well-known/mcp*
         handle @mcp {
           reverse_proxy chorus:8082 {
             flush_interval -1
           }
         }
+        # The rest of /.well-known (security.txt, jwks.json,
+        # openid-configuration) is owned by the identity authority (origin).
         handle /.well-known/* {
-          reverse_proxy chorus:8082
+          reverse_proxy origin:8080
         }
 
         # Content (MinIO presigned-URL bucket).

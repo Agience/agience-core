@@ -29,15 +29,20 @@ home.agience.ai {
         }
     }
 
-    # Chorus (MCP gateway + persona servers).
-    @mcp path /mcp /mcp/*
+    # Chorus — MCP execution gateway (/mcp, /mcp/*). /.well-known/mcp is interim
+    # static discovery only; real discovery is user-scoped + artifact-backed
+    # (spans all visible MCP servers, public-only when anonymous — not just
+    # chorus) and belongs in Mantle. Tracked separately.
+    @mcp path /mcp /mcp/* /.well-known/mcp*
     handle @mcp {
         reverse_proxy chorus:8082 {
             flush_interval -1
         }
     }
+    # The rest of /.well-known (security.txt, jwks.json, openid-configuration)
+    # is owned by the identity authority (origin).
     handle /.well-known/* {
-        reverse_proxy chorus:8082
+        reverse_proxy origin:8080
     }
 
     # Content (MinIO presigned-URL bucket).

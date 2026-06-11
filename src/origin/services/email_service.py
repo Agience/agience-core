@@ -38,16 +38,27 @@ def _from_address() -> str:
 
 
 def _gmail_config() -> dict:
-    """Resolve the Gmail OAuth2 credentials, reusing the platform's Google OAuth
-    app. DB settings (``auth.google.*``) win; ``GOOGLE_OAUTH_*`` env vars are the
-    first-boot fallback. A refresh token for the sending mailbox is required to
-    mint access tokens for the Gmail API."""
+    """Resolve the Gmail OAuth2 credentials for the platform email SENDER — a
+    DEDICATED Google OAuth client, independent of Google sign-in. Precedence
+    (first non-empty wins), matching the rest of the platform:
+      1. DB settings ``email.gmail.*`` (wizard / static seed)
+      2. ``GMAIL_OAUTH_*`` env (unattended / .env first-boot)
+      3. the sign-in app ``auth.google.*`` / ``GOOGLE_OAUTH_*`` (backward-compat)
+    A refresh token for the sending mailbox is required to mint Gmail API tokens."""
     return {
-        "client_id": settings.get("auth.google.client_id") or os.getenv("GOOGLE_OAUTH_CLIENT_ID", "") or "",
-        "client_secret": settings.get_secret("auth.google.client_secret")
+        "client_id": settings.get("email.gmail.client_id")
+        or os.getenv("GMAIL_OAUTH_CLIENT_ID", "")
+        or settings.get("auth.google.client_id")
+        or os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+        or "",
+        "client_secret": settings.get_secret("email.gmail.client_secret")
+        or os.getenv("GMAIL_OAUTH_CLIENT_SECRET", "")
+        or settings.get_secret("auth.google.client_secret")
         or os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
         or "",
-        "refresh_token": settings.get_secret("auth.google.refresh_token")
+        "refresh_token": settings.get_secret("email.gmail.refresh_token")
+        or os.getenv("GMAIL_OAUTH_REFRESH_TOKEN", "")
+        or settings.get_secret("auth.google.refresh_token")
         or os.getenv("GOOGLE_OAUTH_REFRESH_TOKEN", "")
         or "",
     }
@@ -228,8 +239,9 @@ async def test_connection(provider_config: dict) -> tuple[bool, Optional[str]]:
             ses.get_send_quota()
             return True, None
         if provider == "gmail":
-            # Success = the Google OAuth app can mint a Gmail access token from
-            # the refresh token. Ignores any inbound config; reads GOOGLE_OAUTH_*.
+            # Success = the Gmail OAuth app can mint a Gmail access token from the
+            # refresh token. Ignores inbound config; reads GMAIL_OAUTH_* (falls
+            # back to GOOGLE_OAUTH_*).
             await _gmail_access_token(_gmail_config())
             return True, None
         return False, f"Unknown provider: {provider}"
@@ -335,7 +347,7 @@ async def _gmail_access_token(gm: dict) -> str:
     token via Google's OAuth2 token endpoint."""
     if not (gm["client_id"] and gm["client_secret"] and gm["refresh_token"]):
         raise ValueError(
-            "Gmail provider requires GOOGLE_OAUTH client_id, client_secret, and refresh_token"
+            "Gmail provider requires GMAIL_OAUTH client_id, client_secret, and refresh_token"
         )
     async with httpx.AsyncClient() as client:
         resp = await client.post(

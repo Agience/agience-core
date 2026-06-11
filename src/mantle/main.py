@@ -13,7 +13,6 @@ from datetime import datetime, timezone  # noqa: E402
 import asyncio  # noqa: E402
 import json  # noqa: E402
 import logging  # noqa: E402
-import time  # noqa: E402
 from contextlib import asynccontextmanager  # noqa: E402
 from pathlib import Path  # noqa: E402
 
@@ -36,6 +35,10 @@ from routers.events_router import router as events_router  # noqa: E402
 from routers.internal_personas_router import router as internal_personas_router  # noqa: E402
 from routers.stream_router import router as stream_router  # noqa: E402
 from kernel import config  # noqa: E402
+<<<<<<< Updated upstream
+=======
+from kernel.logging_utils import SuppressNoisyAccessFilter, build_log_config, configure_logging  # noqa: E402
+>>>>>>> Stashed changes
 
 # ----------------------------
 # Logging setup (pre-Phase 2 — uses hardcoded defaults until config loads)
@@ -47,15 +50,9 @@ debug_level_map = {
     "ERROR": logging.ERROR,
     "CRITICAL": logging.CRITICAL,
 }
-# Initial log level from default; reconfigured after Phase 2
-logging.Formatter.converter = time.gmtime
-if not logging.getLogger().handlers:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s.%(msecs)03dZ %(levelname)s - %(name)s - %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S",
-    )
-logging.getLogger().setLevel(logging.INFO)
+# Apply the shared logging config in-process so timestamps land on uvicorn's
+# own startup + access lines regardless of the --log-config CLI flag.
+configure_logging()
 logger = logging.getLogger("agience.api")
 
 logging.getLogger("httpx").setLevel(logging.ERROR)
@@ -678,7 +675,7 @@ if __name__ == "__main__":
         reload_dirs=["mantle", "kernel"],
         reload_excludes=["**/__pycache__/*", "**/*.pyc"],
         log_level="info",
-        log_config="kernel/uvicorn_log_config.json",
+        log_config=build_log_config(),
         workers=1,
         server_header=False,
         timeout_graceful_shutdown=3,

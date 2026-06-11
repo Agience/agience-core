@@ -139,7 +139,6 @@ ORIGIN_URI: str = os.getenv("ORIGIN_URI", "http://localhost:8080")
 MANTLE_URI: str = os.getenv("MANTLE_URI", "http://localhost:8081")
 CHORUS_URI: str = os.getenv("CHORUS_URI", "http://localhost:8082")
 PLATFORM_CLIENT_ID: str = os.getenv("PLATFORM_CLIENT_ID", "agience-client")
-AUTHORITY_DOMAIN: str = _urlparse(ORIGIN_URI).hostname or "localhost"
 # JWT issuer/audience identity. This is the PUBLIC origin URI and MUST be the same
 # across every service (origin stamps it into `iss`; mantle/chorus validate against
 # it). It is decoupled from ORIGIN_URI because mantle/chorus reach origin over the
@@ -147,6 +146,9 @@ AUTHORITY_DOMAIN: str = _urlparse(ORIGIN_URI).hostname or "localhost"
 # AUTHORITY_ISSUER=https://<domain> on every service; falls back to ORIGIN_URI for
 # single-host/dev where they coincide.
 AUTHORITY_ISSUER: str = _origin_only(os.getenv("AUTHORITY_ISSUER") or ORIGIN_URI)
+# Authority domain = host of the PUBLIC issuer (e.g. my.agience.ai), NOT the internal
+# origin host. Derived from AUTHORITY_ISSUER so it's the public domain everywhere.
+AUTHORITY_DOMAIN: str = _urlparse(AUTHORITY_ISSUER).hostname or "localhost"
 
 # Features
 ALLOW_LOCAL_MCP_SERVERS: bool = False
@@ -406,12 +408,12 @@ def load_settings_from_db() -> None:
 
     # Derived values
     _origin_uri = ORIGIN_URI
-    try:
-        _hostname = _urlparse(_origin_uri).hostname or "localhost"
-    except Exception:
-        _hostname = "localhost"
-    AUTHORITY_DOMAIN = _hostname
     # Issuer is the PUBLIC origin URI (explicit env wins) — NOT the internal
     # ORIGIN_URI that mantle/chorus use to reach origin. ORIGIN_URI may also include
     # a path prefix (e.g. /api) which must not appear in the JWT issuer/audience.
     AUTHORITY_ISSUER = _origin_only(os.getenv("AUTHORITY_ISSUER") or _origin_uri)
+    # Authority domain = host of the PUBLIC issuer (the domain), not the internal host.
+    try:
+        AUTHORITY_DOMAIN = _urlparse(AUTHORITY_ISSUER).hostname or "localhost"
+    except Exception:
+        AUTHORITY_DOMAIN = "localhost"

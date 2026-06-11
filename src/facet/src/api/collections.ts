@@ -16,7 +16,7 @@ import {
 
 // list all collections accessible to the caller
 export function listCollections(): Promise<CollectionResponse[]> {
-  return get('/artifacts/accessible?content_type=' + encodeURIComponent('application/vnd.agience.collection+json'));
+  return get('/artifacts/visible?content_type=' + encodeURIComponent('application/vnd.agience.collection+json'));
 }
 
 // get a single collection

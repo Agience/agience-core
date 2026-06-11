@@ -140,7 +140,13 @@ MANTLE_URI: str = os.getenv("MANTLE_URI", "http://localhost:8081")
 CHORUS_URI: str = os.getenv("CHORUS_URI", "http://localhost:8082")
 PLATFORM_CLIENT_ID: str = os.getenv("PLATFORM_CLIENT_ID", "agience-client")
 AUTHORITY_DOMAIN: str = _urlparse(ORIGIN_URI).hostname or "localhost"
-AUTHORITY_ISSUER: str = _origin_only(ORIGIN_URI)
+# JWT issuer/audience identity. This is the PUBLIC origin URI and MUST be the same
+# across every service (origin stamps it into `iss`; mantle/chorus validate against
+# it). It is decoupled from ORIGIN_URI because mantle/chorus reach origin over the
+# INTERNAL url (http://origin:8080) but must still trust the PUBLIC issuer. Set
+# AUTHORITY_ISSUER=https://<domain> on every service; falls back to ORIGIN_URI for
+# single-host/dev where they coincide.
+AUTHORITY_ISSUER: str = _origin_only(os.getenv("AUTHORITY_ISSUER") or ORIGIN_URI)
 
 # Features
 ALLOW_LOCAL_MCP_SERVERS: bool = False
@@ -405,7 +411,7 @@ def load_settings_from_db() -> None:
     except Exception:
         _hostname = "localhost"
     AUTHORITY_DOMAIN = _hostname
-    # Use the origin (scheme+host+port) of ORIGIN_URI as the issuer.
-    # ORIGIN_URI may include a path prefix (e.g. /api) which must not
-    # appear in the JWT issuer/audience.
-    AUTHORITY_ISSUER = _origin_only(_origin_uri)
+    # Issuer is the PUBLIC origin URI (explicit env wins) — NOT the internal
+    # ORIGIN_URI that mantle/chorus use to reach origin. ORIGIN_URI may also include
+    # a path prefix (e.g. /api) which must not appear in the JWT issuer/audience.
+    AUTHORITY_ISSUER = _origin_only(os.getenv("AUTHORITY_ISSUER") or _origin_uri)

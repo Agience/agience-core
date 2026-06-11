@@ -160,7 +160,7 @@ export interface MCPServerConfig {
 const _MCP_SERVER_CONTENT_TYPE = 'application/vnd.agience.mcp-server+json';
 
 /**
- * Map an artifact record (from GET /artifacts/accessible) to the MCPServerInfo
+ * Map an artifact record (from GET /artifacts/visible) to the MCPServerInfo
  * shape. Live tool/resource introspection was removed; capabilities are now
  * materialized as child artifacts (vnd.agience.tool+json etc.) separately.
  */
@@ -191,12 +191,12 @@ function _artifactToServerInfo(artifact: Record<string, unknown>): MCPServerInfo
 /**
  * List all MCP servers accessible to the current user.
  *
- * Queries /artifacts/accessible filtered to vnd.agience.mcp-server+json.
+ * Queries /artifacts/visible filtered to vnd.agience.mcp-server+json.
  * The previous live-introspection endpoint (GET /mcp/servers) was removed;
  * capabilities (tools, resources, prompts) are materialized as child artifacts.
  */
 export async function listAllMCPServers(): Promise<MCPServerInfo[]> {
-  const response = await api.get<Record<string, unknown>[]>('/artifacts/accessible', {
+  const response = await api.get<Record<string, unknown>[]>('/artifacts/visible', {
     params: { content_type: _MCP_SERVER_CONTENT_TYPE },
   });
   return response.data.map(_artifactToServerInfo);
@@ -206,14 +206,14 @@ export async function listAllMCPServers(): Promise<MCPServerInfo[]> {
  * List MCP servers available to the current user.
  *
  * The workspace parameter is kept for API compatibility but workspace scoping
- * is handled by the ACL on /artifacts/accessible — all accessible
+ * is handled by the ACL on /artifacts/visible — all accessible
  * mcp-server+json artifacts are returned regardless of workspace context.
  *
  * The previous workspace-scoped endpoint (GET /mcp/workspaces/{id}/servers)
  * was removed in the Phase 7 simplification.
  */
 export async function listWorkspaceMCPServers(_workspaceId: string): Promise<MCPServerInfo[]> {
-  const response = await api.get<Record<string, unknown>[]>('/artifacts/accessible', {
+  const response = await api.get<Record<string, unknown>[]>('/artifacts/visible', {
     params: { content_type: _MCP_SERVER_CONTENT_TYPE },
   });
   return response.data.map(_artifactToServerInfo);

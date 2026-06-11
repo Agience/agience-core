@@ -306,14 +306,14 @@ def _now_iso() -> str:
 router = APIRouter(prefix="/artifacts", tags=["Artifacts"])
 
 
-# ---------- GET /artifacts/accessible — list artifacts the caller can read ----------
+# ---------- GET /artifacts/visible — list artifacts the caller can read ----------
 #
 # Browser UX needs "show me every workspace / collection I can see" without
 # having to know a parent ID. /search requires query_text and is for relevance-
 # ranked queries; this is the flat-list affordance, scoped through the canonical
 # LightConeResolver (same ACL path /search uses internally).
-@router.get("/accessible")
-async def list_accessible(
+@router.get("/visible")
+async def list_visible(
     content_type: Optional[str] = Query(
         None,
         description="Filter by exact content_type (MIME). Omit to list every accessible artifact.",

@@ -26,10 +26,10 @@ describe('api/workspaces', () => {
     vi.clearAllMocks();
   });
 
-  it('listWorkspaces filters /artifacts/accessible by workspace content_type', async () => {
+  it('listWorkspaces filters /artifacts/visible by workspace content_type', async () => {
     get.mockResolvedValueOnce([{ id: 'w1' }]);
     const res = await listWorkspaces();
-    expect(get).toHaveBeenCalledWith('/artifacts/accessible?content_type=application%2Fvnd.agience.workspace%2Bjson');
+    expect(get).toHaveBeenCalledWith('/artifacts/visible?content_type=application%2Fvnd.agience.workspace%2Bjson');
     expect(res).toEqual([{ id: 'w1' }]);
   });
 

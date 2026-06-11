@@ -38,10 +38,10 @@ describe('api/collections', () => {
   });
 
   // Collections CRUD
-  it('listCollections filters /artifacts/accessible by collection content_type', async () => {
+  it('listCollections filters /artifacts/visible by collection content_type', async () => {
     get.mockResolvedValueOnce([{ id: 'c1', name: 'Collection' }]);
     const res = await listCollections();
-    expect(get).toHaveBeenCalledWith('/artifacts/accessible?content_type=application%2Fvnd.agience.collection%2Bjson');
+    expect(get).toHaveBeenCalledWith('/artifacts/visible?content_type=application%2Fvnd.agience.collection%2Bjson');
     expect(res).toEqual([{ id: 'c1', name: 'Collection' }]);
   });
 

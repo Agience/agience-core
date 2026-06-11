@@ -26,7 +26,7 @@ describe('api/mcp — listWorkspaceMCPServers', () => {
     __clearServerArtifactIdCacheForTests();
   });
 
-  it('calls GET /artifacts/accessible with mcp-server content_type and returns mapped server list', async () => {
+  it('calls GET /artifacts/visible with mcp-server content_type and returns mapped server list', async () => {
     const artifacts = [
       {
         id: 'aaaaaaaa-0000-4000-8000-000000000001',
@@ -49,7 +49,7 @@ describe('api/mcp — listWorkspaceMCPServers', () => {
 
     const result = await listWorkspaceMCPServers('ws-123');
 
-    expect(mockGet).toHaveBeenCalledWith('/artifacts/accessible', {
+    expect(mockGet).toHaveBeenCalledWith('/artifacts/visible', {
       params: { content_type: 'application/vnd.agience.mcp-server+json' },
     });
     expect(result).toHaveLength(2);

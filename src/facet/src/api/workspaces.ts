@@ -17,7 +17,7 @@ import type { ArtifactKeyResponse } from './types/workspace_card';
 
 // list all workspaces accessible to the caller
 export function listWorkspaces(): Promise<WorkspaceResponse[]> {
-  return get('/artifacts/accessible?content_type=' + encodeURIComponent('application/vnd.agience.workspace+json'));
+  return get('/artifacts/visible?content_type=' + encodeURIComponent('application/vnd.agience.workspace+json'));
 }
 
 // get one workspace

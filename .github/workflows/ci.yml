@@ -40,11 +40,11 @@ jobs:
       build_home: ${{ steps.filter.outputs.build_home }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Detect changed paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             mantle:
@@ -116,7 +116,7 @@ jobs:
         working-directory: src/mantle
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: No mantle changes
         if: needs.changes.outputs.mantle != 'true'
@@ -128,7 +128,7 @@ jobs:
 
       - name: Setup Python
         if: needs.changes.outputs.mantle == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: 'pip'
@@ -170,7 +170,7 @@ jobs:
         working-directory: src/facet
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: No facet changes
         if: needs.changes.outputs.facet != 'true'
@@ -178,7 +178,7 @@ jobs:
 
       - name: Setup Node.js
         if: needs.changes.outputs.facet == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -212,7 +212,7 @@ jobs:
 
       - name: Checkout repository
         if: needs.changes.outputs.docs == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Prepare lychee output directory
         if: needs.changes.outputs.docs == 'true'

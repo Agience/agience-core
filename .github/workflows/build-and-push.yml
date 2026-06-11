@@ -59,7 +59,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.sha || github.sha }}
 
@@ -180,7 +180,7 @@ jobs:
 
       - name: Build and push origin
         if: inputs.origin_changed != false
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/docker/origin.Dockerfile
@@ -192,7 +192,7 @@ jobs:
 
       - name: Build and push mantle
         if: inputs.mantle_changed != false
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/docker/mantle.Dockerfile
@@ -203,7 +203,7 @@ jobs:
 
       - name: Build and push facet
         if: inputs.facet_changed != false
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/docker/facet.Dockerfile
@@ -215,7 +215,7 @@ jobs:
 
       - name: Build and push chorus (unified MCP host)
         if: inputs.chorus_changed != false
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/docker/chorus.Dockerfile
@@ -226,7 +226,7 @@ jobs:
 
       - name: Build and push stream ingest service (SRS RTMP)
         if: inputs.stream != false
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: src/chorus/astra
           file: src/chorus/astra/stream/Dockerfile
@@ -237,7 +237,7 @@ jobs:
 
       - name: Build and push init container
         if: inputs.init_changed != false
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/docker/Dockerfile.init
@@ -248,7 +248,7 @@ jobs:
 
       - name: Build and push home Caddy image
         if: inputs.home_changed != false
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/install/home/Dockerfile.caddy

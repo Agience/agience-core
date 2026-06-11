@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Read build version
         id: build-info
@@ -116,7 +116,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push origin
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/docker/origin.Dockerfile
@@ -127,7 +127,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push mantle
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/docker/mantle.Dockerfile
@@ -137,7 +137,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push facet
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/docker/facet.Dockerfile
@@ -148,7 +148,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push chorus (unified MCP host)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/docker/chorus.Dockerfile
@@ -158,7 +158,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push stream ingest service (SRS RTMP)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: src/chorus/astra
           file: src/chorus/astra/stream/Dockerfile
@@ -168,7 +168,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push init container
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/docker/Dockerfile.init
@@ -178,7 +178,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push home Caddy image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: package/install/home/Dockerfile.caddy

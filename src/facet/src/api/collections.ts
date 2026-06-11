@@ -14,9 +14,19 @@ import {
   ArtifactResponse,
 } from './types';
 
-// list all collections accessible to the caller
-export function listCollections(): Promise<CollectionResponse[]> {
-  return get('/artifacts/visible?content_type=' + encodeURIComponent('application/vnd.agience.collection+json'));
+// list collections accessible to the caller.
+//
+// `action` selects the CRUDEASIO capability to filter by:
+//   - 'read'   (default) — every collection the caller can see (browse/sidebar)
+//   - 'create' — only collections the caller can assign artifacts INTO; this
+//     excludes read-only platform collections (which are never assignable to
+//     regular users — only the platform admin holds create/add on them).
+export function listCollections(action: string = 'read'): Promise<CollectionResponse[]> {
+  let url = '/artifacts/visible?content_type=' + encodeURIComponent('application/vnd.agience.collection+json');
+  if (action !== 'read') {
+    url += '&action=' + encodeURIComponent(action);
+  }
+  return get(url);
 }
 
 // get a single collection

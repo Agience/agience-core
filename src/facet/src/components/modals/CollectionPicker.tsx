@@ -70,7 +70,10 @@ export function CollectionPicker({
   const loadCollections = async () => {
     try {
       setLoading(true);
-      const data = await listCollections();
+      // The picker exists to assign artifacts INTO a collection, so list only
+      // collections the caller can add to ('create'). Read-only platform
+      // collections are excluded server-side — they are not assignable.
+      const data = await listCollections('create');
       setCollections(data);
     } catch (error) {
       console.error('Failed to load collections:', error);

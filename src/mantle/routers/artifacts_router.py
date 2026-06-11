@@ -318,33 +318,55 @@ async def list_visible(
         None,
         description="Filter by exact content_type (MIME). Omit to list every accessible artifact.",
     ),
+    action: str = Query(
+        "read",
+        description=(
+            "CRUDEASIO action to filter by (read, create, add, update, ...). Returns "
+            "only artifacts the caller may perform this action on. Defaults to 'read' "
+            "(everything visible). Use 'create' to list collections an artifact may be "
+            "assigned into — read-only platform collections are excluded."
+        ),
+    ),
     auth: AuthContext = Depends(get_auth),
     arango_db: StandardDatabase = Depends(get_arango_db),
 ):
     if not auth.user_id and not auth.bearer_grant:
         raise HTTPException(status_code=401, detail="Missing authorization")
 
+    from services.dependencies import _ACTION_FLAG_MAP
+
+    flag_attr = _ACTION_FLAG_MAP.get(action)
+    if flag_attr is None:
+        raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+
     from search.mantle.lightcone import LightConeResolver
 
     resolver = LightConeResolver(arango_db)
-    authorized: Set[str] = resolver.resolve(auth.user_id, "read") if auth.user_id else set()
-    if auth.bearer_grant and getattr(auth.bearer_grant, "can_read", False) and auth.bearer_grant.resource_id:
-        authorized.add(auth.bearer_grant.resource_id)
 
-    # First-login provisioning: if the user has no accessible artifacts, they
-    # have not yet been granted access to platform seed collections. Provision
-    # them now (idempotent — safe to call on every startup after a factory reset).
-    if auth.user_id and not authorized:
+    # First-login provisioning is keyed on READ access (the baseline seed grant
+    # set). A user with nothing readable has not yet been granted the platform
+    # seed collections — provision them now (idempotent, safe on every startup
+    # after a factory reset). Always resolved against "read", never the requested
+    # action, so e.g. ?action=create does not retrigger provisioning for users
+    # who legitimately have no create grants.
+    read_authorized: Set[str] = resolver.resolve(auth.user_id, "read") if auth.user_id else set()
+    if auth.user_id and not read_authorized:
         try:
             from services.seed_provisioning import provision_user
             provision_user(arango_db, user_id=auth.user_id)
-            # Re-resolve after provisioning so this request returns the seeded collections.
-            authorized = resolver.resolve(auth.user_id, "read")
+            read_authorized = resolver.resolve(auth.user_id, "read")
             logger.info("First-login provisioning completed for user %s", auth.user_id)
         except Exception:
             logger.warning(
                 "First-login provisioning failed for user %s (non-fatal)", auth.user_id, exc_info=True
             )
+
+    if action == "read":
+        authorized: Set[str] = set(read_authorized)
+    else:
+        authorized = resolver.resolve(auth.user_id, action) if auth.user_id else set()
+    if auth.bearer_grant and getattr(auth.bearer_grant, flag_attr, False) and auth.bearer_grant.resource_id:
+        authorized.add(auth.bearer_grant.resource_id)
 
     results: list = []
     for aid in authorized:

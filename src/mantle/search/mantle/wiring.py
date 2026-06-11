@@ -7,9 +7,10 @@ the only fork.
 
 Wiring decisions:
 
-- **Master key store**: :class:`FernetMasterKeyStore` over the platform
-  encryption key (:func:`kernel.key_manager.get_encryption_key`). Future
-  Shamir-threshold backend swaps in without touching call sites.
+- **Master key store**: :class:`~.oracle.ArangoMasterKeyStore` — per-principal
+  DEKs wrapped by the platform KEK and persisted in Arango so they survive
+  restarts. KEK custody is pluggable via :mod:`.key_provider` (local file |
+  cloud KMS | Vault); a future Shamir-threshold backend is just another provider.
 - **Cell storage**: :class:`S3CellStore` over Mantle's edge S3 client
   (``services.content_service._s3_edge_internal``) and the configured
   edge bucket. Cells live under
@@ -45,10 +46,10 @@ from .stores import CellStore
 
 logger = logging.getLogger(__name__)
 
-# Process-level oracle singleton — the FernetMasterKeyStore holds master keys
-# in memory. A new instance per call would lose keys between indexing and
-# search (different calls share no state), causing every search to generate a
-# new key that can't decrypt blobs written by the indexer.
+# Process-level oracle singleton — caches unwrapped master keys for the process
+# lifetime. The keys themselves are persisted durably by ArangoMasterKeyStore, so
+# (unlike the old in-memory store) they survive restarts; the singleton only avoids
+# re-unwrapping on every call within one process.
 _oracle_singleton: Optional[OracleService] = None
 _oracle_lock = threading.Lock()
 

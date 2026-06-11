@@ -6,7 +6,13 @@ type: grant
 namespace: agience
 slug: platform-admin-collections
 principal: "{{user.id}}"
-actions: [read, update, invoke, admin]
+# Full management for the designated admin: create/add to assign artifacts INTO
+# these platform collections (add-to-collection checks `create`); evict to remove
+# items from them (`POST /artifacts/{id}/remove` checks `evict` on the container);
+# delete to archive the artifacts themselves; update + admin for content + grant
+# management. Regular users only ever receive `read` on these, so they cannot
+# write to, assign into, or remove from them.
+actions: [read, create, update, delete, evict, add, invoke, admin]
 resources:
   - agience/agience-authorities
   - agience/agience-hosts

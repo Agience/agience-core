@@ -1388,3 +1388,76 @@ class TestSearchArtifacts:
     async def test_400_when_neither_query_text_nor_embedding(self, client: AsyncClient):
         r = await client.post("/artifacts/search", json={"size": 5})
         assert r.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# GET /artifacts/visible — action-scoped visibility
+# ---------------------------------------------------------------------------
+
+
+class _FakeResolver:
+    """Records the actions it's resolved against and returns a fixed set per
+    action. 'read' is non-empty so first-login provisioning never fires."""
+
+    seen_actions: list = []
+    by_action = {
+        "read": {"col-readonly", "col-mine"},
+        "create": {"col-mine"},
+    }
+
+    def __init__(self, db, **kwargs):
+        pass
+
+    def resolve(self, principal_id, action="read", **kwargs):
+        _FakeResolver.seen_actions.append(action)
+        return set(self.by_action.get(action, set()))
+
+
+class TestListVisibleActionFilter:
+    """The assign-to-collection picker requests `?action=create` so read-only
+    platform collections (read-granted to every user) are not offered as
+    assignable. The endpoint must filter by the requested CRUDEASIO action,
+    not by 'read'."""
+
+    @pytest.mark.asyncio
+    async def test_action_create_filters_to_addable_collections(self, client: AsyncClient):
+        _FakeResolver.seen_actions = []
+        with patch("search.mantle.lightcone.LightConeResolver", _FakeResolver), patch(
+            "routers.artifacts_router._find_artifact",
+            side_effect=lambda db, aid: {"_key": aid, "id": aid},
+        ), patch(
+            "routers.artifacts_router._normalize_artifact_doc",
+            side_effect=lambda d: {"id": d["id"]},
+        ):
+            r = await client.get("/artifacts/visible?action=create")
+        assert r.status_code == 200
+        ids = {a["id"] for a in r.json()}
+        # Only the create-capable collection — the read-only one is excluded.
+        assert ids == {"col-mine"}
+        # Provisioning gate is always resolved against "read"; the visible set
+        # is resolved against the requested action.
+        assert "read" in _FakeResolver.seen_actions
+        assert "create" in _FakeResolver.seen_actions
+
+    @pytest.mark.asyncio
+    async def test_default_action_is_read(self, client: AsyncClient):
+        _FakeResolver.seen_actions = []
+        with patch("search.mantle.lightcone.LightConeResolver", _FakeResolver), patch(
+            "routers.artifacts_router._find_artifact",
+            side_effect=lambda db, aid: {"_key": aid, "id": aid},
+        ), patch(
+            "routers.artifacts_router._normalize_artifact_doc",
+            side_effect=lambda d: {"id": d["id"]},
+        ):
+            r = await client.get("/artifacts/visible")
+        assert r.status_code == 200
+        ids = {a["id"] for a in r.json()}
+        assert ids == {"col-readonly", "col-mine"}
+        # No extra resolve for the default path — 'read' covers both the
+        # provisioning gate and the visible set.
+        assert _FakeResolver.seen_actions == ["read"]
+
+    @pytest.mark.asyncio
+    async def test_unknown_action_rejected(self, client: AsyncClient):
+        r = await client.get("/artifacts/visible?action=bogus")
+        assert r.status_code == 400

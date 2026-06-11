@@ -45,6 +45,12 @@ describe('api/collections', () => {
     expect(res).toEqual([{ id: 'c1', name: 'Collection' }]);
   });
 
+  it('listCollections("create") requests only assignable collections via &action=create', async () => {
+    get.mockResolvedValueOnce([{ id: 'c1', name: 'Mine' }]);
+    await listCollections('create');
+    expect(get).toHaveBeenCalledWith('/artifacts/visible?content_type=application%2Fvnd.agience.collection%2Bjson&action=create');
+  });
+
   it('createCollection calls POST /artifacts with collection content_type', async () => {
     post.mockResolvedValueOnce({ id: 'c-new', name: 'New', description: 'D' });
     const res = await createCollection({ name: 'New', description: 'D' });

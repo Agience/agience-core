@@ -33,6 +33,13 @@ RUN pip install --no-cache-dir -r src/mantle/requirements.txt
 COPY src/kernel/ ./src/kernel/
 COPY src/mantle/ ./src/mantle/
 COPY package/types/ ./package/types/
+# Server-owned content-type definitions live under src/chorus/<persona>/ui/.
+# types_service walks these (get_types_roots → _default_server_ui_roots), and the
+# mcp-server type's operations (resources_read / resources_import) are declared
+# there — NOT in package/types. Without the chorus ui/ trees, mantle's operation
+# dispatch can't resolve them → 404 on every `ui://` resource read. mantle never
+# imports chorus code; it only reads the ui/ type.json + view.html files.
+COPY src/chorus/ ./src/chorus/
 # Declarative platform/user/admin seed tree — loaded on first boot from
 # config.BASE_DIR/package/seeds (= /app/package/seeds here). Carrying it in
 # the image is the fix for the seeds-missing-in-image bug.

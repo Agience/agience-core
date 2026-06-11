@@ -91,6 +91,22 @@ if ($remotes -notcontains $PublicRemote) {
     exit 1
 }
 
+# --- Recover from a prior interrupted run ---
+# A hard interrupt (Ctrl-C, closed terminal) during a previous publish can leave
+# the working tree stranded ON the staging branch and/or leave the staging branch
+# behind. The latter makes `checkout -b` fail ("already exists"). Get back onto a
+# real source branch and drop the leftover so this run starts clean. (Creation
+# below also uses `-B` so a leftover never blocks it.)
+if ($OriginalBranch -eq $StagingBranch) {
+    Write-Host "  Recovering: tree was stranded on '$StagingBranch' - switching to 'main'." -ForegroundColor DarkYellow
+    git checkout main --force --quiet 2>&1 | Out-Null
+    $OriginalBranch = (git rev-parse --abbrev-ref HEAD).Trim()
+}
+if ("$(git branch --list $StagingBranch 2>&1)".Trim()) {
+    Write-Host "  Removing leftover staging branch '$StagingBranch' from a prior run." -ForegroundColor DarkYellow
+    git branch -D $StagingBranch 2>&1 | Out-Null
+}
+
 # --- Build message ---
 if (-not $Message) {
     $Message = if ($Version) { "Agience v$Version" } else { "publish" }
@@ -148,7 +164,7 @@ try {
                     Write-Host "ERROR: Failed to fetch $PublicRemote/main." -ForegroundColor Red
                     exit 1
                 }
-                git checkout -b $StagingBranch "$PublicRemote/main" 2>&1 | Out-Null
+                git checkout -B $StagingBranch "$PublicRemote/main" 2>&1 | Out-Null
                 if ($LASTEXITCODE -ne 0) {
                     Write-Host "ERROR: Failed to create staging branch from $PublicRemote/main." -ForegroundColor Red
                     exit 1
@@ -159,7 +175,7 @@ try {
             }
         } else {
             # Create staging branch from the public remote's current HEAD
-            git checkout -b $StagingBranch "$PublicRemote/$PublicBranch" 2>&1 | Out-Null
+            git checkout -B $StagingBranch "$PublicRemote/$PublicBranch" 2>&1 | Out-Null
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "ERROR: Failed to create staging branch from $PublicRemote/$PublicBranch." -ForegroundColor Red
                 exit 1

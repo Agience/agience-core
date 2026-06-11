@@ -33,11 +33,16 @@ import logging
 import os
 import threading
 from collections.abc import Mapping
-from typing import Protocol
+from typing import TYPE_CHECKING, Callable, Protocol
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+if TYPE_CHECKING:  # pragma: no cover
+    from arango.database import StandardDatabase
+
+    from .key_provider import KeyProvider
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +117,60 @@ class FernetMasterKeyStore:
     def storage(self) -> dict[str, str]:
         """Read-only view of the wrapped storage. Intended for tests / inspection."""
         return dict(self._persist)
+
+
+class ArangoMasterKeyStore:
+    """Durable master key store (production backend).
+
+    Wraps each principal master key with the platform KEK (via a pluggable
+    :class:`~search.mantle.key_provider.KeyProvider`) and persists the wrapped
+    token in the ``mantle_master_keys`` Arango collection, keyed by principal_id.
+    This is the persistent backend the ``FernetMasterKeyStore`` docstring refers
+    to: without it the in-process store loses keys on restart, orphaning every
+    encrypted cell (search returns nothing).
+
+    Envelope encryption: per-principal master keys are the DEKs; the KEK is held by
+    the KeyProvider. Only WRAPPED DEKs ever touch the database, and KEK custody
+    (local file → Vault/cloud KMS → HSM → Shamir quorum) is swapped by choosing a
+    different KeyProvider — nothing here changes.
+    """
+
+    COLLECTION = "mantle_master_keys"
+
+    def __init__(self, key_provider: "KeyProvider", db_factory: Callable[[], "StandardDatabase"]) -> None:
+        self._kek = key_provider
+        self._db_factory = db_factory
+
+    def _collection(self):
+        db = self._db_factory()
+        # Schema init creates this collection; create-on-demand is a defensive
+        # fallback so a store built before init (or against a partial DB) doesn't
+        # crash search with a missing-collection error.
+        if not db.has_collection(self.COLLECTION):
+            try:
+                db.create_collection(self.COLLECTION)
+            except Exception:
+                pass
+        return db.collection(self.COLLECTION)
+
+    def get(self, principal_id: str) -> bytes | None:
+        try:
+            doc = self._collection().get(principal_id)
+        except Exception as exc:
+            logger.error("Master key read failed for %s: %s", principal_id, exc)
+            return None
+        token = (doc or {}).get("token")
+        if not token:
+            return None
+        try:
+            return self._kek.unwrap(token)
+        except Exception as exc:
+            logger.error("Failed to unwrap master key for %s: %s", principal_id, exc)
+            return None
+
+    def put(self, principal_id: str, master_key: bytes) -> None:
+        token = self._kek.wrap(master_key)
+        self._collection().insert({"_key": principal_id, "token": token}, overwrite=True)
 
 
 # ---------------------------------------------------------------------------

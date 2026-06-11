@@ -68,20 +68,43 @@ def _build_oracle() -> Optional[OracleService]:
             return _oracle_singleton
 
         try:
-            from cryptography.fernet import Fernet
-            from kernel.key_manager import get_encryption_key
-            from .oracle import FernetMasterKeyStore
+            from .key_provider import build_key_provider
+            from .oracle import ArangoMasterKeyStore
         except Exception as exc:
             logger.warning("MANTLE oracle imports failed: %s", exc)
             return None
 
         try:
-            key = get_encryption_key()
+            # KEK custody is pluggable (local file | KMS | Vault) via
+            # MANTLE_KEK_PROVIDER — default 'local' = the platform encryption.key.
+            kek = build_key_provider()
         except Exception as exc:
-            logger.warning("MANTLE oracle: encryption key unavailable: %s", exc)
+            logger.warning("MANTLE oracle: KEK provider unavailable: %s", exc)
             return None
 
-        _oracle_singleton = OracleService(FernetMasterKeyStore(Fernet(key)))
+        # Durable, Arango-backed master key store: per-principal DEKs are
+        # Fernet-wrapped by the platform KEK and persisted in `mantle_master_keys`,
+        # so they survive a mantle restart. The in-process FernetMasterKeyStore
+        # lost them on every restart, orphaning all encrypted cells (search → empty).
+        from kernel import config as _config
+        from schemas.arango.initialize import get_arangodb_connection
+
+        _db_cache: dict = {}
+
+        def _master_key_db():
+            db = _db_cache.get("db")
+            if db is None:
+                db = get_arangodb_connection(
+                    _config.ARANGO_HOST,
+                    _config.ARANGO_PORT,
+                    _config.ARANGO_USERNAME,
+                    _config.ARANGO_PASSWORD,
+                    _config.ARANGO_DATABASE,
+                )
+                _db_cache["db"] = db
+            return db
+
+        _oracle_singleton = OracleService(ArangoMasterKeyStore(kek, _master_key_db))
         return _oracle_singleton
 
 

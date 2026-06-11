@@ -50,6 +50,10 @@ def init_arangodb(host: str, port: int, username: str, password: str, db_name: s
         # MANTLE encrypted search — per-owner centroid indexes (Step 2.5).
         # Keyed by owner_id; centroids are public, payloads encrypted in S3.
         "mantle_centroids",
+        # MANTLE master keys — per-principal DEKs, Fernet-wrapped by the platform
+        # KEK (encryption.key). Persisting them here is what lets encrypted cells
+        # survive a mantle restart. Keyed by principal_id; values are wrapped.
+        "mantle_master_keys",
     ]
 
     edge_collections = [

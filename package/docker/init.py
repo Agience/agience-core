@@ -113,6 +113,11 @@ def gen_simple_secrets() -> None:
     # MinIO password: use env override on first boot (import/existing-data scenario), else generate
     minio_pass = os.getenv("MINIO_ROOT_PASSWORD") or _gen_complex_password()
     write_if_missing(KEYS_DIR / "minio.pass", minio_pass, mode=0o444)
+    # Per-deployment namespace UUID for deterministic seed-artifact ID derivation
+    # (uuid5). Minted HERE so services that mount the keys dir read-only can just
+    # read it — mantle's get_instance_namespace() would otherwise try to write it
+    # and crash on the RO keys mount ([Errno 30] Read-only file system).
+    write_if_missing(KEYS_DIR / "instance.uuid", str(uuid.uuid4()), mode=0o444)
 
 
 def _generate_rsa_keypair(label: str) -> rsa.RSAPrivateKey:

@@ -35,10 +35,7 @@ from routers.events_router import router as events_router  # noqa: E402
 from routers.internal_personas_router import router as internal_personas_router  # noqa: E402
 from routers.stream_router import router as stream_router  # noqa: E402
 from kernel import config  # noqa: E402
-<<<<<<< Updated upstream
-=======
-from kernel.logging_utils import SuppressNoisyAccessFilter, build_log_config, configure_logging  # noqa: E402
->>>>>>> Stashed changes
+from kernel.logging_utils import build_log_config, configure_logging  # noqa: E402
 
 # ----------------------------
 # Logging setup (pre-Phase 2 — uses hardcoded defaults until config loads)

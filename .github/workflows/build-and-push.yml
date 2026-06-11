@@ -40,22 +40,11 @@ on:
         required: false
         type: boolean
         default: true
-      verso_package:
-        required: false
-        type: string
-        default: ''
-        description: >-
-          Optional pip-install spec for the Verso runtime package. Empty
-          (default) builds the public Verso from chorus/verso/. Set to
-          a wheel URL or pinned package name (e.g. "verso-premium==1.2.0")
-          to build the premium variant — wired by the private CI repo.
     secrets:
       DOCKERHUB_NAMESPACE:
         required: true
       DOCKERHUB_TOKEN:
         required: true
-      VERSO_INDEX_URL:
-        required: false
 
 concurrency:
   group: build-and-push-${{ inputs.ref_name || github.ref }}
@@ -232,10 +221,6 @@ jobs:
           file: package/docker/chorus.Dockerfile
           push: true
           tags: ${{ steps.tags.outputs.chorus }}
-          build-args: |
-            VERSO_PACKAGE=${{ inputs.verso_package || '' }}
-          secrets: |
-            verso_index_url=${{ secrets.VERSO_INDEX_URL || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

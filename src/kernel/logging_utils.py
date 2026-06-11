@@ -40,8 +40,6 @@ class UTCFormatter(logging.Formatter):
     """Logging formatter that renders %(asctime)s in UTC."""
 
     converter = time.gmtime
-<<<<<<< Updated upstream
-=======
 
 
 # Request-line fragments whose uvicorn.access records are pure noise and should
@@ -103,4 +101,3 @@ def build_log_config() -> dict:
 def configure_logging() -> None:
     """Apply the shared logging config in-process. Safe to call at import."""
     logging.config.dictConfig(build_log_config())
->>>>>>> Stashed changes

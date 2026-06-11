@@ -44,34 +44,6 @@ COPY .scripts/stamp_build_time.py /app/scripts/stamp_build_time.py
 
 RUN python /app/scripts/stamp_build_time.py /app/build_info.json
 
-# ---- Verso runtime swap (premium build) ----
-# When VERSO_PACKAGE is set (e.g. "verso-premium==1.2.0"), install it from
-# the private index. The host (server.py) checks VERSO_MODULE at import time
-# and prefers the installed package over the bundled verso/server.py source.
-#
-#   VERSO_PACKAGE — pip spec (build-time only; consumed by the install)
-#   VERSO_MODULE  — import name the host should use (runtime; default
-#                   "verso_runtime" when VERSO_PACKAGE is set, unset
-#                   otherwise so the public source loads).
-#
-# Public open-source build: leave VERSO_PACKAGE empty.
-ARG VERSO_PACKAGE=""
-ARG VERSO_MODULE="verso_runtime"
-RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=secret,id=verso_index_url,target=/run/secrets/verso_index_url \
-    if [ -n "$VERSO_PACKAGE" ]; then \
-        if [ -s /run/secrets/verso_index_url ]; then \
-            INDEX="$(cat /run/secrets/verso_index_url)"; \
-            pip install --index-url "$INDEX" "$VERSO_PACKAGE"; \
-        else \
-            pip install "$VERSO_PACKAGE"; \
-        fi; \
-    else \
-        echo "VERSO_PACKAGE not set — using public Verso source"; \
-    fi
-ENV VERSO_PACKAGE=${VERSO_PACKAGE} \
-    VERSO_MODULE=${VERSO_MODULE}
-
 # ---- Optional: GitHub Copilot CLI extension for iris ----
 ARG GH_TOKEN
 RUN if [ -n "$GH_TOKEN" ]; then \

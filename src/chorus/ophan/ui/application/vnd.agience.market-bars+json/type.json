@@ -1,0 +1,49 @@
+{
+  "content_type": "application/vnd.agience.market-bars+json",
+  "version": 1,
+  "inherits": ["application/json"],
+  "description": "An immutable OHLCV bar chunk — a slice of a market-series (e.g. BTCUSDT · 15m for 2026-06-04..06). The tabular payload (parquet/arrow) is stored as binary content in S3; the artifact's content is empty, so only its metadata is indexed (cheap, findable, no numeric embedding). Chunks are immutable by convention.",
+  "context_schema": {
+    "symbol":      { "type": "string",  "description": "Instrument symbol.", "index": ["lexical"], "mutable": false },
+    "interval":    { "type": "string",  "description": "Bar interval.", "index": ["lexical"], "mutable": false },
+    "source":      { "type": "string",  "description": "Data source / vendor.", "index": ["lexical"], "mutable": false },
+    "start":       { "type": "string",  "description": "ISO-8601 timestamp of the first bar.", "index": ["temporal"], "mutable": false },
+    "end":         { "type": "string",  "description": "ISO-8601 timestamp of the last bar.", "index": ["temporal"], "mutable": false },
+    "bar_count":   { "type": "integer", "description": "Number of bars in the chunk.", "index": ["numeric"], "mutable": false },
+    "bar_seconds": { "type": "integer", "description": "Bar duration in seconds.", "index": ["numeric"], "mutable": false },
+    "columns":     { "type": "array",   "items": { "type": "string" }, "description": "Column order of the payload (e.g. [ts, open, high, low, close, volume]).", "mutable": false },
+    "data_format": { "type": "string",  "description": "Payload encoding (parquet, arrow, csv).", "mutable": false }
+  },
+  "operations": {
+    "read": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "artifact_crud" }
+    },
+    "update": {
+      "enabled": true,
+      "requires_grant": "update",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [ { "event": "artifact.updated", "phase": "after" } ]
+    },
+    "delete": {
+      "enabled": true,
+      "requires_grant": "delete",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [ { "event": "artifact.deleted", "phase": "after" } ]
+    }
+  },
+  "ui": {
+    "label": "OHLCV Bars",
+    "icon": "candlestick-chart",
+    "color": "#0ea5e9",
+    "badge_class": "bg-sky-100 text-sky-800",
+    "tile_class": "",
+    "modes": ["floating", "preview"],
+    "states": ["view"],
+    "default_mode": "preview",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": false
+  }
+}

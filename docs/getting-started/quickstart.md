@@ -246,5 +246,5 @@ Never call `commit_workspace` autonomously in an agent loop. Always preview firs
 - **Self-hosting**: Run Agience on your own infrastructure — see [self-hosting.md](self-hosting.md).
 - **MCP local setup**: Connect a local development instance to VS Code or Claude Desktop — see [client-setup.md](../mcp/client-setup.md).
 - **Architecture**: Understand the platform design — see [../overview/platform-overview.md](../overview/platform-overview.md).
-- **Features**: Search query language, workspace automation, agent execution — see [../features/](../features/).
+- **Features**: [Search query language](../features/search.md), [workspace automation](../features/workspace-automation.md), [agent execution](../features/agent-execution.md).
 - **MCP client instructions**: Full reference for how agents should use Agience tools — see [../mcp/client-instructions.md](../mcp/client-instructions.md).

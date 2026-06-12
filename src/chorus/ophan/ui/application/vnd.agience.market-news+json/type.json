@@ -1,0 +1,46 @@
+{
+  "content_type": "application/vnd.agience.market-news+json",
+  "version": 1,
+  "inherits": ["application/json"],
+  "description": "A market news item — a headline (and optional body) about one or more instruments. Unlike bars, the text IS the signal: news content is stored as text and fully embedded into the meaning manifold for semantic search and novelty analysis.",
+  "context_schema": {
+    "source":       { "type": "string", "description": "News source / feed (gdelt, cryptopanic, …).", "index": ["lexical"], "mutable": false },
+    "published_at": { "type": "string", "description": "ISO-8601 publication timestamp.", "index": ["temporal"], "mutable": false },
+    "url":          { "type": "string", "description": "Canonical article URL.", "mutable": false },
+    "tickers":      { "type": "array",  "items": { "type": "string" }, "description": "Instruments this item references.", "index": ["lexical"], "mutable": true },
+    "lang":         { "type": "string", "description": "Language code.", "mutable": false },
+    "summary":      { "type": "string", "description": "Short summary for findability.", "index": ["lexical", "semantic"], "mutable": true }
+  },
+  "operations": {
+    "read": {
+      "enabled": true,
+      "requires_grant": "read",
+      "dispatch": { "kind": "artifact_crud" }
+    },
+    "update": {
+      "enabled": true,
+      "requires_grant": "update",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [ { "event": "artifact.updated", "phase": "after" } ]
+    },
+    "delete": {
+      "enabled": true,
+      "requires_grant": "delete",
+      "dispatch": { "kind": "artifact_crud" },
+      "emits": [ { "event": "artifact.deleted", "phase": "after" } ]
+    }
+  },
+  "ui": {
+    "label": "Market News",
+    "icon": "newspaper",
+    "color": "#f59e0b",
+    "badge_class": "bg-amber-100 text-amber-800",
+    "tile_class": "",
+    "modes": ["floating", "preview"],
+    "states": ["view"],
+    "default_mode": "preview",
+    "default_state": "view",
+    "is_container": false,
+    "creatable": true
+  }
+}

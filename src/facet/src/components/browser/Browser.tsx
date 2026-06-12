@@ -766,20 +766,44 @@ export default function Browser({
     setShowBulkCollectionPicker(true);
   }, []);
 
-  const handleBulkSelectCollections = useCallback(async (collectionIds: string[]) => {
-    for (const artifactId of selectedArtifactIds) {
-      // Add artifact to each selected collection via edge operations
-      for (const collectionId of collectionIds) {
-        try {
-          await addArtifactToCollection(collectionId, artifactId);
-        } catch {
-          // Ignore errors (e.g., already exists)
-        }
+  // Add artifacts (by version/root id) into a collection with user feedback.
+  // A 403/404 from the add endpoint means the caller lacks `create` on the
+  // target — e.g. a read-only platform collection — so we surface a permission
+  // error instead of failing silently. Returns the number actually added.
+  const addArtifactsToCollectionWithFeedback = useCallback(async (
+    collectionId: string,
+    artifactIds: string[],
+  ): Promise<number> => {
+    let added = 0;
+    let denied = false;
+    let failed = false;
+    for (const artifactId of artifactIds) {
+      try {
+        await addArtifactToCollection(collectionId, artifactId);
+        added += 1;
+      } catch (err) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 403 || status === 404) denied = true;
+        else failed = true;
       }
+    }
+    if (denied) {
+      toast.error("You don't have permission to add to this collection");
+    } else if (failed && added === 0) {
+      toast.error('Could not add to this collection');
+    } else if (added > 0) {
+      toast.success(`Added ${added} item${added === 1 ? '' : 's'} to collection`);
+    }
+    return added;
+  }, []);
+
+  const handleBulkSelectCollections = useCallback(async (collectionIds: string[]) => {
+    for (const collectionId of collectionIds) {
+      await addArtifactsToCollectionWithFeedback(collectionId, selectedArtifactIds);
     }
     setShowBulkCollectionPicker(false);
     unselectAllArtifacts();
-  }, [selectedArtifactIds, unselectAllArtifacts]);
+  }, [selectedArtifactIds, unselectAllArtifacts, addArtifactsToCollectionWithFeedback]);
 
   const handleBulkAddTags = useCallback(async () => {
     setShowBulkTagDialog(true);
@@ -1026,36 +1050,30 @@ export default function Browser({
       const targetCollectionId = activeSource.id;
       if (!targetCollectionId) return;
 
+      let idsToAdd: string[];
       if (dragPayload?.sourceType === 'workspace' || dragPayload?.workspaceId) {
-        for (const id of draggedIds) {
-          try {
-            await addArtifactToCollection(targetCollectionId, String(id));
-          } catch {
-            // Ignore errors (e.g., already exists)
-          }
-        }
-        return;
+        idsToAdd = draggedIds.map(String);
+      } else {
+        const versionIds = Array.isArray(dragPayload?.versionIds)
+          ? dragPayload.versionIds.map(String).map((value) => value.trim()).filter(Boolean)
+          : [];
+        const fallbackVersionIds = draggedIds
+          .map((id) => {
+            const artifact = [...searchResultArtifacts, ...resolvedDisplayArtifacts, ...artifacts, ...sourceArtifacts]
+              .find((candidate) => String(candidate.id ?? '') === id || String(candidate.root_id ?? '') === id);
+            return artifact?.id ? String(artifact.id).trim() : '';
+          })
+          .filter(Boolean);
+        idsToAdd = [...versionIds, ...fallbackVersionIds]
+          .filter((value, index, array) => array.indexOf(value) === index);
       }
+      idsToAdd = idsToAdd.filter((value) => value && value !== targetCollectionId);
 
-      const versionIds = Array.isArray(dragPayload?.versionIds)
-        ? dragPayload.versionIds.map(String).map((value) => value.trim()).filter(Boolean)
-        : [];
-      const fallbackVersionIds = draggedIds
-        .map((id) => {
-          const artifact = [...searchResultArtifacts, ...resolvedDisplayArtifacts, ...artifacts, ...sourceArtifacts]
-            .find((candidate) => String(candidate.id ?? '') === id || String(candidate.root_id ?? '') === id);
-          return artifact?.id ? String(artifact.id).trim() : '';
-        })
-        .filter(Boolean);
-      const idsToAdd = [...versionIds, ...fallbackVersionIds]
-        .filter((value, index, array) => array.indexOf(value) === index)
-        .filter((value) => value !== targetCollectionId);
+      // Surfaces a permission error if the target is read-only (e.g. a platform
+      // collection) rather than silently doing nothing.
+      const added = await addArtifactsToCollectionWithFeedback(targetCollectionId, idsToAdd);
 
-      for (const versionId of idsToAdd) {
-        await addArtifactToCollection(targetCollectionId, versionId);
-      }
-
-      if (targetCollectionId === activeSource.id) {
+      if (added > 0) {
         const refreshed = await getCollectionArtifacts(targetCollectionId);
         setSourceArtifacts(refreshed as Artifact[]);
       }
@@ -1090,7 +1108,7 @@ export default function Browser({
         offset += 1;
       }
     }
-  }, [activeSource, activeWorkspace, artifacts, createArtifact, importArtifactsByRootIds, resolveDroppedIds, resolvedDisplayArtifacts, searchResultArtifacts, sourceArtifacts]);
+  }, [activeSource, activeWorkspace, artifacts, addArtifactsToCollectionWithFeedback, createArtifact, importArtifactsByRootIds, resolveDroppedIds, resolvedDisplayArtifacts, searchResultArtifacts, sourceArtifacts]);
 
   const createWorkspaceFromDroppedArtifacts = useCallback(async (draggedIds: string[]) => {
     // Prevent dropping a workspace onto itself (container cannot contain itself)

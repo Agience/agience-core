@@ -1,0 +1,35 @@
+{
+  "content_type": "application/vnd.agience.market-series+json",
+  "version": 1,
+  "inherits": [
+    "application/vnd.agience.collection+json"
+  ],
+  "description": "A market data series — a Collection (and therefore an Artifact) representing one instrument at one bar interval (e.g. BTCUSDT · 15m). Its members are immutable market-bars chunk artifacts. All container operations (read/update/delete/commit/commit_preview/export) are inherited from the collection type; the series identity is its content_type plus the symbol/interval/source context.",
+  "context_schema": {
+    "symbol":      { "type": "string",  "description": "Instrument symbol (e.g. BTCUSDT, AAPL).", "index": ["lexical"], "mutable": false },
+    "interval":    { "type": "string",  "description": "Bar interval (1m, 5m, 15m, 1h, 1d).",     "index": ["lexical"], "mutable": false },
+    "source":      { "type": "string",  "description": "Data source / vendor (binance, yfinance, laevitas).", "index": ["lexical"], "mutable": false },
+    "venue":       { "type": "string",  "description": "Trading venue, if distinct from source.", "index": ["lexical"], "mutable": false },
+    "quote":       { "type": "string",  "description": "Quote currency (USDT, USD).", "mutable": false },
+    "bar_seconds": { "type": "integer", "description": "Bar duration in seconds.", "index": ["numeric"], "mutable": false },
+    "description": { "type": "string",  "description": "Human/AI description for findability.", "index": ["lexical", "semantic"], "mutable": true },
+    "notes":       { "type": "string",  "description": "User notes.", "mutable": true }
+  },
+  "ui": {
+    "id": "market-series",
+    "label": "Market Series",
+    "icon": "line-chart",
+    "color": "#6366f1",
+    "badge_class": "bg-indigo-100 text-indigo-800",
+    "tile_class": "",
+    "modes": ["tree", "grid", "list", "floating"],
+    "states": ["view", "edit", "expanded", "collapsed"],
+    "default_mode": "list",
+    "default_state": "view",
+    "is_container": true,
+    "creatable": true,
+    "viewer": null,
+    "default_depth": 1,
+    "max_depth": 3
+  }
+}

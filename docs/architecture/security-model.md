@@ -127,8 +127,6 @@ API keys provide scoped programmatic access to the platform, used by MCP clients
 
 Transport policy enforcement happens in `MCPAuthMiddleware` after successful token validation. A valid key used from the wrong network origin returns 403 (not 401) — authentication succeeded but the transport context was denied.
 
-See the [Transport Binding](#transport-binding) section for deployment considerations.
-
 **Exchange flow.** An API key can be presented directly as a bearer token (`Authorization: agience-key {secret}`) or exchanged for a short-lived JWT at `POST /auth/token` with `grant_type=api_key`. The exchanged JWT embeds `api_key_id`, `scopes`, and `resource_filters` so downstream services can enforce policy without a database lookup per request.
 
 **Resource filters.** A key can be restricted to specific workspaces or collections via `resource_filters`. Combined with grants (see below), this is the mechanism for least-privilege access: a key scoped to `tool:*:invoke` but filtered to a single workspace can only invoke tools against that workspace.

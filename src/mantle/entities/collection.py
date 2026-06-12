@@ -4,7 +4,7 @@
 # The Collection class is an alias for Artifact. All container docs
 # live in the `artifacts` ArangoDB collection, discriminated by content_type.
 #
-# See .dev/features/universal-artifact-model.md.
+# See internal design notes
 
 from entities.artifact import (
     Artifact,

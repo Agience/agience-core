@@ -1,6 +1,6 @@
 """Reconciler — any source embedding → the native language of meaning.
 
-See `.dev/features/mantle-canonical-architecture.md` §4. The native code is a
+See `internal design notes` §4. The native code is a
 **sparse anchor-relative** representation: an item is its top-``m`` affinities to
 the anchors. Model-unbiased (coordinate k means "closeness to anchor-concept k"
 regardless of which model produced the raw vector) and dimension-agnostic (the

@@ -8,7 +8,7 @@ Thank you for considering a contribution to Agience. We welcome bug reports, doc
 
 **Read the [Contributor License Agreement (CLA)](CLA.md).** All contributions require a signed CLA. Signing is one-time in your pull request through the CLA Assistant bot.
 
-**Read the [developer guide](.dev/development/developer-guide.md)** and **[architecture instructions](.github/copilot-instructions.md)** before writing code. 
+**Read the [developer guide](internal design notes)** and **[architecture instructions](.github/copilot-instructions.md)** before writing code. 
 
 ---
 

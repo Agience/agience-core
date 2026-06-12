@@ -1,4 +1,4 @@
-﻿"""MantleUnifiedAccessor — RRF fusion of MANTLE vector + SSE lexical (Step 2.6.8).
+"""MantleUnifiedAccessor — RRF fusion of MANTLE vector + SSE lexical (Step 2.6.8).
 
 The canonical search backend after OpenSearch retirement (Step 2.6.9
 part 2, 2026-05-09). The two arms are:
@@ -22,7 +22,7 @@ way it'd read any artifact's metadata. Keeping hydration outside the
 accessor keeps the fusion logic pure and testable without an Arango
 fixture.
 
-See ``.dev/features/mantle-sse-lexical-index.md`` § Query Flow.
+See ``internal design notes`` § Query Flow.
 """
 
 from __future__ import annotations

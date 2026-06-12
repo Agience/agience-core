@@ -10,8 +10,6 @@ import { useDebouncedSave } from '@/hooks/useDebouncedSave';
  * View and edit modes are visually identical: same textarea element,
  * same font, same padding. Only `readOnly` toggles. Auto-saves on edit
  * with debounce — no Save/Cancel buttons.
- *
- * See `.dev/features/viewer-ux-guidelines.md` for the full contract.
  */
 export default function TextPlainViewer({
   artifact,

@@ -1,4 +1,4 @@
-﻿"""MantleQueryEngine — encrypted IVF search over authorized cells.
+"""MantleQueryEngine — encrypted IVF search over authorized cells.
 
 Step 2.3 implementation. The query-time inverse of :class:`MantleIndexer`:
 
@@ -25,7 +25,7 @@ Cell cache: an in-memory dict with TTL (configurable, default 60s) keeps
 recently-decrypted cells around so repeat queries don't pay the crypto
 cost twice. Plaintext is held only for the cache window.
 
-See `.dev/features/mantle-mvp.md` § Layer 2c.
+See `internal design notes` § Layer 2c.
 """
 
 from __future__ import annotations

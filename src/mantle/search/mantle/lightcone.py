@@ -1,4 +1,4 @@
-﻿"""LightConeResolver — BFS over `collection_artifacts` origin edges.
+"""LightConeResolver — BFS over `collection_artifacts` origin edges.
 
 Resolves the set of artifact IDs reachable from a principal's grants by
 walking ``origin: true, relationship: null`` edges outbound through
@@ -14,7 +14,7 @@ both MANTLE-SSE lexical and MANTLE vector search consume the resolver's
 authorized artifact set. The legacy flat ACL filter that lived in the
 OpenSearch query builder is gone.
 
-See `.dev/features/mantle-mvp.md` § Layer 1.
+See `internal design notes` § Layer 1.
 """
 
 from __future__ import annotations

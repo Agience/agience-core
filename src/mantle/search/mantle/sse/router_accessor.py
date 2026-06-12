@@ -1,4 +1,4 @@
-﻿"""MantleSseSearchAccessor — SearchResult-shaped adapter (Step 2.6.9).
+"""MantleSseSearchAccessor — SearchResult-shaped adapter (Step 2.6.9).
 
 Bridges the MANTLE-SSE unified accessor (which returns ``UnifiedHit``)
 into the ``search(SearchQuery) -> SearchResult`` contract the artifacts
@@ -18,7 +18,7 @@ Adapter responsibilities:
    the artifact's metadata from Arango (since neither index stores
    plaintext text).
 
-See ``.dev/features/mantle-sse-lexical-index.md`` § Query Flow.
+See ``internal design notes`` § Query Flow.
 """
 
 from __future__ import annotations
@@ -211,7 +211,7 @@ class MantleSseSearchAccessor:
         authorized candidate set (pre-hydration) with per-arm scores. Search
         *flavors* (the open standard one, or an external premium one like
         Beacon) rank within this set — they can never widen it, so MANTLE §1
-        holds by construction. See ``.dev/features/search-as-artifact.md``.
+        holds by construction. See ``internal design notes``.
 
         ``include_vectors`` is accepted for the premium re-rank path; candidate
         embeddings are not yet surfaced by the fusion layer, so vectors are

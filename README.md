@@ -1,4 +1,4 @@
-﻿# Agience
+# Agience
 
 **The operating system that AI workflows trust.**
 
@@ -169,8 +169,8 @@ MinIO, `stream` / SRS) wired together by `docker compose`.
   └─────────────────────────────────────┘    └─────────────────────────────┘
 ```
 
-Architecture spec: [`.dev/features/four-container-architecture.md`](.dev/features/four-container-architecture.md)
-· [`.dev/features/layered-architecture.md`](.dev/features/layered-architecture.md)
+Architecture spec: [`internal design notes`](internal design notes)
+· [`internal design notes`](internal design notes)
 
 ### Repo layout
 
@@ -186,7 +186,7 @@ package/install/    Unified install.sh / install.ps1 + home + plain compose
 package/seeds/      Declarative bootstrap artifacts
 package/hosts/      Desktop companion relay runtime
 docs/               Public-facing documentation
-.dev/features/      Internal design specs and migration plans
+internal design notes      Internal design specs and migration plans
 ```
 
 ---

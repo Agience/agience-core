@@ -1,4 +1,4 @@
-﻿"""MANTLE encrypted search — vector + lexical (Steps 2.0 → 2.6.9).
+"""MANTLE encrypted search — vector + lexical (Steps 2.0 → 2.6.9).
 
 Public surface:
 
@@ -7,7 +7,7 @@ Public surface:
 - :class:`MantleQueryEngine` — centroid routing, cell decrypt, ANN over decrypted vectors
 - :class:`LightConeResolver` — AQL BFS over origin edges with `propagate` masks
 - :mod:`sse` — encrypted lexical (BM25) index per
-  ``.dev/features/mantle-sse-lexical-index.md``. Replaces OpenSearch.
+  ``internal design notes``. Replaces OpenSearch.
 
 The router-shape adapter — :class:`MantleSseSearchAccessor` — and
 production wiring builders live under :mod:`sse` and :mod:`wiring`.

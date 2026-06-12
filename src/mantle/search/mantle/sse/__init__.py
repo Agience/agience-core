@@ -1,6 +1,6 @@
-﻿"""MANTLE-SSE — encrypted lexical search (Step 2.6 scaffolding).
+"""MANTLE-SSE — encrypted lexical search (Step 2.6 scaffolding).
 
-Per `.dev/features/mantle-sse-lexical-index.md`. Replaces OpenSearch BM25 with
+Per `internal design notes`. Replaces OpenSearch BM25 with
 blind-token posting lists encrypted in S3. Once 2.6 lands fully, the
 `search` (OpenSearch) container can be retired entirely — completing the
 four-container reduction.

@@ -5,7 +5,6 @@
  * configures essential services, and completes platform setup.
  *
  * UX: Simple, welcoming, progressive. One action per step.
- * Reference: .dev/features/zero-config-bootstrap.md (Auth UX Guidelines)
  */
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'

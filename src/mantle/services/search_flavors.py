@@ -12,7 +12,7 @@ declares one operation, ``invoke``, dispatching to the native target
 The **gate lives here, in core, keyed on the invoking user**: a flavor whose run
 block names ``requires_feature`` is only dispatched when
 ``gate_service.has_feature(user, <feature>)``. Anchors/search stay open; only the
-premium *flavor interaction* is gated. See `.dev/features/search-as-artifact.md`.
+premium *flavor interaction* is gated. See `internal design notes`.
 """
 
 from __future__ import annotations

@@ -102,7 +102,7 @@ def main() -> int:
     problems.extend(ensure_docs_roots(repo_root))
 
     if not sources_path.exists():
-        problems.append("MISSING_PUBLIC_SOURCES_INVENTORY: .dev/_audits/sources.md")
+        problems.append("MISSING_PUBLIC_SOURCES_INVENTORY: internal design notes")
         print("Docs integrity check: FAILED\n")
         for p in problems:
             print(p)

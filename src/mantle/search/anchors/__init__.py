@@ -1,7 +1,7 @@
 """Anchors & reconciliation — the geometry layer.
 
 The AnchorSet is the shared coordinate system / routing centroids / grounding
-(see `.dev/features/mantle-canonical-architecture.md` §3–§4). The Reconciler
+(see `internal design notes` §3–§4). The Reconciler
 turns any source embedding into the native language: a sparse, model-unbiased
 anchor-relative code.
 

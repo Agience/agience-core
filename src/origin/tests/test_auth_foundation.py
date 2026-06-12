@@ -1,4 +1,4 @@
-﻿"""Tests for the 1.1a-i Origin auth foundation (no router wired yet).
+"""Tests for the 1.1a-i Origin auth foundation (no router wired yet).
 
 Covers:
 - JWT issuance + verification roundtrip
@@ -140,7 +140,7 @@ def test_is_client_redirect_allowed(auth_modules):
 
     assert auth_service.is_client_redirect_allowed("http://localhost:5173/callback")
     assert auth_service.is_client_redirect_allowed("http://localhost:8081/callback")
-    assert auth_service.is_client_redirect_allowed("https://vscode.dev/redirect")
+    assert auth_service.is_client_redirect_allowed("https://vscodeinternal design notes")
     assert auth_service.is_client_redirect_allowed("http://127.0.0.1:9000/cb")
     assert not auth_service.is_client_redirect_allowed("http://evil.example/cb")
     assert not auth_service.is_client_redirect_allowed("ftp://localhost:5173/")

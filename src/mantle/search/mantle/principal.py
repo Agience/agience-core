@@ -7,7 +7,7 @@ they derive the same key for the same collection. There is no "owner" — access
 is by grant, not ownership.
 
 See :func:`db.arango.get_origin_root` and
-``.dev/features/anchors-and-anchorsets.md`` §5.
+``internal design notes`` §5.
 """
 
 from __future__ import annotations

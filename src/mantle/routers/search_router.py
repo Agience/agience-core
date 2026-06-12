@@ -7,7 +7,7 @@ premium one like Beacon — call this and rank within the returned set; they can
 never widen access (MANTLE §1 holds by construction).
 
 This is additive: the legacy `POST /artifacts/search` is unchanged. See
-`.dev/features/search-as-artifact.md`.
+`internal design notes`.
 """
 
 from typing import List, Optional

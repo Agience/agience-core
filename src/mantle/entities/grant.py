@@ -9,7 +9,7 @@ A (Add) = fire-and-forget intake into a container (add edge).
 S (Share) = ability to create invites / share the resource.
 O (Admin) = meta-permission to manage grants on the resource.
 
-See: .dev/features/unified-artifact-api.md
+See: internal design notes
 """
 
 from typing import Optional, Dict, Any

@@ -2,7 +2,7 @@
 """manage_anchors.py — bootstrap / inspect the live MANTLE AnchorSet.
 
 The AnchorSet is the shared coordinate system / routing centroids / grounding
-(see `.dev/features/mantle-canonical-architecture.md` §3). "Light-training"
+(see `internal design notes` §3). "Light-training"
 bootstrap clusters the platform's *common grounded knowledge* — the platform
 seed corpus — and admits representative items as the initial L1 anchors. The
 set grows from there as the manifold grows.

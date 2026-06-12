@@ -1,6 +1,6 @@
-﻿"""Blind-token generator for MANTLE-SSE.
+"""Blind-token generator for MANTLE-SSE.
 
-Per `.dev/features/mantle-sse-lexical-index.md` § Blind Tokens::
+Per `internal design notes` § Blind Tokens::
 
     blind_token = HMAC-SHA256(owner_sse_key, field_prefix + ":" + stemmed_term)
 

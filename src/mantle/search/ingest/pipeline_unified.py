@@ -1,4 +1,4 @@
-﻿"""Unified artifact indexing pipeline (post-OpenSearch retirement).
+"""Unified artifact indexing pipeline (post-OpenSearch retirement).
 
 Every artifact — regardless of content type — goes through the same path:
 
@@ -14,8 +14,8 @@ OpenSearch was retired in Step 2.6.9 part 2 — the previous BM25 path,
 the `bulk_index_documents` calls, and the `_prepare_base_doc` shape
 that mirrored the OpenSearch document went away with it.
 
-See `.dev/features/mantle-mvp.md` and
-`.dev/features/mantle-sse-lexical-index.md`.
+See `internal design notes` and
+`internal design notes`.
 """
 
 from __future__ import annotations

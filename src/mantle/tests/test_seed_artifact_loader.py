@@ -5,7 +5,7 @@ with artifacts under `package/seeds/<namespace>/`. These tests cover the
 deterministic-UUID derivation, template + reference resolution, and
 idempotent upsert path against a mocked Arango database.
 
-See `.dev/features/declarative-bootstrap-artifacts.md` for the full design.
+See `internal design notes` for the full design.
 """
 from __future__ import annotations
 

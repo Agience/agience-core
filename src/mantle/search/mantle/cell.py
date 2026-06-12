@@ -1,4 +1,4 @@
-﻿"""Cell encryption + serialization (Step 2.2b.i).
+"""Cell encryption + serialization (Step 2.2b.i).
 
 A MANTLE *cell* is the unit of encrypted storage that holds a set of indexed
 artifact chunks for one ``(principal_id, collection_id, cluster_id)`` tuple.
@@ -22,7 +22,7 @@ Callers wire those together. That keeps the crypto correctness reviewable in
 isolation and lets the encrypted-search engine compose against any storage
 backend (S3 today, IPFS / encrypted filesystem later).
 
-See `.dev/features/mantle-mvp.md` § Layer 2b.
+See `internal design notes` § Layer 2b.
 """
 
 from __future__ import annotations

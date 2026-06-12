@@ -1,4 +1,4 @@
-﻿# Development Best Practices
+# Development Best Practices
 
 Status: **Reference**
 Date: 2026-03-31
@@ -337,5 +337,5 @@ Common causes: mutating state directly instead of replacing it, multiple sources
 - [Local Development](../getting-started/local-development.md)
 - [Component Guide](./component-guide.md)
 - [Architecture Overview](../architecture/layered-architecture.md)
-- [React Hooks Rules](https://react.dev/reference/rules/rules-of-hooks)
+- [React Hooks Rules](https://reactinternal design notes)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)

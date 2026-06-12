@@ -11,7 +11,7 @@ single grant. UUIDs derive deterministically from
 ``uuid5(instance_namespace, f"{namespace}/{slug}")`` so cross-artifact
 references resolve without operator-typed UUIDs.
 
-See ``.dev/features/declarative-bootstrap-artifacts.md`` for the full design.
+See ``internal design notes`` for the full design.
 """
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-﻿"""OracleService — in-process key custodian for MANTLE encrypted search.
+"""OracleService — in-process key custodian for MANTLE encrypted search.
 
 Step 2.2a implementation. Holds per-principal 256-bit master keys in memory,
 loaded lazily from Fernet-wrapped storage on first access. Derives per-cell
@@ -24,7 +24,7 @@ Determinism: re-derivation always produces the same cell key for the same
 (master_key, collection_id, cluster_id) tuple, which is essential for query-path
 decryption.
 
-See `.dev/features/mantle-mvp.md` § Layer 2a.
+See `internal design notes` § Layer 2a.
 """
 
 from __future__ import annotations

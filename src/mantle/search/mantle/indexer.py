@@ -1,4 +1,4 @@
-﻿"""MantleIndexer — commit-path AES-256-GCM cell encryption + S3 upload.
+"""MantleIndexer — commit-path AES-256-GCM cell encryption + S3 upload.
 
 Step 2.2b.iii implementation. Combines:
 
@@ -15,7 +15,7 @@ API:
 - :meth:`index_artifact` — upsert chunks into the collection cell and write
 - :meth:`remove_artifact` — strip an artifact's chunks from the cell
 
-See `.dev/features/mantle-mvp.md` § Layer 2b.
+See `internal design notes` § Layer 2b.
 """
 
 from __future__ import annotations

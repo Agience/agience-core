@@ -1,6 +1,6 @@
 """AnchorSet — the shared coordinate system, routing centroids, and grounding.
 
-See `.dev/features/mantle-canonical-architecture.md` §3 (the AnchorSet is one
+See `internal design notes` §3 (the AnchorSet is one
 object: commons verified anchor ontology == MANTLE routing centroids ==
 Beacon-LLM grounding) and §4 (the native language derived from it).
 

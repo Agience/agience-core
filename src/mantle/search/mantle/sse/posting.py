@@ -1,4 +1,4 @@
-﻿"""Encrypted posting-list manager for MANTLE-SSE (Step 2.6.3).
+"""Encrypted posting-list manager for MANTLE-SSE (Step 2.6.3).
 
 A *posting list* is the encrypted unit of lexical storage: one blob per
 ``(principal_id, blind_token)``. Each posting list holds the entries for every
@@ -26,7 +26,7 @@ design. The :class:`PostingStore` Protocol is the storage boundary; an
 S3-backed implementation will live in ``mantle/search/mantle/wiring.py``
 alongside the existing ``S3CellStore``.
 
-See ``.dev/features/mantle-sse-lexical-index.md`` § Posting List Contents
+See ``internal design notes`` § Posting List Contents
 and § Deletion / Revocation.
 """
 

@@ -1,9 +1,9 @@
-﻿# Agience Desktop Relay Host
+# Agience Desktop Relay Host
 
 Status: **Draft**
 Date: 2026-03-07
 
-This package is the start of the desktop relay runtime described in `.dev/features/desktop-host-relay.md`.
+This package is the start of the desktop relay runtime described in `internal design notes`.
 
 Current intent:
 

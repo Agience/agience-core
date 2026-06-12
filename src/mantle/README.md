@@ -6,7 +6,7 @@ Date: 2026-03-31
 This directory contains the FastAPI backend for Agience Core: authentication, artifact CRUD, workspace and collection lifecycle, search, storage, and MCP infrastructure.
 
 For the broader project map, use:
-- `.dev/README.md` for internal developer documentation
+- `internal design notes` for internal developer documentation
 - `docs/README.md` for public-facing docs
 - `CLAUDE.md` and `backend/CLAUDE.md` for coding-agent guidance
 
@@ -18,7 +18,7 @@ The backend is the Core platform layer. Keep it type-blind.
 - New domain behavior should generally live on persona servers under `servers/`
 - Existing code in `backend/agents/` is legacy/in-transition; do not use it as a reason to add new type-specific logic to Core
 
-Authoritative boundary rules live in `.dev/features/layered-architecture.md`.
+Authoritative boundary rules live in `internal design notes`.
 
 ## Directory Guide
 
@@ -72,7 +72,7 @@ pytest tests/
 
 ## Related Docs
 
-- `.dev/features/layered-architecture.md`
-- `.dev/features/artifact-model-and-referencing.md`
+- `internal design notes`
+- `internal design notes`
 - `docs/mcp/overview.md`
-- `.dev/testing/test-suite-summary.md`
+- `internal design notes`

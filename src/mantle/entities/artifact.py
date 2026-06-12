@@ -1,6 +1,6 @@
 # entities/artifact.py
 # Unified Artifact entity — one table, one entity, three states.
-# See .dev/features/universal-artifact-model.md for design rationale
+# See internal design notes for design rationale
 # (it supersedes the archived unified-artifact-store + container-as-artifact docs).
 
 from typing import Optional, Dict, Any

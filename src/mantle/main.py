@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 
 # Ensure bare imports (`mcp_server`, `routers`, `services`, ...) resolve when
@@ -619,7 +619,7 @@ app.include_router(stream_router)
 # MCP surface moved to chorus's universal gateway. Clients address Mantle's
 # kernel ops at chorus.example.com/{kernel_artifact_id}/mcp via the
 # `core` persona registered in chorus/manifest.json. Mantle itself no
-# longer publishes /mcp — see .dev/features/mantle-mcp-consolidation.md.
+# longer publishes /mcp — see internal design notes
 
 # ----------------------------
 # Basic routes

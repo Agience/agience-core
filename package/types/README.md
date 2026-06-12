@@ -33,6 +33,6 @@ Server-owned viewers and vendor-specific handlers do not live in `types/`.
 
 Authoritative references:
 
-- `.dev/features/content-type-registry-v2.md`
-- `.dev/features/content-type-handler-isolation.md`
-- `.dev/features/layered-architecture.md`
+- `internal design notes`
+- `internal design notes`
+- `internal design notes`

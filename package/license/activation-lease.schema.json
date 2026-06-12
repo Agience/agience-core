@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agience.dev/schemas/licensing/activation-lease.schema.json",
+  "$id": "https://agienceinternal design notes",
   "title": "Agience Activation Lease",
   "type": "object",
   "required": [

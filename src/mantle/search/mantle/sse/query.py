@@ -1,4 +1,4 @@
-﻿"""SseQueryEngine — blind-token lookup + BM25 scoring (Step 2.6.7).
+"""SseQueryEngine — blind-token lookup + BM25 scoring (Step 2.6.7).
 
 The query-time inverse of :class:`SseIndexer`. Composes:
 
@@ -56,7 +56,7 @@ based traffic analysis. Padding can be added by extending the lookup
 loop with random authorized decoy tokens — pure privacy enhancement,
 no correctness impact.
 
-See ``.dev/features/mantle-sse-lexical-index.md`` § Query Flow.
+See ``internal design notes`` § Query Flow.
 """
 
 from __future__ import annotations

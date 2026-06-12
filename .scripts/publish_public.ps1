@@ -126,6 +126,10 @@ if ($DryRun)  { Write-Host "  Dry run       : YES" -ForegroundColor Yellow }
 Write-Host ""
 
 # --- Paths to exclude from public ---
+# NOTE: CLAUDE.md files are NOT listed here — a hardcoded path list goes stale
+# across directory renames (the old "facet/CLAUDE.md" entries stopped matching
+# after the move to src/, leaking src/**/CLAUDE.md to the public mirror). They
+# are removed by a recursive sweep below that catches every depth.
 $ExcludePaths = @(
     ".dev"
     ".claude"
@@ -134,10 +138,6 @@ $ExcludePaths = @(
     ".github/instructions"
     ".github/prompts"
     ".github/copilot-instructions.md"
-    "CLAUDE.md"
-    "atlas/CLAUDE.md"
-    "facet/CLAUDE.md"
-    "chorus/CLAUDE.md"
 )
 
 try {
@@ -203,6 +203,36 @@ try {
             }
         }
     }
+
+    # --- Remove every CLAUDE.md (internal agent instructions) at any depth ---
+    # Rename-proof: sweeps the tracked tree rather than relying on fixed paths.
+    foreach ($cf in (git ls-files)) {
+        if ($cf -match '(^|/)CLAUDE\.md$') {
+            Write-Host "  Removing: $cf" -ForegroundColor DarkYellow
+            git rm -rf --quiet --ignore-unmatch $cf 2>&1 | Out-Null
+        }
+    }
+
+    # --- Scrub .dev/ references from the public copy ---
+    # The private .dev/ design-doc tree is stripped above, but source files and
+    # docs still point at it (e.g. "See internal design notes"). Neutralize those
+    # pointers so the public mirror has no dangling refs. This rewrites only the
+    # staging tree — the private repo keeps its pointers intact.
+    Write-Host "  Scrubbing .dev/ references from public copy..." -ForegroundColor DarkYellow
+    $devRefPattern = '\.dev/[\w./-]+'
+    $textExt = '\.(py|ts|tsx|js|jsx|md|mdx|json|ya?ml|html|css|txt|sh|ps1|toml)$'
+    $scrubbed = 0
+    foreach ($file in (git ls-files)) {
+        if ($file -notmatch $textExt) { continue }
+        if (-not (Test-Path $file)) { continue }
+        $content = [System.IO.File]::ReadAllText($file)
+        if ($content -match $devRefPattern) {
+            $new = [System.Text.RegularExpressions.Regex]::Replace($content, $devRefPattern, 'internal design notes')
+            [System.IO.File]::WriteAllText($file, $new, $Utf8NoBom)
+            $scrubbed++
+        }
+    }
+    Write-Host "    Scrubbed .dev/ refs from $scrubbed file(s)." -ForegroundColor DarkGray
 
     # --- Stamp build_info.json with version (release publishes only) ---
     if ($Version) {

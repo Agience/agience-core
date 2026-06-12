@@ -1,4 +1,4 @@
-﻿# db/arango.py
+# db/arango.py
 # type: ignore[import, attr-defined, assignment, arg-type, union-attr, call-arg, index, misc, return-value, override, var-annotated]
 # python-arango library has incomplete type stubs; this file works correctly at runtime.
 """
@@ -6,7 +6,7 @@ ArangoDB client wrapper for Agience.
 
 Unified artifact store: one `artifacts` collection, one `collections`
 collection (with `content_type` discriminator). See
-`.dev/features/universal-artifact-model.md`.
+`internal design notes`.
 
 All ordering lives on the `collection_artifacts` edge (`order_key`). The edge
 `_to` always points at `artifacts/{root_id}` — the stable root document —

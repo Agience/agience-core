@@ -1,4 +1,4 @@
-﻿"""Tests for `routers/internal_personas_router.py` — Phase E persona registry."""
+"""Tests for `routers/internal_personas_router.py` — Phase E persona registry."""
 
 from __future__ import annotations
 
@@ -161,7 +161,7 @@ class TestFindMcpClient:
     async def test_returns_redirect_uris_and_scopes(self, client: AsyncClient):
         docs = [self._mcp_client_doc(
             client_id="vscode-mcp",
-            redirect_uris=["http://127.0.0.1:33418", "https://vscode.dev/redirect"],
+            redirect_uris=["http://127.0.0.1:33418", "https://vscodeinternal design notes"],
             scopes=["read", "write"],
         )]
         try:
@@ -175,7 +175,7 @@ class TestFindMcpClient:
             body = r.json()
             assert body["client_id"] == "vscode-mcp"
             assert body["redirect_uris"] == [
-                "http://127.0.0.1:33418", "https://vscode.dev/redirect",
+                "http://127.0.0.1:33418", "https://vscodeinternal design notes",
             ]
             assert body["allowed_oauth_scopes"] == ["read", "write"]
             assert body["artifact_id"] == "art-1"

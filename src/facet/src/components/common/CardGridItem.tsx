@@ -515,7 +515,6 @@ export const CardGridItem = ({
 
     // Single hover button — always X (remove from collection).
     // Exception: draft with no committed version and no other collections → Trash (delete).
-    // See .dev/features/card-actions.md for full matrix.
     // Archive, Revert, Restore live in the context menu only.
     // Drafts are always removable (allows cancelling uploads).
     if (!onRemove) return null;

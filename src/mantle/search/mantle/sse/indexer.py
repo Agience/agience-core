@@ -1,4 +1,4 @@
-﻿"""SseIndexer — commit-path posting list + manifest + stats updater (Step 2.6.6).
+"""SseIndexer — commit-path posting list + manifest + stats updater (Step 2.6.6).
 
 Mirrors :class:`mantle.search.mantle.indexer.MantleIndexer` for the SSE
 lexical index. Composes:
@@ -35,7 +35,7 @@ Field naming convention:
 
 The indexer maps between the two via :data:`_LONG_TO_SHORT`.
 
-See ``.dev/features/mantle-sse-lexical-index.md`` § Indexing Flow.
+See ``internal design notes`` § Indexing Flow.
 """
 
 from __future__ import annotations

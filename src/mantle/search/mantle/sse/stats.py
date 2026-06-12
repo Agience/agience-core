@@ -1,4 +1,4 @@
-﻿"""Per-owner corpus statistics for MANTLE-SSE BM25 (Step 2.6.4).
+"""Per-owner corpus statistics for MANTLE-SSE BM25 (Step 2.6.4).
 
 BM25 needs three numbers per query:
 
@@ -27,7 +27,7 @@ per-token / per-manifest keys. Stats are encrypted under their own key
 (rather than the owner's SSE key directly) so the SSE key remains a
 namespace root that never sees AES-GCM operations itself.
 
-See ``.dev/features/mantle-sse-lexical-index.md`` § Corpus Stats and
+See ``internal design notes`` § Corpus Stats and
 § BM25 Scoring.
 """
 

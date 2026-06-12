@@ -95,7 +95,7 @@
     "redirect_uris": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Optional list of allowed OAuth redirect URIs (e.g. http://127.0.0.1:33418, https://vscode.dev/redirect). Required only for OAuth authorization code flow — not needed for API key (Bearer token) access."
+      "description": "Optional list of allowed OAuth redirect URIs (e.g. http://127.0.0.1:33418, https://vscodeinternal design notes). Required only for OAuth authorization code flow — not needed for API key (Bearer token) access."
     },
     "allowed_oauth_scopes": {
       "type": "array",

@@ -1,4 +1,4 @@
-﻿import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { readdirSync, readFileSync } from 'fs'
 import { execSync } from 'child_process'
@@ -32,7 +32,7 @@ function discoverContentTypeRoots() {
   return roots
 }
 
-// https://vite.dev/config/
+// https://viteinternal design notes
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),

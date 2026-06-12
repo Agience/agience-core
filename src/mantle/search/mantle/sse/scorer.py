@@ -1,4 +1,4 @@
-﻿"""In-process BM25 scorer for MANTLE-SSE (Step 2.6.5).
+"""In-process BM25 scorer for MANTLE-SSE (Step 2.6.5).
 
 Standard Okapi BM25 with field boosting. After the SSE query engine
 fetches and decrypts posting lists for the query's blind tokens, this
@@ -26,7 +26,7 @@ storage. The query engine (Step 2.6.7) will compose this with posting
 fetches; the unified accessor (Step 2.6.8) will fold its output into
 RRF fusion.
 
-See ``.dev/features/mantle-sse-lexical-index.md`` § BM25 Scoring.
+See ``internal design notes`` § BM25 Scoring.
 """
 
 from __future__ import annotations
